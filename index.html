@@ -56,7 +56,7 @@
 </head>
 <body>
 
-    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Modo Oscuro 🌙</button>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Modo Oscuro</button>
 
     <div class="info-box">
         <h2>Girafile 🦒</h2>
@@ -69,7 +69,7 @@
     <div class="control-group">
         <label>Arrastra tu archivo o haz clic abajo (Máx 25MB):</label><br><br>
         <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-            <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar 🦒</span>
+            <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
             <input type="file" id="fileInput" accept="image/*, application/pdf, text/plain" onchange="manejarSeleccionArchivo(this)">
         </div>
         <p id="errorMsg" class="error"></p>
@@ -84,7 +84,7 @@
         </select>
     </div>
     
-    <button class="btn btn-primary" id="btnGenerar" onclick="generarLink()">Generar Enlace Seguro 🦒</button>
+    <button class="btn btn-primary" id="btnGenerar" onclick="generarLink()">Generar enlace seguro</button>
     <div id="output"></div>
 
     <div id="preview">
