@@ -4,105 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Giraffile - La jirafa que cuida tu privacidad</title>
-    <style>
-        :root {
-            --bg-color: #ffffff;
-            --text-color: #333333;
-            --box-bg: #f9f9f9;
-            --box-border: #ccc;
-            --timer-bg: #eee;
-            --footer-color: #666;
-            --textarea-bg: #ffffff;
-            --accent-color: #f0a500; 
-        }
-
-        [data-theme="dark"] {
-            --bg-color: #121212;
-            --text-color: #e0e0e0;
-            --box-bg: #1e1e1e;
-            --box-border: #333;
-            --timer-bg: #2d2d2d;
-            --footer-color: #888;
-            --textarea-bg: #252525;
-            --accent-color: #ffc04d;
-        }
-
-        /* Tipografía actualizada a Arial */
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; }
-        .info-box { border: 1px solid var(--box-border); background-color: var(--box-bg); padding: 15px; border-radius: 8px; margin-bottom: 25px; }
-        
-        /* Contenedor del Título y la Mascota */
-        .brand-container { text-align: center; margin-bottom: 15px; }
-        .brand-container h2 { margin-bottom: 10px; }
-        
-        /* Tamaño de la mascota aumentado a 180px */
-        .mascot-img { max-width: 180px; height: auto; display: block; margin: 0 auto; }
-
-        .control-group { margin-bottom: 15px; }
-        .error { color: #ff4d4d; font-weight: bold; }
-        
-        /* Zona Drop e inputs */
-        .drop-zone { border: 2px dashed var(--box-border); padding: 25px; text-align: center; border-radius: 8px; background: var(--box-bg); cursor: pointer; transition: border-color 0.2s; }
-        .drop-zone--over { border-color: var(--accent-color); background: var(--timer-bg); }
-        .drop-zone input { display: none; }
-
-        textarea { width: 100%; height: 50px; margin-top: 10px; background-color: var(--textarea-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 8px; border-radius: 4px; box-sizing: border-box; font-family: Arial, monospace; resize: none; }
-        footer { margin-top: 40px; font-size: 0.85em; color: var(--footer-color); text-align: center; border-top: 1px solid var(--box-border); padding-top: 10px; }
-        #preview { margin-top: 20px; padding: 15px; border: 1px dashed var(--box-border); border-radius: 8px; display: none; }
-        .timer-container { margin: 15px 0; background: var(--timer-bg); padding: 10px; border-radius: 5px; }
-        progress { width: 100%; height: 15px; border-radius: 10px; overflow: hidden; border: none; }
-        progress::-webkit-progress-bar { background-color: var(--bg-color); }
-        progress::-webkit-progress-value { background-color: var(--accent-color); }
-        
-        /* Botones y UI */
-        .theme-toggle { position: fixed; top: 20px; right: 20px; padding: 8px 12px; border-radius: 20px; border: 1px solid var(--box-border); background-color: var(--box-bg); color: var(--text-color); cursor: pointer; font-size: 0.9em; font-weight: bold; }
-        .btn { padding: 9px 16px; border-radius: 4px; border: 1px solid var(--box-border); background-color: var(--box-bg); color: var(--text-color); cursor: pointer; font-weight: bold; margin-top: 10px; transition: background 0.2s; }
-        .btn:hover { background: var(--timer-bg); }
-        .btn-primary { background: var(--accent-color); color: #121212; border: none; font-family: Arial, sans-serif; }
-        .btn-primary:hover { opacity: 0.9; }
-        .file-meta { font-size: 0.9em; color: var(--footer-color); margin-bottom: 10px; }
-
-        .highlight-yellow {
-    background-color: #fff9c4; 
-    padding: 10px;
-    border-radius: 6px;
-    border-left: 4px solid #f0a500; 
-    color: #333; 
-}
-
-        [data-theme="dark"] .highlight-yellow {
-    background-color: #4a452a; 
-    border-left-color: #ffc04d;
-    color: #e0e0e0;
-}
-    </style>
+    <link rel="stylesheet" href="manchas.css">
 </head>
 <body>
 
-    <!-- Botón de Modo Oscuro -->
-    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Modo Oscuro 🌙</button>
-
-    <div class="info-box">
-        <div class="brand-container">
-            <h2>Giraffile</h2>
-            <!-- Imagen de la mascota añadida aquí -->
-            <img src="giraffe.png" alt="Hello there" class="mascot-img">
-        </div>
-        <p class="highlight-yellow"><strong>¿Te preocupa dejar tus archivos rondando por internet?</strong></p>
-        <p>Olvídate de subir fotos o documentos a servidores donde pierdes el control. Con <strong>Giraffile</strong>, tú eres el dueño de tus datos de principio a fin.</p>
-        <p>Esta herramienta te permite compartir archivos de manera privada mediante un enlace corto sin subirlos a internet. Todo el contenido se almacena de forma temporal en tu propio dispositivo de manera 100% segura.</p>
-        <p><strong>¿Para qué puedes usar Giraffile?</strong></p>
-    <ul style="padding-left: 20px;">
-        <li><strong>Información sensible:</strong> Credenciales, datos financieros o documentos personales.</li>
-        <li><strong>Colaboración rápida:</strong> Capturas de pantalla o notas técnicas temporales.</li>
-        <li><strong>Privacidad total:</strong> Envío de archivos sin dejar rastro en servidores externos.</li>
-    </ul>
+    <div class="top-controls">
+        <button class="lang-toggle" onclick="toggleLanguage()" id="langBtn">English</button>
+        <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Modo Oscuro 🌙</button>
     </div>
 
-    <h3>Prepara tu archivo para enviar</h3>
+    <div class="info-box" id="infoBoxContainer">
+        </div>
+
+    <h3 id="lblPrepare">Prepara tu archivo para enviar</h3>
     
     <div class="control-group">
-        <label>Arrastra tu archivo o haz clic abajo (Máx 25MB):</label><br><br>
+        <label id="lblDropZone">Arrastra tu archivo o haz clic abajo (Máx 25MB):</label><br><br>
         <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
             <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
             <input type="file" id="fileInput" accept="image/*, application/pdf, text/plain" onchange="manejarSeleccionArchivo(this)">
@@ -111,11 +28,11 @@
     </div>
 
     <div class="control-group">
-        <label>Tiempo de Caducidad:</label><br>
+        <label id="lblExpiry">Tiempo de Caducidad:</label><br>
         <select id="expiry" style="background: var(--box-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 6px; border-radius: 4px; margin-top: 5px;">
-            <option value="900">15 Minutos</option>
-            <option value="1800">30 Minutos</option>
-            <option value="60">1 Minuto (Para Pruebas)</option> 
+            <option value="900" id="opt15m">15 Minutos</option>
+            <option value="1800" id="opt30m">30 Minutos</option>
+            <option value="60" id="opt1m">1 Minuto (Para Pruebas)</option> 
         </select>
     </div>
     
@@ -123,12 +40,12 @@
     <div id="output"></div>
 
     <div id="preview">
-        <h4>Visualizador de Archivo Seguro</h4>
+        <h4 id="lblPreviewTitle">Visualizador de Archivo Seguro</h4>
         <div id="fileMeta" class="file-meta"></div>
         
         <div id="timerGroup" class="timer-container" style="display: none;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                <span>Tiempo restante de visualización:</span>
+                <span id="lblTimeRemaining">Tiempo restante de visualización:</span>
                 <strong id="timeString">--:--</strong>
             </div>
             <progress id="lifeBar" value="100" max="100"></progress>
@@ -137,208 +54,10 @@
         <div id="fileContent"></div>
     </div>
 
-    <footer>
+    <footer id="footerText">
         Giraffile v0.4.2 | © 2026 jahp. Todos los derechos reservados.
     </footer>
 
-    <script>
-        const MAX_SIZE_BYTES = 25 * 1024 * 1024; 
-        const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'];
-        let intervaloTemporizador = null;
-        let archivoCargado = null;
-        
-        const DB_NAME = "GirafileDB"; 
-        const DB_VERSION = 1;
-        const STORE_NAME = "archivos";
-
-        // Drag and Drop Setup
-        const dropZone = document.getElementById('dropZone');
-        ['dragover', 'dragleave', 'drop'].forEach(evtName => {
-            dropZone.addEventListener(evtName, e => e.preventDefault());
-        });
-        dropZone.addEventListener('dragover', () => dropZone.classList.add('drop-zone--over'));
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drop-zone--over'));
-        dropZone.addEventListener('drop', (e) => {
-            dropZone.classList.remove('drop-zone--over');
-            if(e.dataTransfer.files.length) manejarSeleccionArchivo(e.dataTransfer);
-        });
-
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const targetTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', targetTheme);
-            localStorage.setItem('girafile-theme', targetTheme);
-            document.getElementById('themeBtn').innerText = targetTheme === 'dark' ? 'Modo Claro ☀️' : 'Modo Oscuro 🌙';
-        }
-
-        function abrirDB(callback) {
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
-            request.onupgradeneeded = function(e) {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: "id" });
-            };
-            request.onsuccess = function(e) { callback(e.target.result); };
-        }
-
-        window.onload = function() {
-            const savedTheme = localStorage.getItem('girafile-theme') || 'light';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            document.getElementById('themeBtn').innerText = savedTheme === 'dark' ? 'Modo Claro ☀️' : 'Modo Oscuro 🌙';
-            verificarLinkCompartido();
-        };
-
-        function manejarSeleccionArchivo(inputOrData) {
-            const file = inputOrData.files[0];
-            const errorMsg = document.getElementById('errorMsg');
-            const prompt = document.getElementById('dropZonePrompt');
-            
-            if (file && (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE_BYTES)) {
-                if(document.getElementById('fileInput')) document.getElementById('fileInput').value = "";
-                archivoCargado = null;
-                prompt.innerText = "Arrastra un archivo aquí o haz clic para buscar 🦒";
-                errorMsg.innerText = `Archivo no permitido. Debe pesar menos de 25MB y ser una imagen, PDF o texto plano.`;
-                return;
-            }
-            errorMsg.innerText = "";
-            if(file) {
-                archivoCargado = file;
-                const tamanoMB = (file.size / (1024 * 1024)).toFixed(2);
-                prompt.innerHTML = `<strong>Archivo seleccionado:</strong> ${file.name} (${tamanoMB} MB)`;
-            }
-        }
-
-        function generarLink() {
-            if (!archivoCargado) {
-                document.getElementById('errorMsg').innerText = "Por favor, selecciona o arrastra un archivo primero.";
-                return;
-            }
-
-            const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
-            const duracion = parseInt(document.getElementById('expiry').value);
-            
-            const payload = {
-                id: idUnico,
-                t: Math.floor(Date.now() / 1000),
-                d: duracion,
-                name: archivoCargado.name,
-                type: archivoCargado.type,
-                size: archivoCargado.size,
-                blob: archivoCargado 
-            };
-            
-            abrirDB(function(db) {
-                const transaction = db.transaction([STORE_NAME], "readwrite");
-                transaction.objectStore(STORE_NAME).put(payload);
-                
-                transaction.oncomplete = function() {
-                    const origen = window.location.origin === "null" ? "file://" : window.location.origin;
-                    const link = origen + window.location.pathname + "#" + idUnico;
-                    
-                    document.getElementById('output').innerHTML = `
-                        <p style="color: green; font-weight: bold;">¡Enlace creado con éxito!</p>
-                        <textarea id="copyTarget" readonly onclick="this.select()">${link}</textarea>
-                        <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">Copiar Enlace 📋</button>
-                    `;
-                };
-            });
-        }
-
-        function copiarAlPortapapeles() {
-            const copyText = document.getElementById("copyTarget");
-            copyText.select();
-            navigator.clipboard.writeText(copyText.value);
-            
-            const btn = document.getElementById("btnCopiar");
-            btn.innerText = "¡Enlace Copiado! ✓";
-            btn.style.background = "#28a745";
-            btn.style.color = "#fff";
-            setTimeout(() => {
-                btn.innerText = "Copiar Enlace 📋";
-                btn.style.background = "var(--box-bg)";
-                btn.style.color = "var(--text-color)";
-            }, 2000);
-        }
-
-        function verificarLinkCompartido() {
-            const hash = window.location.hash.substring(1);
-            if (!hash || !hash.startsWith("file_")) return;
-
-            const previewDiv = document.getElementById('preview');
-            const contentDiv = document.getElementById('fileContent');
-            const metaDiv = document.getElementById('fileMeta');
-
-            abrirDB(function(db) {
-                const transaction = db.transaction([STORE_NAME], "readonly");
-                const request = transaction.objectStore(STORE_NAME).get(hash);
-
-                request.onsuccess = function(e) {
-                    const data = e.target.result;
-
-                    if (!data) {
-                        previewDiv.style.display = "block";
-                        contentDiv.innerHTML = "<p class='error'>El archivo no existe o ya ha sido eliminado por seguridad.</p>";
-                        return;
-                    }
-
-                    const ahoraInicial = Math.floor(Date.now() / 1000);
-                    if (ahoraInicial > (data.t + data.d)) {
-                        eliminarArchivoDB(hash);
-                        previewDiv.style.display = "block";
-                        contentDiv.innerHTML = "<p class='error'>¡Este enlace ha caducado y el contenido fue destruido permanentemente!</p>";
-                        return;
-                    }
-
-                    previewDiv.style.display = "block";
-                    metaDiv.innerHTML = `<strong>Archivo:</strong> ${data.name} (${(data.size / (1024*1024)).toFixed(2)} MB)`;
-                    
-                    const timerGroup = document.getElementById('timerGroup');
-                    const lifeBar = document.getElementById('lifeBar');
-                    const timeString = document.getElementById('timeString');
-                    timerGroup.style.display = "block";
-
-                    if (intervaloTemporizador) clearInterval(intervaloTemporizador);
-                    
-                    intervaloTemporizador = setInterval(function() {
-                        const ahora = Math.floor(Date.now() / 1000);
-                        const tiempoRestante = data.d - (ahora - data.t);
-
-                        if (tiempoRestante <= 0) {
-                            clearInterval(intervaloTemporizador);
-                            eliminarArchivoDB(hash);
-                            timerGroup.style.display = "none";
-                            metaDiv.style.display = "none";
-                            contentDiv.innerHTML = "<p class='error'>¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.</p>";
-                            return;
-                        }
-
-                        lifeBar.value = (tiempoRestante / data.d) * 100;
-                        const minutos = Math.floor(tiempoRestante / 60);
-                        const segundos = tiempoRestante % 60;
-                        timeString.innerText = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
-                    }, 1000);
-
-                    const urlObjeto = URL.createObjectURL(data.blob);
-
-                    if (data.type.startsWith("image/")) {
-                        contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; border-radius: 4px;">`;
-                    } else if (data.type === "application/pdf") {
-                        contentDiv.innerHTML = `<embed src="${urlObjeto}" type="application/pdf" width="100%" height="400px">`;
-                    } else {
-                        const lectorTexto = new FileReader();
-                        lectorTexto.onload = function(evt) {
-                            contentDiv.innerHTML = `<pre style="white-space: pre-wrap; background: var(--timer-bg); padding: 10px; border-radius: 4px;">${evt.target.result}</pre>`;
-                        };
-                        lectorTexto.readAsText(data.blob);
-                    }
-                };
-            });
-        }
-
-        function eliminarArchivoDB(id) {
-            abrirDB(function(db) {
-                db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(id);
-            });
-        }
-    </script>
+    <script src="cerebro.js"></script>
 </body>
 </html>
