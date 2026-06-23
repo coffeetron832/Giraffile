@@ -37,7 +37,7 @@
         <select id="expiry">
             <option value="900">15 Minutos</option>
             <option value="1800">30 Minutos</option>
-            <option value="10">10 Segundos (Para Pruebas)</option> 
+            <option value="60">1 Minuto (Para Pruebas)</option> 
         </select>
     </div>
     
@@ -60,7 +60,7 @@
     </footer>
 
     <script>
-        const MAX_SIZE_BYTES = 25 * 1024 * 1024; // ¡25 MB Potenciados!
+        const MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB Potenciados
         const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'];
         let intervaloTemporizador = null;
         
@@ -108,7 +108,6 @@
             const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
             const duracion = parseInt(document.getElementById('expiry').value);
             
-            // Guardamos el objeto binario nativo (Blob/File), sin Base64 ineficiente
             const payload = {
                 id: idUnico,
                 t: Math.floor(Date.now() / 1000),
@@ -120,8 +119,8 @@
             
             abrirDB(function(db) {
                 const transaction = db.transaction([STORE_NAME], "readwrite");
-                const store = transaction.objectStore(transaction);
-                const request = transaction.objectStore(STORE_NAME).put(payload);
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put(payload);
                 
                 transaction.oncomplete = function() {
                     const origen = window.location.origin === "null" ? "file://" : window.location.origin;
@@ -191,7 +190,6 @@
                         timeString.innerText = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
                     }, 1000);
 
-                    // Renderizar usando URL de objeto temporal para el Blob binario
                     const urlObjeto = URL.createObjectURL(data.blob);
 
                     if (data.type.startsWith("image/")) {
@@ -199,7 +197,6 @@
                     } else if (data.type === "application/pdf") {
                         contentDiv.innerHTML = `<embed src="${urlObjeto}" type="application/pdf" width="100%" height="400px">`;
                     } else {
-                        // Para texto plano, leemos el contenido del blob asíncronamente
                         const lectorTexto = new FileReader();
                         lectorTexto.onload = function(evt) {
                             contentDiv.innerHTML = `<pre>${evt.target.result}</pre>`;
