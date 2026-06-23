@@ -8,13 +8,14 @@ const DB_NAME = "GirafileDB";
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
 
-// Diccionario de traducciones
+// Diccionario de traducciones integrado con el título del navegador
 const i18n = {
     es: {
         themeDark: "Modo Oscuro 🌙",
         themeLight: "Modo Claro ☀️",
-        langBtn: "English",
+        langBtn: "English 🌐",
         title: "Giraffile",
+        pageTitle: "Giraffile - La jirafa que cuida tu privacidad",
         hook: "¿Te preocupa dejar tus archivos rondando por internet?",
         desc1: "Olvídate de subir fotos o documentos a servidores donde pierdes el control. Con <strong>Giraffile</strong>, tú eres el dueño de tus datos de principio a fin.",
         desc2: "Esta herramienta te permite compartir archivos de manera privada mediante un enlace corto sin subirlos a internet. Todo el contenido se almacena de forma temporal en tu propio dispositivo de manera 100% segura.",
@@ -47,8 +48,9 @@ const i18n = {
     en: {
         themeDark: "Dark Mode 🌙",
         themeLight: "Light Mode ☀️",
-        langBtn: "Español",
+        langBtn: "Español 🌐",
         title: "Giraffile",
+        pageTitle: "Giraffile - The giraffe that guards your privacy",
         hook: "Worried about leaving your files floating around the internet?",
         desc1: "Forget about uploading photos or documents to servers where you lose control. With <strong>Giraffile</strong>, you own your data from start to finish.",
         desc2: "This tool allows you to share files privately using a short link without uploading them to the internet. All content is temporarily stored on your own device in a 100% secure way.",
@@ -113,6 +115,9 @@ function toggleLanguage() {
 
 function aplicarTraduccion() {
     const t = i18n[currentLang];
+    
+    // Cambia el título de la pestaña del navegador dinámicamente
+    document.title = t.pageTitle; 
     
     document.getElementById('langBtn').innerText = t.langBtn;
     const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -286,46 +291,46 @@ function verificarLinkCompartido() {
             const timeString = document.getElementById('timeString');
             timerGroup.style.display = "block";
 
-            if (intervaloTemporizador) clearInterval(intervaloTemporizador);
-            
-            intervaloTemporizador = setInterval(function() {
-                const ahora = Math.floor(Date.now() / 1000);
-                const tiempoRestante = data.d - (ahora - data.t);
+                    if (intervaloTemporizador) clearInterval(intervaloTemporizador);
+                    
+                    intervaloTemporizador = setInterval(function() {
+                        const ahora = Math.floor(Date.now() / 1000);
+                        const tiempoRestante = data.d - (ahora - data.t);
 
-                if (tiempoRestante <= 0) {
-                    clearInterval(intervaloTemporizador);
-                    eliminarArchivoDB(hash);
-                    timerGroup.style.display = "none";
-                    metaDiv.style.display = "none";
-                    contentDiv.innerHTML = `<p class='error'>${t.errTimeOut}</p>`;
-                    return;
-                }
+                        if (tiempoRestante <= 0) {
+                            clearInterval(intervaloTemporizador);
+                            eliminarArchivoDB(hash);
+                            timerGroup.style.display = "none";
+                            metaDiv.style.display = "none";
+                            contentDiv.innerHTML = `<p class='error'>${t.errTimeOut}</p>`;
+                            return;
+                        }
 
-                lifeBar.value = (tiempoRestante / data.d) * 100;
-                const minutos = Math.floor(tiempoRestante / 60);
-                const segundos = tiempoRestante % 60;
-                timeString.innerText = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
-            }, 1000);
+                        lifeBar.value = (tiempoRestante / data.d) * 100;
+                        const minutos = Math.floor(tiempoRestante / 60);
+                        const segundos = tiempoRestante % 60;
+                        timeString.innerText = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+                    }, 1000);
 
-            const urlObjeto = URL.createObjectURL(data.blob);
+                    const urlObjeto = URL.createObjectURL(data.blob);
 
-            if (data.type.startsWith("image/")) {
-                contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; border-radius: 4px;">`;
-            } else if (data.type === "application/pdf") {
-                contentDiv.innerHTML = `<embed src="${urlObjeto}" type="application/pdf" width="100%" height="400px">`;
-            } else {
-                const lectorTexto = new FileReader();
-                lectorTexto.onload = function(evt) {
-                    contentDiv.innerHTML = `<pre style="white-space: pre-wrap; background: var(--timer-bg); padding: 10px; border-radius: 4px;">${evt.target.result}</pre>`;
+                    if (data.type.startsWith("image/")) {
+                        contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; border-radius: 4px;">`;
+                    } else if (data.type === "application/pdf") {
+                        contentDiv.innerHTML = `<embed src="${urlObjeto}" type="application/pdf" width="100%" height="400px">`;
+                    } else {
+                        const lectorTexto = new FileReader();
+                        lectorTexto.onload = function(evt) {
+                            contentDiv.innerHTML = `<pre style="white-space: pre-wrap; background: var(--timer-bg); padding: 10px; border-radius: 4px;">${evt.target.result}</pre>`;
+                        };
+                        lectorTexto.readAsText(data.blob);
+                    }
                 };
-                lectorTexto.readAsText(data.blob);
-            }
-        };
-    });
-}
+            });
+        }
 
-function eliminarArchivoDB(id) {
-    abrirDB(function(db) {
-        db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(id);
-    });
-}
+        function eliminarArchivoDB(id) {
+            abrirDB(function(db) {
+                db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(id);
+            });
+        }
