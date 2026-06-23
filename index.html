@@ -3,28 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SafeLink Data - IndexedDB Power</title>
+    <title>SafeLink Data - Compartir Seguro</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; }
-        .info-box { border: 1px solid #ccc; background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 25px; }
+        /* Variables para el cambio de tema rápido */
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --box-bg: #f9f9f9;
+            --box-border: #ccc;
+            --timer-bg: #eee;
+            --footer-color: #666;
+            --textarea-bg: #ffffff;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --box-bg: #1e1e1e;
+            --box-border: #333;
+            --timer-bg: #2d2d2d;
+            --footer-color: #888;
+            --textarea-bg: #252525;
+        }
+
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; }
+        .info-box { border: 1px solid var(--box-border); background-color: var(--box-bg); padding: 15px; border-radius: 8px; margin-bottom: 25px; }
         .control-group { margin-bottom: 15px; }
-        .error { color: red; font-weight: bold; }
-        textarea { width: 100%; height: 50px; margin-top: 10px; }
-        footer { margin-top: 40px; font-size: 0.85em; color: #666; text-align: center; border-top: 1px solid #eee; padding-top: 10px; }
-        #preview { margin-top: 20px; padding: 10px; border: 1px dashed #aaa; display: none; }
-        .timer-container { margin: 15px 0; background: #eee; padding: 10px; border-radius: 5px; }
+        .error { color: #ff4d4d; font-weight: bold; }
+        textarea { width: 100%; height: 50px; margin-top: 10px; background-color: var(--textarea-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 5px; border-radius: 4px; }
+        footer { margin-top: 40px; font-size: 0.85em; color: var(--footer-color); text-align: center; border-top: 1px solid var(--box-border); padding-top: 10px; }
+        #preview { margin-top: 20px; padding: 10px; border: 1px dashed var(--box-border); display: none; }
+        .timer-container { margin: 15px 0; background: var(--timer-bg); padding: 10px; border-radius: 5px; }
         progress { width: 100%; height: 20px; }
+        
+        /* Botón de Modo Oscuro */
+        .theme-toggle { position: fixed; top: 20px; right: 20px; padding: 8px 12px; border-radius: 20px; border: 1px solid var(--box-border); background-color: var(--box-bg); color: var(--text-color); cursor: pointer; font-size: 0.9em; font-weight: bold; transition: all 0.2s; }
+        .theme-toggle:hover { opacity: 0.8; }
+        button#btnGenerar { padding: 8px 15px; border-radius: 4px; border: 1px solid var(--box-border); background-color: var(--box-bg); color: var(--text-color); cursor: pointer; font-weight: bold; }
+        button#btnGenerar:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
 
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Modo Oscuro 🌙</button>
+
     <div class="info-box">
         <h2>SafeLink Data</h2>
-        <p><strong>Descripción:</strong> Los archivos se guardan localmente mediante la base de datos de alta velocidad de tu navegador (IndexedDB). No se suben a internet. El link es corto y permite archivos mucho más grandes.</p>
-        <p>Comparte notas, capturas de pantalla o documentos PDF con privacidad absoluta y velocidad asíncrona.</p>
+        <p><strong>Descripción:</strong> Esta herramienta te permite compartir archivos visualizables mediante un enlace corto sin subirlos a internet. Todo el contenido se almacena de forma temporal y privada en tu propio dispositivo.</p>
+        <p>Comparte notas, capturas de pantalla o documentos con total confidencialidad.</p>
     </div>
 
-    <h3>Generador de Enlaces (IndexedDB Engine)</h3>
+    <h3>Generador de Enlaces Seguros</h3>
     
     <div class="control-group">
         <label>Seleccionar Archivo (Máx 25MB):</label><br>
@@ -34,14 +63,14 @@
 
     <div class="control-group">
         <label>Tiempo de Caducidad:</label><br>
-        <select id="expiry">
+        <select id="expiry" style="background: var(--box-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 4px; border-radius: 4px;">
             <option value="900">15 Minutos</option>
             <option value="1800">30 Minutos</option>
             <option value="60">1 Minuto (Para Pruebas)</option> 
         </select>
     </div>
     
-    <button id="btnGenerar" onclick="generarLink()">Generar Link Corto</button>
+    <button id="btnGenerar" onclick="generarLink()">Generar Enlace Seguro</button>
     <div id="output"></div>
 
     <div id="preview">
@@ -56,18 +85,26 @@
     </div>
 
     <footer>
-        Versión 0.3.0 (Alfa) | © 2026 jahp. Todos los derechos reservados.
+        Versión 0.3.1 (Alfa) | © 2026 jahp. Todos los derechos reservados.
     </footer>
 
     <script>
-        const MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB Potenciados
+        const MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
         const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'];
         let intervaloTemporizador = null;
         
-        // CONFIGURACIÓN DE INDEXEDDB
         const DB_NAME = "SafeLinkDB";
         const DB_VERSION = 1;
         const STORE_NAME = "archivos";
+
+        // Lógica de Modo Oscuro
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const targetTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', targetTheme);
+            localStorage.setItem('safelink-theme', targetTheme);
+            document.getElementById('themeBtn').innerText = targetTheme === 'dark' ? 'Modo Claro ☀️' : 'Modo Oscuro 🌙';
+        }
 
         function abrirDB(callback) {
             const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -81,12 +118,16 @@
                 callback(e.target.result);
             };
             request.onerror = function() {
-                console.error("Error al abrir IndexedDB");
+                console.error("Error de acceso local");
             };
         }
 
-        // CONTROLADORES PRINCIPALES
         window.onload = function() {
+            // Cargar tema preferido previamente
+            const savedTheme = localStorage.getItem('safelink-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeBtn').innerText = savedTheme === 'dark' ? 'Modo Claro ☀️' : 'Modo Oscuro 🌙';
+            
             verificarLinkCompartido();
         };
 
@@ -95,7 +136,7 @@
             const errorMsg = document.getElementById('errorMsg');
             if (file && (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE_BYTES)) {
                 input.value = ""; 
-                errorMsg.innerText = `Archivo inválido (Máximo ${MAX_SIZE_BYTES / (1024*1024)}MB y formatos específicos).`;
+                errorMsg.innerText = `Archivo no permitido. Asegúrate de que no supere los 25MB y sea una imagen, PDF o texto plano.`;
                 return;
             }
             errorMsg.innerText = "";
@@ -127,7 +168,7 @@
                     const link = origen + window.location.pathname + "#" + idUnico;
                     
                     document.getElementById('output').innerHTML = `
-                        <p style="color: green; font-weight: bold;">¡Enlace creado con éxito vía IndexedDB!</p>
+                        <p style="color: green; font-weight: bold;">¡Enlace creado con éxito!</p>
                         <textarea readonly onclick="this.select()">${link}</textarea>
                     `;
                 };
@@ -151,7 +192,7 @@
 
                     if (!data) {
                         previewDiv.style.display = "block";
-                        contentDiv.innerHTML = "<p class='error'>El archivo no existe o ya fue destruido.</p>";
+                        contentDiv.innerHTML = "<p class='error'>El archivo no existe o ya ha sido eliminado por seguridad.</p>";
                         return;
                     }
 
@@ -159,7 +200,7 @@
                     if (ahoraInicial > (data.t + data.d)) {
                         eliminarArchivoDB(hash);
                         previewDiv.style.display = "block";
-                        contentDiv.innerHTML = "<p class='error'>¡Este enlace ha caducado y el archivo fue autodestruido!</p>";
+                        contentDiv.innerHTML = "<p class='error'>¡Este enlace ha caducado y el contenido fue destruido permanentemente!</p>";
                         return;
                     }
 
@@ -180,7 +221,7 @@
                             clearInterval(intervaloTemporizador);
                             eliminarArchivoDB(hash);
                             timerGroup.style.display = "none";
-                            contentDiv.innerHTML = "<p class='error'>¡El tiempo se ha agotado! Archivo destruido de IndexedDB.</p>";
+                            contentDiv.innerHTML = "<p class='error'>¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.</p>";
                             return;
                         }
 
@@ -193,13 +234,13 @@
                     const urlObjeto = URL.createObjectURL(data.blob);
 
                     if (data.type.startsWith("image/")) {
-                        contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%;">`;
+                        contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; border-radius: 4px;">`;
                     } else if (data.type === "application/pdf") {
                         contentDiv.innerHTML = `<embed src="${urlObjeto}" type="application/pdf" width="100%" height="400px">`;
                     } else {
                         const lectorTexto = new FileReader();
                         lectorTexto.onload = function(evt) {
-                            contentDiv.innerHTML = `<pre>${evt.target.result}</pre>`;
+                            contentDiv.innerHTML = `<pre style="white-space: pre-wrap; background: var(--timer-bg); padding: 10px; border-radius: 4px;">${evt.target.result}</pre>`;
                         };
                         lectorTexto.readAsText(data.blob);
                     }
