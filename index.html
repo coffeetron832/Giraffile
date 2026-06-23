@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SafeLink Data - Compartir Seguro</title>
+    <title>Girafile - Compartir Seguro</title>
     <style>
         :root {
             --bg-color: #ffffff;
@@ -13,7 +13,7 @@
             --timer-bg: #eee;
             --footer-color: #666;
             --textarea-bg: #ffffff;
-            --accent-color: #0076ff;
+            --accent-color: #f0a500; /* Color amarillo cálido jirafa */
         }
 
         [data-theme="dark"] {
@@ -24,7 +24,7 @@
             --timer-bg: #2d2d2d;
             --footer-color: #888;
             --textarea-bg: #252525;
-            --accent-color: #3894ff;
+            --accent-color: #ffc04d;
         }
 
         body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; }
@@ -49,7 +49,7 @@
         .theme-toggle { position: fixed; top: 20px; right: 20px; padding: 8px 12px; border-radius: 20px; border: 1px solid var(--box-border); background-color: var(--box-bg); color: var(--text-color); cursor: pointer; font-size: 0.9em; font-weight: bold; }
         .btn { padding: 9px 16px; border-radius: 4px; border: 1px solid var(--box-border); background-color: var(--box-bg); color: var(--text-color); cursor: pointer; font-weight: bold; margin-top: 10px; transition: background 0.2s; }
         .btn:hover { background: var(--timer-bg); }
-        .btn-primary { background: var(--accent-color); color: #fff; border: none; }
+        .btn-primary { background: var(--accent-color); color: #121212; border: none; }
         .btn-primary:hover { opacity: 0.9; }
         .file-meta { font-size: 0.9em; color: var(--footer-color); margin-bottom: 10px; }
     </style>
@@ -59,8 +59,8 @@
     <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Modo Oscuro 🌙</button>
 
     <div class="info-box">
-        <h2>SafeLink Data</h2>
-        <p><strong>Descripción:</strong> Esta herramienta te permite compartir archivos visualizables mediante un enlace corto sin subirlos a internet. Todo el contenido se almacena de forma temporal y privada en tu propio dispositivo.</p>
+        <h2>Girafile 🦒</h2>
+        <p><strong>Descripción:</strong> Esta herramienta te permite compartir archivos de manera privada mediante un enlace corto sin subirlos a internet. Todo el contenido se almacena de forma temporal en tu propio dispositivo de manera 100% segura.</p>
         <p>Comparte notas, capturas de pantalla o documentos con total confidencialidad.</p>
     </div>
 
@@ -69,7 +69,7 @@
     <div class="control-group">
         <label>Arrastra tu archivo o haz clic abajo (Máx 25MB):</label><br><br>
         <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-            <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
+            <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar 🦒</span>
             <input type="file" id="fileInput" accept="image/*, application/pdf, text/plain" onchange="manejarSeleccionArchivo(this)">
         </div>
         <p id="errorMsg" class="error"></p>
@@ -84,7 +84,7 @@
         </select>
     </div>
     
-    <button class="btn btn-primary" id="btnGenerar" onclick="generarLink()">Generar Enlace Seguro</button>
+    <button class="btn btn-primary" id="btnGenerar" onclick="generarLink()">Generar Enlace Seguro 🦒</button>
     <div id="output"></div>
 
     <div id="preview">
@@ -103,7 +103,7 @@
     </div>
 
     <footer>
-        Versión 0.4.0 (Estable) | © 2026 jahp. Todos los derechos reservados.
+        Girafile v0.4.1 | © 2026 jahp. Todos los derechos reservados.
     </footer>
 
     <script>
@@ -112,7 +112,7 @@
         let intervaloTemporizador = null;
         let archivoCargado = null;
         
-        const DB_NAME = "SafeLinkDB";
+        const DB_NAME = "GirafileDB"; // Base de datos renombrada
         const DB_VERSION = 1;
         const STORE_NAME = "archivos";
 
@@ -132,7 +132,7 @@
             const currentTheme = document.documentElement.getAttribute('data-theme');
             const targetTheme = currentTheme === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', targetTheme);
-            localStorage.setItem('safelink-theme', targetTheme);
+            localStorage.setItem('girafile-theme', targetTheme);
             document.getElementById('themeBtn').innerText = targetTheme === 'dark' ? 'Modo Claro ☀️' : 'Modo Oscuro 🌙';
         }
 
@@ -146,7 +146,7 @@
         }
 
         window.onload = function() {
-            const savedTheme = localStorage.getItem('safelink-theme') || 'light';
+            const savedTheme = localStorage.getItem('girafile-theme') || 'light';
             document.documentElement.setAttribute('data-theme', savedTheme);
             document.getElementById('themeBtn').innerText = savedTheme === 'dark' ? 'Modo Claro ☀️' : 'Modo Oscuro 🌙';
             verificarLinkCompartido();
@@ -160,7 +160,7 @@
             if (file && (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE_BYTES)) {
                 if(document.getElementById('fileInput')) document.getElementById('fileInput').value = "";
                 archivoCargado = null;
-                prompt.innerText = "Arrastra un archivo aquí o haz clic para buscar";
+                prompt.innerText = "Arrastra un archivo aquí o haz clic para buscar 🦒";
                 errorMsg.innerText = `Archivo no permitido. Debe pesar menos de 25MB y ser una imagen, PDF o texto plano.`;
                 return;
             }
