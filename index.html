@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Girafile 🦒 - Compartir Seguro</title>
+    <title>Girafile - Compartir Seguro</title>
     <style>
         :root {
             --bg-color: #ffffff;
@@ -27,13 +27,16 @@
             --accent-color: #ffc04d;
         }
 
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; }
+        /* Tipografía actualizada a Arial */
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; }
         .info-box { border: 1px solid var(--box-border); background-color: var(--box-bg); padding: 15px; border-radius: 8px; margin-bottom: 25px; }
         
         /* Contenedor del Título y la Mascota */
         .brand-container { text-align: center; margin-bottom: 15px; }
         .brand-container h2 { margin-bottom: 10px; }
-        .mascot-img { max-width: 120px; height: auto; display: block; margin: 0 auto; }
+        
+        /* Tamaño de la mascota aumentado a 180px */
+        .mascot-img { max-width: 180px; height: auto; display: block; margin: 0 auto; }
 
         .control-group { margin-bottom: 15px; }
         .error { color: #ff4d4d; font-weight: bold; }
@@ -43,7 +46,7 @@
         .drop-zone--over { border-color: var(--accent-color); background: var(--timer-bg); }
         .drop-zone input { display: none; }
 
-        textarea { width: 100%; height: 50px; margin-top: 10px; background-color: var(--textarea-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 8px; border-radius: 4px; box-sizing: border-box; font-family: monospace; resize: none; }
+        textarea { width: 100%; height: 50px; margin-top: 10px; background-color: var(--textarea-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 8px; border-radius: 4px; box-sizing: border-box; font-family: Arial, monospace; resize: none; }
         footer { margin-top: 40px; font-size: 0.85em; color: var(--footer-color); text-align: center; border-top: 1px solid var(--box-border); padding-top: 10px; }
         #preview { margin-top: 20px; padding: 15px; border: 1px dashed var(--box-border); border-radius: 8px; display: none; }
         .timer-container { margin: 15px 0; background: var(--timer-bg); padding: 10px; border-radius: 5px; }
@@ -55,7 +58,7 @@
         .theme-toggle { position: fixed; top: 20px; right: 20px; padding: 8px 12px; border-radius: 20px; border: 1px solid var(--box-border); background-color: var(--box-bg); color: var(--text-color); cursor: pointer; font-size: 0.9em; font-weight: bold; }
         .btn { padding: 9px 16px; border-radius: 4px; border: 1px solid var(--box-border); background-color: var(--box-bg); color: var(--text-color); cursor: pointer; font-weight: bold; margin-top: 10px; transition: background 0.2s; }
         .btn:hover { background: var(--timer-bg); }
-        .btn-primary { background: var(--accent-color); color: #121212; border: none; }
+        .btn-primary { background: var(--accent-color); color: #121212; border: none; font-family: Arial, sans-serif; }
         .btn-primary:hover { opacity: 0.9; }
         .file-meta { font-size: 0.9em; color: var(--footer-color); margin-bottom: 10px; }
     </style>
