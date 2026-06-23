@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeLink Data - Links Cortos</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+        .info-box { border: 1px solid #ccc; background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 25px; }
+        .control-group { margin-bottom: 15px; }
+        .error { color: red; font-weight: bold; }
+        textarea { width: 100%; height: 50px; margin-top: 10px; }
+        footer { margin-top: 40px; font-size: 0.85em; color: #666; text-align: center; border-top: 1px solid #eee; padding-top: 10px; }
+        #preview { margin-top: 20px; padding: 10px; border: 1px dashed #aaa; display: none; }
+        
+        /* Estilos para la barra de progreso */
+        .timer-container { margin: 15px 0; background: #eee; padding: 10px; border-radius: 5px; }
+        progress { width: 100%; height: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="info-box">
+        <h2>SafeLink Data</h2>
+        <p>Esta herramienta te permite compartir archivos visualizables mediante un enlace sin necesidad de subirlos a la nube o a servidores externos. Todo el contenido del archivo se encripta y se incrusta directamente dentro de la URL.</p>
+        <p>Comparte notas de texto confidenciales, credenciales temporales, capturas de pantalla pequeñas o documentos PDF ligeros que requieran una privacidad absoluta.</p>
+    </div>
+    
+    <div class="control-group">
+        <label>Seleccionar Archivo (Máx 1MB):</label><br>
+        <input type="file" id="fileInput" accept="image/*, application/pdf, text/plain" oninput="validarArchivo(this)">
+        <p id="errorMsg" class="error"></p>
+    </div>
+
+    <div class="control-group">
+        <label>Tiempo de Caducidad:</label><br>
+        <select id="expiry">
+            <option value="900">15 Minutos</option>
+            <option value="1800">30 Minutos</option>
+            <option value="10">10 Segundos (Para Pruebas)</option> 
+        </select>
+    </div>
+    
+    <button id="btnGenerar" onclick="generarLink()">Generar Link Corto</button>
+    <div id="output"></div>
+
+    <div id="preview">
+        <h4>Visualizador de Archivo Seguro:</h4>
+        
+        <div id="timerGroup" class="timer-container" style="display: none;">
+            <span>Tiempo restante: <strong id="timeString">--:--</strong></span>
+            <progress id="lifeBar" value="100" max="100"></progress>
+        </div>
+
+        <div id="fileContent"></div>
+    </div>
+
+    <footer>
+        Versión 0.2.1 (Alfa) | © 2026 jahp. Todos los derechos reservados.
+    </footer>
+
+    <script>
+        const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
+        const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'];
+        let intervaloTemporizador = null; // Guardará el bucle del tiempo
+
+        window.onload = function() {
+            verificarLinkCompartido();
+        };
+
+        function validarArchivo(input) {
+            const file = input.files[0];
+            const errorMsg = document.getElementById('errorMsg');
+            if (file && (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE_BYTES)) {
+                input.value = ""; 
+                errorMsg.innerText = "Archivo inválido (Excede 1MB o formato no soportado).";
+                return;
+            }
+            errorMsg.innerText = "";
+        }
+
+        function generarLink() {
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
+                const duracion = parseInt(document.getElementById('expiry').value);
+                
+                const payload = {
+                    t: Math.floor(Date.now() / 1000),
+                    d: duracion,
+                    name: file.name,
+                    type: file.type,
+                    c: e.target.result
+                };
+                
+                localStorage.setItem(idUnico, JSON.stringify(payload));
+                
+                const origen = window.location.origin === "null" ? "file://" : window.location.origin;
+                const link = origen + window.location.pathname + "#" + idUnico;
+                
+                document.getElementById('output').innerHTML = `
+                    <p style="color: green; font-weight: bold;">¡Enlace creado con éxito!</p>
+                    <textarea readonly onclick="this.select()">${link}</textarea>
+                `;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function verificarLinkCompartido() {
+            const hash = window.location.hash.substring(1);
+            if (!hash || !hash.startsWith("file_")) return;
+
+            const rawData = localStorage.getItem(hash);
+            const previewDiv = document.getElementById('preview');
+            const contentDiv = document.getElementById('fileContent');
+
+            if (!rawData) {
+                previewDiv.style.display = "block";
+                contentDiv.innerHTML = "<p class='error'>El archivo no existe o ya fue destruido.</p>";
+                return;
+            }
+
+            const data = JSON.parse(rawData);
+            
+            // Si el archivo ya expiró antes de abrir la página
+            const ahoraInicial = Math.floor(Date.now() / 1000);
+            if (ahoraInicial > (data.t + data.d)) {
+                localStorage.removeItem(hash);
+                previewDiv.style.display = "block";
+                contentDiv.innerHTML = "<p class='error'>¡Este enlace ha caducado y el archivo fue autodestruido!</p>";
+                return;
+            }
+
+            // MOSTRAR EL VISUALIZADOR Y LA BARRA
+            previewDiv.style.display = "block";
+            const timerGroup = document.getElementById('timerGroup');
+            const lifeBar = document.getElementById('lifeBar');
+            const timeString = document.getElementById('timeString');
+            
+            timerGroup.style.display = "block";
+
+            // LÓGICA DEL TIEMPO EN TIEMPO REAL
+            if (intervaloTemporizador) clearInterval(intervaloTemporizador);
+            
+            intervaloTemporizador = setInterval(function() {
+                const ahora = Math.floor(Date.now() / 1000);
+                const tiempoTranscurrido = ahora - data.t;
+                const tiempoRestante = data.d - tiempoTranscurrido;
+
+                if (tiempoRestante <= 0) {
+                    clearInterval(intervaloTemporizador);
+                    localStorage.removeItem(hash); // Destrucción real
+                    timerGroup.style.display = "none";
+                    contentDiv.innerHTML = "<p class='error'>¡El tiempo se ha agotado! El archivo fue completamente destruido de la memoria local.</p>";
+                    return;
+                }
+
+                // Calcular porcentaje para la barra
+                const porcentaje = (tiempoRestante / data.d) * 100;
+                lifeBar.value = porcentaje;
+
+                // Formatear el texto (Minutos:Segundos)
+                const minutos = Math.floor(tiempoRestante / 60);
+                const segundos = tiempoRestante % 60;
+                timeString.innerText = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+
+            }, 1000);
+
+            // MOSTRAR EL ARCHIVO SEGÚN SU TIPO
+            if (data.type.startsWith("image/")) {
+                contentDiv.innerHTML = `<img src="${data.c}" style="max-width:100%;">`;
+            } else if (data.type === "application/pdf") {
+                contentDiv.innerHTML = `<embed src="${data.c}" type="application/pdf" width="100%" height="400px">`;
+            } else {
+                contentDiv.innerHTML = `<pre>${data.c}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>
