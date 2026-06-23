@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giraffile - Compartir Seguro</title>
+    <title>Giraffile - La jirafa que cuida tu privacidad</title>
     <style>
         :root {
             --bg-color: #ffffff;
@@ -13,7 +13,7 @@
             --timer-bg: #eee;
             --footer-color: #666;
             --textarea-bg: #ffffff;
-            --accent-color: #f0a500; /* Color amarillo cálido jirafa */
+            --accent-color: #f0a500; 
         }
 
         [data-theme="dark"] {
@@ -61,6 +61,20 @@
         .btn-primary { background: var(--accent-color); color: #121212; border: none; font-family: Arial, sans-serif; }
         .btn-primary:hover { opacity: 0.9; }
         .file-meta { font-size: 0.9em; color: var(--footer-color); margin-bottom: 10px; }
+
+        .highlight-yellow {
+    background-color: #fff9c4; 
+    padding: 10px;
+    border-radius: 6px;
+    border-left: 4px solid #f0a500; 
+    color: #333; 
+}
+
+        [data-theme="dark"] .highlight-yellow {
+    background-color: #4a452a; 
+    border-left-color: #ffc04d;
+    color: #e0e0e0;
+}
     </style>
 </head>
 <body>
@@ -70,12 +84,12 @@
 
     <div class="info-box">
         <div class="brand-container">
-            <h2>Girafile</h2>
+            <h2>Giraffile</h2>
             <!-- Imagen de la mascota añadida aquí -->
             <img src="giraffe.png" alt="Hello there" class="mascot-img">
         </div>
-        <p><strong>¿Te preocupa dejar tus archivos rondando por internet?</strong></p>
-        <p>Olvídate de subir fotos o documentos a servidores donde pierdes el control. Con <strong>Giraffile</strong>, tú eres el dueño de tus datos de principio a fin. Creamos un enlace directo desde tu dispositivo que conecta contigo, no con la nube.</p>
+        <p class="highlight-yellow"><strong>¿Te preocupa dejar tus archivos rondando por internet?</strong></p>
+        <p>Olvídate de subir fotos o documentos a servidores donde pierdes el control. Con <strong>Giraffile</strong>, tú eres el dueño de tus datos de principio a fin.</p>
         <p>Esta herramienta te permite compartir archivos de manera privada mediante un enlace corto sin subirlos a internet. Todo el contenido se almacena de forma temporal en tu propio dispositivo de manera 100% segura.</p>
         <p><strong>¿Para qué puedes usar Giraffile?</strong></p>
     <ul style="padding-left: 20px;">
