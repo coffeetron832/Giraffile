@@ -260,6 +260,12 @@ function verificarLinkCompartido() {
     const metaDiv = document.getElementById('fileMeta');
     const t = i18n[currentLang];
 
+    // MODIFICACIÓN DE ORDEN DINÁMICO:
+    // Forzamos al elemento #preview a posicionarse en primer lugar en la interfaz
+    if (previewDiv) {
+        previewDiv.style.order = "-1";
+    }
+
     abrirDB(function(db) {
         const transaction = db.transaction([STORE_NAME], "readonly");
         const request = transaction.objectStore(STORE_NAME).get(hash);
@@ -305,9 +311,9 @@ function verificarLinkCompartido() {
                 }
 
                 lifeBar.value = (tiempoRestante / data.d) * 100;
-                const minutos = Math.floor(tiempoRestante / 60);
+                const minutes = Math.floor(tiempoRestante / 60);
                 const segundos = tiempoRestante % 60;
-                timeString.innerText = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+                timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
             }, 1000);
 
             const urlObjeto = URL.createObjectURL(data.blob);
@@ -322,7 +328,6 @@ function verificarLinkCompartido() {
                 `;
             } else {
                 // OPTIMIZACIÓN EN BLOQUE PARA TEXTO (MÁXIMA VELOCIDAD)
-                // Usamos .slice() para aislar solo los primeros 50KB en memoria RAM para el Preview
                 const bytesVistaPrevia = 50 * 1024;
                 const fragmentoSeguro = data.blob.slice(0, bytesVistaPrevia);
                 const lectorTexto = new FileReader();
@@ -331,7 +336,6 @@ function verificarLinkCompartido() {
                     let textoFormateado = evt.target.result;
                     let descargaAdicional = '';
                     
-                    // Si el archivo original mide más que la vista previa, agregamos aviso e indicador de continuación
                     if (data.size > bytesVistaPrevia) {
                         textoFormateado += "\n\n[... Archivo truncado por rendimiento ...]";
                         descargaAdicional = `<p style="font-size:0.9em; margin: 15px 0 5px 0; color:var(--footer-color); text-align:center;">${t.textPreviewNotice}</p>`;
