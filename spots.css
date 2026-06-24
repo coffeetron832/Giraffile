@@ -20,7 +20,6 @@
     --accent-color: #ffc04d;
 }
 
-/* Tipografía y base adaptable */
 body { 
     font-family: Arial, sans-serif; 
     max-width: 600px; 
@@ -135,6 +134,10 @@ progress::-webkit-progress-value { background-color: var(--accent-color); }
     color: #e0e0e0;
 }
 
+.lang-toggle,
+.theme-toggle {
+    font-family: Arial, Helvetica, sans-serif;
+}
 
 @media (max-width: 640px) {
     body {
