@@ -1,4 +1,4 @@
-const MAX_SIZE_BYTES = 25 * 1024 * 1024; 
+const MAX_SIZE_BYTES = 500 * 1024 * 1024; // 500MB estables
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'];
 let intervaloTemporizador = null;
 let archivoCargado = null;
@@ -8,7 +8,6 @@ const DB_NAME = "GirafileDB";
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
 
-// Diccionario de traducciones integrado con el título del navegador
 const i18n = {
     es: {
         themeDark: "Modo Oscuro 🌙",
@@ -24,7 +23,7 @@ const i18n = {
         use2: "<strong>Colaboración rápida:</strong> Capturas de pantalla o notas técnicas temporales.",
         use3: "<strong>Privacidad total:</strong> Envío de archivos sin dejar rastro en servidores externos.",
         prepare: "Prepara tu archivo para enviar",
-        dropLabel: "Arrastra tu archivo o haz clic abajo (Máx 25MB):",
+        dropLabel: "Arrastra tu archivo o haz clic abajo (Máx 500MB):",
         dropPrompt: "Arrastra un archivo aquí o haz clic para buscar",
         dropSelected: "Archivo seleccionado:",
         expiryLabel: "Tiempo de Caducidad:",
@@ -34,8 +33,10 @@ const i18n = {
         btnGenerate: "Generar enlace seguro",
         btnCopy: "Copiar Enlace 📋",
         btnCopied: "¡Enlace Copiado! ✓",
+        btnDownload: "Descargar Completo 📥",
+        textPreviewNotice: "📋 Mostrando una vista previa del archivo de texto. Para ver todo el contenido:",
         errNoFile: "Por favor, selecciona o arrastra un archivo primero.",
-        errNotAllowed: "Archivo no permitido. Debe pesar menos de 25MB y ser una imagen, PDF o texto plano.",
+        errNotAllowed: "Archivo no permitido. Debe pesar menos de 500MB y ser una imagen, PDF o texto plano.",
         successLink: "¡Enlace creado con éxito!",
         previewTitle: "Visualizador de Archivo Seguro",
         timeRemaining: "Tiempo restante de visualización:",
@@ -59,7 +60,7 @@ const i18n = {
         use2: "<strong>Quick Collaboration:</strong> Screenshots or temporary technical notes.",
         use3: "<strong>Total Privacy:</strong> Send files without leaving a trace on external servers.",
         prepare: "Prepare your file to send",
-        dropLabel: "Drag your file or click below (Max 25MB):",
+        dropLabel: "Drag your file or click below (Max 500MB):",
         dropPrompt: "Drag a file here or click to browse",
         dropSelected: "Selected file:",
         expiryLabel: "Expiration Time:",
@@ -69,8 +70,10 @@ const i18n = {
         btnGenerate: "Generate secure link",
         btnCopy: "Copy Link 📋",
         btnCopied: "Link Copied! ✓",
+        btnDownload: "Download Full File 📥",
+        textPreviewNotice: "📋 Showing a preview of the text file. To see the full content:",
         errNoFile: "Please select or drag a file first.",
-        errNotAllowed: "File not allowed. It must be under 25MB and be an image, PDF, or plain text.",
+        errNotAllowed: "File not allowed. It must be under 500MB and be an image, PDF, or plain text.",
         successLink: "Link created successfully!",
         previewTitle: "Secure File Viewer",
         timeRemaining: "Remaining viewing time:",
@@ -82,7 +85,7 @@ const i18n = {
     }
 };
 
-// Configuración de Drag and Drop al cargar el script
+// Configuración de Drag and Drop
 document.addEventListener("DOMContentLoaded", () => {
     const dropZone = document.getElementById('dropZone');
     if (dropZone) {
@@ -115,10 +118,7 @@ function toggleLanguage() {
 
 function aplicarTraduccion() {
     const t = i18n[currentLang];
-    
-    // Cambia el título de la pestaña del navegador dinámicamente
     document.title = t.pageTitle; 
-    
     document.getElementById('langBtn').innerText = t.langBtn;
     const currentTheme = document.documentElement.getAttribute('data-theme');
     document.getElementById('themeBtn').innerText = currentTheme === 'dark' ? t.themeLight : t.themeDark;
@@ -170,10 +170,8 @@ function abrirDB(callback) {
 window.onload = function() {
     currentLang = localStorage.getItem('girafile-lang') || 'es';
     document.documentElement.lang = currentLang;
-
     const savedTheme = localStorage.getItem('girafile-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
-    
     aplicarTraduccion();
     verificarLinkCompartido();
 };
@@ -291,46 +289,68 @@ function verificarLinkCompartido() {
             const timeString = document.getElementById('timeString');
             timerGroup.style.display = "block";
 
-                    if (intervaloTemporizador) clearInterval(intervaloTemporizador);
+            if (intervaloTemporizador) clearInterval(intervaloTemporizador);
+            
+            intervaloTemporizador = setInterval(function() {
+                const ahora = Math.floor(Date.now() / 1000);
+                const tiempoRestante = data.d - (ahora - data.t);
+
+                if (tiempoRestante <= 0) {
+                    clearInterval(intervaloTemporizador);
+                    eliminarArchivoDB(hash);
+                    timerGroup.style.display = "none";
+                    metaDiv.style.display = "none";
+                    contentDiv.innerHTML = `<p class='error'>${t.errTimeOut}</p>`;
+                    return;
+                }
+
+                lifeBar.value = (tiempoRestante / data.d) * 100;
+                const minutos = Math.floor(tiempoRestante / 60);
+                const segundos = tiempoRestante % 60;
+                timeString.innerText = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+            }, 1000);
+
+            const urlObjeto = URL.createObjectURL(data.blob);
+
+            // MANEJO INTELIGENTE DE RENDERIZADO
+            if (data.type.startsWith("image/")) {
+                contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px;">`;
+            } else if (data.type === "application/pdf") {
+                contentDiv.innerHTML = `
+                    <embed src="${urlObjeto}" type="application/pdf" width="100%" height="450px" style="border-radius: 4px; margin-bottom:10px;">
+                    <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration:none; text-align:center; display:block;">${t.btnDownload}</a>
+                `;
+            } else {
+                // OPTIMIZACIÓN EN BLOQUE PARA TEXTO (MÁXIMA VELOCIDAD)
+                // Usamos .slice() para aislar solo los primeros 50KB en memoria RAM para el Preview
+                const bytesVistaPrevia = 50 * 1024;
+                const fragmentoSeguro = data.blob.slice(0, bytesVistaPrevia);
+                const lectorTexto = new FileReader();
+                
+                lectorTexto.onload = function(evt) {
+                    let textoFormateado = evt.target.result;
+                    let descargaAdicional = '';
                     
-                    intervaloTemporizador = setInterval(function() {
-                        const ahora = Math.floor(Date.now() / 1000);
-                        const tiempoRestante = data.d - (ahora - data.t);
-
-                        if (tiempoRestante <= 0) {
-                            clearInterval(intervaloTemporizador);
-                            eliminarArchivoDB(hash);
-                            timerGroup.style.display = "none";
-                            metaDiv.style.display = "none";
-                            contentDiv.innerHTML = `<p class='error'>${t.errTimeOut}</p>`;
-                            return;
-                        }
-
-                        lifeBar.value = (tiempoRestante / data.d) * 100;
-                        const minutos = Math.floor(tiempoRestante / 60);
-                        const segundos = tiempoRestante % 60;
-                        timeString.innerText = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
-                    }, 1000);
-
-                    const urlObjeto = URL.createObjectURL(data.blob);
-
-                    if (data.type.startsWith("image/")) {
-                        contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; border-radius: 4px;">`;
-                    } else if (data.type === "application/pdf") {
-                        contentDiv.innerHTML = `<embed src="${urlObjeto}" type="application/pdf" width="100%" height="400px">`;
-                    } else {
-                        const lectorTexto = new FileReader();
-                        lectorTexto.onload = function(evt) {
-                            contentDiv.innerHTML = `<pre style="white-space: pre-wrap; background: var(--timer-bg); padding: 10px; border-radius: 4px;">${evt.target.result}</pre>`;
-                        };
-                        lectorTexto.readAsText(data.blob);
+                    // Si el archivo original mide más que la vista previa, agregamos aviso e indicador de continuación
+                    if (data.size > bytesVistaPrevia) {
+                        textoFormateado += "\n\n[... Archivo truncado por rendimiento ...]";
+                        descargaAdicional = `<p style="font-size:0.9em; margin: 15px 0 5px 0; color:var(--footer-color); text-align:center;">${t.textPreviewNotice}</p>`;
                     }
+                    
+                    contentDiv.innerHTML = `
+                        <pre style="white-space: pre-wrap; background: var(--timer-bg); padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.9em; text-align:left;">${textoFormateado}</pre>
+                        ${descargaAdicional}
+                        <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block; margin-top:5px;">${t.btnDownload}</a>
+                    `;
                 };
-            });
-        }
+                lectorTexto.readAsText(fragmentoSeguro);
+            }
+        };
+    });
+}
 
-        function eliminarArchivoDB(id) {
-            abrirDB(function(db) {
-                db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(id);
-            });
-        }
+function eliminarArchivoDB(id) {
+    abrirDB(function(db) {
+        db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(id);
+    });
+}
