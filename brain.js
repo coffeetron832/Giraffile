@@ -1,5 +1,4 @@
 let MAX_SIZE_BYTES = 25 * 1024 * 1024; // Empieza en 25MB para usuarios gratuitos (Simulación)
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'];
 let intervaloTemporizador = null;
 let archivoCargado = null;
 let currentLang = 'es';
@@ -20,27 +19,28 @@ const i18n = {
         pageTitle: "Giraffile - La jirafa que protege tus archivos",
         hook: "¿Te preocupa dejar tus archivos rondando por internet?",
         desc1: "Olvídate de subir fotos o documentos a servidores donde pierdes el control. Con <strong>Giraffile</strong>, tú eres el dueño de tus datos de principio a fin.",
-        desc2: "Esta herramienta te permite compartir archivos de manera privada mediante un enlace corto sin subirlos a internet. Todo el contenido se almacena de forma temporal en tu propio dispositivo de manera 100% segura.",
+        desc2: "Esta herramienta te permite compartir cualquier tipo de archivo de manera privada mediante un enlace corto sin subirlos a internet. Todo el contenido se almacena de forma temporal en tu propio dispositivo de manera 100% segura.",
         useTitle: "¿Para qué puedes usar Giraffile?",
-        use1: "<strong>Información sensible:</strong> Credenciales, datos financieros o documentos personales.",
-        use2: "<strong>Colaboración rápida:</strong> Capturas de pantalla o notas técnicas temporales.",
-        use3: "<strong>Privacidad total:</strong> Envío de archivos sin dejar rastro en servidores externos.",
+        use1: "<strong>Información sensible:</strong> Credenciales, datos financieros, contratos o documentos personales.",
+        use2: "<strong>Cualquier Formato:</strong> Envía imágenes, PDFs, archivos comprimidos (ZIP/RAR), audios o videos.",
+        use3: "<strong>Privacidad total:</strong> Envío seguro de archivos sin dejar rastro en servidores externos.",
         prepare: "Prepara tu archivo para enviar",
-        dropLabel: "Arrastra tu archivo o haz clic abajo (Máx 25MB):",
-        dropLabelPremium: "Arrastra tu archivo o haz clic abajo (Máx 500MB):",
+        dropLabel: "Arrastra cualquier archivo o haz clic abajo (Máx 25MB):",
+        dropLabelPremium: "Arrastra cualquier archivo o haz clic abajo (Máx 500MB):",
         dropPrompt: "Arrastra un archivo aquí o haz clic para buscar",
         dropSelected: "Archivo seleccionado:",
         expiryLabel: "Tiempo de Caducidad:",
         opt15: "15 Minutos",
         opt30: "30 Minutos",
-        opt1: "1 Minuto (Para Pruebas)",
+        opt1: "1 Minute (Para Pruebas)",
         btnGenerate: "Generar enlace seguro",
         btnCopy: "Copiar Enlace 📋",
         btnCopied: "¡Enlace Copiado! ✓",
         btnDownload: "Descargar Completo 📥",
         textPreviewNotice: "📋 Mostrando una vista previa del archivo de texto. Para ver todo el contenido:",
+        noPreviewNotice: "📦 Este formato no admite vista previa en el navegador. Usa el botón de abajo para descargarlo de manera segura:",
         errNoFile: "Por favor, selecciona o arrastra un archivo primero.",
-        errNotAllowed: "Archivo no permitido o excede el tamaño máximo de tu plan. Debe ser una imagen, PDF o texto plano.",
+        errNotAllowed: "El archivo excede el tamaño máximo permitido para tu plan actual.",
         successLink: "¡Enlace creado con éxito!",
         previewTitle: "Echa un vistazo a tu archivo",
         timeRemaining: "Tiempo restante de visualización:",
@@ -58,14 +58,14 @@ const i18n = {
         pageTitle: "Giraffile - The giraffe that protects your files",
         hook: "Worried about leaving your files floating around the internet?",
         desc1: "Forget about uploading photos or documents to servers where you lose control. With <strong>Giraffile</strong>, you own your data from start to finish.",
-        desc2: "This tool allows you to share files privately using a short link without uploading them to the internet. All content is temporarily stored on your own device in a 100% secure way.",
+        desc2: "This tool allows you to share any file type privately using a short link without uploading them to the internet. All content is temporarily stored on your own device in a 100% secure way.",
         useTitle: "What can you use Giraffile for?",
-        use1: "<strong>Sensitive Information:</strong> Credentials, financial data, or personal documents.",
-        use2: "<strong>Quick Collaboration:</strong> Screenshots or temporary technical notes.",
+        use1: "<strong>Sensitive Information:</strong> Credentials, financial data, contracts, or personal documents.",
+        use2: "<strong>Any Format:</strong> Send images, PDFs, compressed archives (ZIP/RAR), audios, or videos.",
         use3: "<strong>Total Privacy:</strong> Send files without leaving a trace on external servers.",
         prepare: "Prepare your file to send",
-        dropLabel: "Drag your file or click below (Max 25MB):",
-        dropLabelPremium: "Drag your file or click below (Max 500MB):",
+        dropLabel: "Drag any file or click below (Max 25MB):",
+        dropLabelPremium: "Drag any file or click below (Max 500MB):",
         dropPrompt: "Drag a file here or click to browse",
         dropSelected: "Selected file:",
         expiryLabel: "Expiration Time:",
@@ -77,8 +77,9 @@ const i18n = {
         btnCopied: "Link Copied! ✓",
         btnDownload: "Download Full File 📥",
         textPreviewNotice: "📋 Showing a preview of the text file. To see the full content:",
+        noPreviewNotice: "📦 Preview is not supported for this file type in the browser. Use the button below to download securely:",
         errNoFile: "Please select or drag a file first.",
-        errNotAllowed: "File not allowed or exceeds plan limit. It must be an image, PDF, or plain text.",
+        errNotAllowed: "The file exceeds the maximum size allowed for your current plan.",
         successLink: "Link created successfully!",
         previewTitle: "Take a look at your file",
         timeRemaining: "Remaining viewing time:",
@@ -146,7 +147,6 @@ function aplicarTraduccion() {
 
     document.getElementById('lblPrepare').innerText = t.prepare;
     
-    // Cambiar la etiqueta de tamaño según el estado de la suscripción
     const esPremium = localStorage.getItem('giraffile_premium') === 'true';
     document.getElementById('lblDropZone').innerText = esPremium ? t.dropLabelPremium : t.dropLabel;
     
@@ -182,7 +182,6 @@ window.onload = function() {
     const savedTheme = localStorage.getItem('girafile-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     
-    // Inicializar límites simulados basados en almacenamiento local de pruebas
     ajustarInterfazPremium();
     aplicarTraduccion();
     verificarLinkCompartido();
@@ -194,7 +193,8 @@ function manejarSeleccionArchivo(inputOrData) {
     const prompt = document.getElementById('dropZonePrompt');
     const t = i18n[currentLang];
     
-    if (file && (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE_BYTES)) {
+    // Ahora SOLO valida el peso total del archivo, sin importar su tipo
+    if (file && file.size > MAX_SIZE_BYTES) {
         if(document.getElementById('fileInput')) document.getElementById('fileInput').value = "";
         archivoCargado = null;
         prompt.innerText = t.dropPrompt + " 🦒";
@@ -219,7 +219,6 @@ function generarLink() {
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
     const duracion = parseInt(document.getElementById('expiry').value);
     
-    // Bloqueo simulado si intentan usar los 30 minutos sin ser Premium
     const esPremium = localStorage.getItem('giraffile_premium') === 'true';
     if (duracion === 1800 && !esPremium) {
         alert("La caducidad de 30 minutos es una función Premium en pruebas. Usa la clave GIRA-TEST-2026.");
@@ -280,7 +279,6 @@ function verificarLinkCompartido() {
     const metaDiv = document.getElementById('fileMeta');
     const t = i18n[currentLang];
 
-    // CORRECCIÓN DE ORDEN DE RENDERIZADO: Movemos el div al inicio físicamente
     if (mainWrapper && previewDiv) {
         mainWrapper.prepend(previewDiv);
     }
@@ -337,6 +335,7 @@ function verificarLinkCompartido() {
 
             const urlObjeto = URL.createObjectURL(data.blob);
 
+            // MANEJO INTELIGENTE Y UNIVERSAL DE RENDERIZADO
             if (data.type.startsWith("image/")) {
                 contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px;">`;
             } else if (data.type === "application/pdf") {
@@ -344,7 +343,7 @@ function verificarLinkCompartido() {
                     <embed src="${urlObjeto}" type="application/pdf" width="100%" height="450px" style="border-radius: 4px; margin-bottom:10px;">
                     <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration:none; text-align:center; display:block;">${t.btnDownload}</a>
                 `;
-            } else {
+            } else if (data.type.startsWith("text/") || data.name.endsWith(".json") || data.name.endsWith(".js") || data.name.endsWith(".css")) {
                 const bytesVistaPrevia = 50 * 1024;
                 const fragmentoSeguro = data.blob.slice(0, bytesVistaPrevia);
                 const lectorTexto = new FileReader();
@@ -365,6 +364,15 @@ function verificarLinkCompartido() {
                     `;
                 };
                 lectorTexto.readAsText(fragmentoSeguro);
+            } else {
+                // FALLBACK DE SEGURIDAD PARA ARCHIVOS COMPRIMIDOS, EXCEL, WORD, AUDIOS, VIDEOS, ETC.
+                contentDiv.innerHTML = `
+                    <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
+                        <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${t.noPreviewNotice}</p>
+                        <strong style="word-break: break-all; font-size: 1.1em; display: block; color: var(--text-color);">${data.name}</strong>
+                    </div>
+                    <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block;">${t.btnDownload}</a>
+                `;
             }
         };
     });
@@ -392,14 +400,13 @@ function activarLicenciaGumroad() {
     btn.innerText = "Verificando...";
     btn.disabled = true;
 
-    // Simulación de respuesta de red de 1 segundo
     setTimeout(() => {
         if (key === CLAVE_TEST_VALIDA) {
             localStorage.setItem('giraffile_premium', 'true');
             localStorage.setItem('giraffile_license', key);
             alert("¡Suscripción de prueba verificada con éxito! Límites extendidos a 500MB.");
             ajustarInterfazPremium();
-            aplicarTraduccion(); // Recarga las etiquetas de texto
+            aplicarTraduccion();
         } else {
             alert("Clave inválida. Para pruebas locales usa: GIRA-TEST-2026");
             btn.innerText = "Activar Premium";
@@ -411,12 +418,12 @@ function activarLicenciaGumroad() {
 function ajustarInterfazPremium() {
     const esPremium = localStorage.getItem('giraffile_premium') === 'true';
     if (esPremium) {
-        MAX_SIZE_BYTES = 500 * 1024 * 1024; // Desbloquea 500MB
+        MAX_SIZE_BYTES = 500 * 1024 * 1024;
         const panel = document.getElementById('premium-panel');
         if (panel) {
             panel.innerHTML = "<span style='color: #2ecc71; font-weight: bold;'>Suscripción Premium Activa 🦒✨</span>";
         }
     } else {
-        MAX_SIZE_BYTES = 25 * 1024 * 1024; // Mantiene el candado de 25MB
+        MAX_SIZE_BYTES = 25 * 1024 * 1024;
     }
 }
