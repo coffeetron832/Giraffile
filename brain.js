@@ -1,4 +1,4 @@
-const MAX_SIZE_BYTES = 500 * 1024 * 1024; // 500MB estables
+let MAX_SIZE_BYTES = 25 * 1024 * 1024; // Empieza en 25MB para usuarios gratuitos (Simulación)
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'];
 let intervaloTemporizador = null;
 let archivoCargado = null;
@@ -7,6 +7,9 @@ let currentLang = 'es';
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
+
+// CLAVE FICTICIA PARA SIMULACIÓN DE PRUEBAS
+const CLAVE_TEST_VALIDA = "GIRA-TEST-2026";
 
 const i18n = {
     es: {
@@ -23,7 +26,8 @@ const i18n = {
         use2: "<strong>Colaboración rápida:</strong> Capturas de pantalla o notas técnicas temporales.",
         use3: "<strong>Privacidad total:</strong> Envío de archivos sin dejar rastro en servidores externos.",
         prepare: "Prepara tu archivo para enviar",
-        dropLabel: "Arrastra tu archivo o haz clic abajo (Máx 500MB):",
+        dropLabel: "Arrastra tu archivo o haz clic abajo (Máx 25MB):",
+        dropLabelPremium: "Arrastra tu archivo o haz clic abajo (Máx 500MB):",
         dropPrompt: "Arrastra un archivo aquí o haz clic para buscar",
         dropSelected: "Archivo seleccionado:",
         expiryLabel: "Tiempo de Caducidad:",
@@ -36,7 +40,7 @@ const i18n = {
         btnDownload: "Descargar Completo 📥",
         textPreviewNotice: "📋 Mostrando una vista previa del archivo de texto. Para ver todo el contenido:",
         errNoFile: "Por favor, selecciona o arrastra un archivo primero.",
-        errNotAllowed: "Archivo no permitido. Debe pesar menos de 500MB y ser una imagen, PDF o texto plano.",
+        errNotAllowed: "Archivo no permitido o excede el tamaño máximo de tu plan. Debe ser una imagen, PDF o texto plano.",
         successLink: "¡Enlace creado con éxito!",
         previewTitle: "Echa un vistazo a tu archivo",
         timeRemaining: "Tiempo restante de visualización:",
@@ -60,7 +64,8 @@ const i18n = {
         use2: "<strong>Quick Collaboration:</strong> Screenshots or temporary technical notes.",
         use3: "<strong>Total Privacy:</strong> Send files without leaving a trace on external servers.",
         prepare: "Prepare your file to send",
-        dropLabel: "Drag your file or click below (Max 500MB):",
+        dropLabel: "Drag your file or click below (Max 25MB):",
+        dropLabelPremium: "Drag your file or click below (Max 500MB):",
         dropPrompt: "Drag a file here or click to browse",
         dropSelected: "Selected file:",
         expiryLabel: "Expiration Time:",
@@ -73,7 +78,7 @@ const i18n = {
         btnDownload: "Download Full File 📥",
         textPreviewNotice: "📋 Showing a preview of the text file. To see the full content:",
         errNoFile: "Please select or drag a file first.",
-        errNotAllowed: "File not allowed. It must be under 500MB and be an image, PDF, or plain text.",
+        errNotAllowed: "File not allowed or exceeds plan limit. It must be an image, PDF, or plain text.",
         successLink: "Link created successfully!",
         previewTitle: "Take a look at your file",
         timeRemaining: "Remaining viewing time:",
@@ -140,7 +145,11 @@ function aplicarTraduccion() {
     `;
 
     document.getElementById('lblPrepare').innerText = t.prepare;
-    document.getElementById('lblDropZone').innerText = t.dropLabel;
+    
+    // Cambiar la etiqueta de tamaño según el estado de la suscripción
+    const esPremium = localStorage.getItem('giraffile_premium') === 'true';
+    document.getElementById('lblDropZone').innerText = esPremium ? t.dropLabelPremium : t.dropLabel;
+    
     document.getElementById('lblExpiry').innerText = t.expiryLabel;
     document.getElementById('opt15m').innerText = t.opt15;
     document.getElementById('opt30m').innerText = t.opt30;
@@ -172,6 +181,9 @@ window.onload = function() {
     document.documentElement.lang = currentLang;
     const savedTheme = localStorage.getItem('girafile-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
+    
+    // Inicializar límites simulados basados en almacenamiento local de pruebas
+    ajustarInterfazPremium();
     aplicarTraduccion();
     verificarLinkCompartido();
 };
@@ -206,6 +218,13 @@ function generarLink() {
 
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
     const duracion = parseInt(document.getElementById('expiry').value);
+    
+    // Bloqueo simulado si intentan usar los 30 minutos sin ser Premium
+    const esPremium = localStorage.getItem('giraffile_premium') === 'true';
+    if (duracion === 1800 && !esPremium) {
+        alert("La caducidad de 30 minutos es una función Premium en pruebas. Usa la clave GIRA-TEST-2026.");
+        return;
+    }
     
     const payload = {
         id: idUnico,
@@ -255,15 +274,15 @@ function verificarLinkCompartido() {
     const hash = window.location.hash.substring(1);
     if (!hash || !hash.startsWith("file_")) return;
 
+    const mainWrapper = document.getElementById('main-wrapper');
     const previewDiv = document.getElementById('preview');
     const contentDiv = document.getElementById('fileContent');
     const metaDiv = document.getElementById('fileMeta');
     const t = i18n[currentLang];
 
-    // MODIFICACIÓN DE ORDEN DINÁMICO:
-    // Forzamos al elemento #preview a posicionarse en primer lugar en la interfaz
-    if (previewDiv) {
-        previewDiv.style.order = "-1";
+    // CORRECCIÓN DE ORDEN DE RENDERIZADO: Movemos el div al inicio físicamente
+    if (mainWrapper && previewDiv) {
+        mainWrapper.prepend(previewDiv);
     }
 
     abrirDB(function(db) {
@@ -318,7 +337,6 @@ function verificarLinkCompartido() {
 
             const urlObjeto = URL.createObjectURL(data.blob);
 
-            // MANEJO INTELIGENTE DE RENDERIZADO
             if (data.type.startsWith("image/")) {
                 contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px;">`;
             } else if (data.type === "application/pdf") {
@@ -327,7 +345,6 @@ function verificarLinkCompartido() {
                     <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration:none; text-align:center; display:block;">${t.btnDownload}</a>
                 `;
             } else {
-                // OPTIMIZACIÓN EN BLOQUE PARA TEXTO (MÁXIMA VELOCIDAD)
                 const bytesVistaPrevia = 50 * 1024;
                 const fragmentoSeguro = data.blob.slice(0, bytesVistaPrevia);
                 const lectorTexto = new FileReader();
@@ -357,4 +374,49 @@ function eliminarArchivoDB(id) {
     abrirDB(function(db) {
         db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(id);
     });
+}
+
+// ==========================================
+// FUNCIONES SIMULADAS DE LICENCIA PREMIUM
+// ==========================================
+
+function activarLicenciaGumroad() {
+    const key = document.getElementById('licenseKeyInput').value.trim();
+    const btn = document.getElementById('btnActivar');
+    
+    if (!key) {
+        alert("Por favor, introduce tu clave de suscripción.");
+        return;
+    }
+
+    btn.innerText = "Verificando...";
+    btn.disabled = true;
+
+    // Simulación de respuesta de red de 1 segundo
+    setTimeout(() => {
+        if (key === CLAVE_TEST_VALIDA) {
+            localStorage.setItem('giraffile_premium', 'true');
+            localStorage.setItem('giraffile_license', key);
+            alert("¡Suscripción de prueba verificada con éxito! Límites extendidos a 500MB.");
+            ajustarInterfazPremium();
+            aplicarTraduccion(); // Recarga las etiquetas de texto
+        } else {
+            alert("Clave inválida. Para pruebas locales usa: GIRA-TEST-2026");
+            btn.innerText = "Activar Premium";
+            btn.disabled = false;
+        }
+    }, 1000);
+}
+
+function ajustarInterfazPremium() {
+    const esPremium = localStorage.getItem('giraffile_premium') === 'true';
+    if (esPremium) {
+        MAX_SIZE_BYTES = 500 * 1024 * 1024; // Desbloquea 500MB
+        const panel = document.getElementById('premium-panel');
+        if (panel) {
+            panel.innerHTML = "<span style='color: #2ecc71; font-weight: bold;'>Suscripción Premium Activa 🦒✨</span>";
+        }
+    } else {
+        MAX_SIZE_BYTES = 25 * 1024 * 1024; // Mantiene el candado de 25MB
+    }
 }
