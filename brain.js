@@ -15,7 +15,6 @@ const i18n = {
         themeDark: "Modo Oscuro 🌙",
         themeLight: "Modo Claro ☀️",
         langBtn: "English 🌐",
-        title: "Giraffile",
         pageTitle: "Giraffile - La jirafa que protege tus archivos",
         hook: "¿Te preocupa dejar tus archivos rondando por internet?",
         desc1: "Olvídate de subir fotos o documentos a servidores donde pierdes el control. Con <strong>Giraffile</strong>, tú eres el dueño de tus datos de principio a fin.",
@@ -55,7 +54,6 @@ const i18n = {
         themeDark: "Dark Mode 🌙",
         themeLight: "Light Mode ☀️",
         langBtn: "Español 🌐",
-        title: "Giraffile",
         pageTitle: "Giraffile - The giraffe that protects your files",
         hook: "Worried about leaving your files floating around the internet?",
         desc1: "Forget about uploading photos or documents to servers where you lose control. With <strong>Giraffile</strong>, you own your data from start to finish.",
@@ -133,7 +131,6 @@ function aplicarTraduccion() {
 
     document.getElementById('infoBoxContainer').innerHTML = `
         <div class="brand-container">
-            <h2>${t.title}</h2>
             <img src="giraffe.png" alt="Mascota" class="mascot-img">
         </div>
         <p class="highlight-yellow"><strong>${t.hook}</strong></p>
