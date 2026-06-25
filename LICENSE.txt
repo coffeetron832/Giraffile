@@ -1,6 +1,6 @@
 Giraffile Source-Available License
 
-Copyright (c) 2026 jahp. All rights reserved.
+Copyright (c) 2026 jahp / coffeetron832. All rights reserved.
 
 Permission is hereby granted to any person accessing this software solely to
 view, inspect, and audit the source code for the purpose of verifying the 
@@ -20,7 +20,7 @@ OTHER LIABILITY ARISING FROM THE USE OR HANDLING OF THIS SOFTWARE.
 
 Giraffile Source-Available License (Licencia de Código Disponible)
 
-Copyright (c) 2026 jahp. Todos los derechos reservados.
+Copyright (c) 2026 jahp / coffeetron832. Todos los derechos reservados.
 
 Por la presente se concede permiso a cualquier persona que acceda a este software 
 únicamente para visualizar, inspeccionar y auditar el código fuente con el fin de 
