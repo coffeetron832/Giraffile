@@ -48,6 +48,7 @@ const i18n = {
         errNoExist: "El archivo no existe o ya ha sido eliminado por seguridad.",
         errExpired: "¡Este enlace ha caducado y el contenido fue destruido permanentemente!",
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
+        incognitoWarning: "⚠️ Estás en modo incógnito. Tu clave se validará correctamente, pero al cerrar esta pestaña se perderá el acceso Premium y los enlaces generados se destruirán inmediatamente.",
         footer: "Giraffile v0.4.2 | © 2026 jahp. Todos los derechos reservados."
     },
     en: {
@@ -87,6 +88,7 @@ const i18n = {
         errNoExist: "The file does not exist or has already been deleted for security.",
         errExpired: "This link has expired and the content was permanently destroyed!",
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
+        incognitoWarning: "⚠️ You are in incognito mode. Your key will validate correctly, but closing this tab will lose Premium access and any generated links will be destroyed immediately.",
         footer: "Giraffile v0.4.2 | © 2026 jahp. All rights reserved."
     }
 };
@@ -165,6 +167,9 @@ function aplicarTraduccion() {
         const tamanoMB = (archivoCargado.size / (1024 * 1024)).toFixed(2);
         document.getElementById('dropZonePrompt').innerHTML = `<strong>${t.dropSelected}</strong> ${archivoCargado.name} (${tamanoMB} MB)`;
     }
+
+    // Ejecuta la detección tras actualizar los textos de traducción
+    detectarYAdvertirIncognito();
 }
 
 function abrirDB(callback) {
@@ -185,6 +190,7 @@ window.onload = function() {
     ajustarInterfazPremium();
     aplicarTraduccion();
     verificarLinkCompartido();
+    detectarYAdvertirIncognito();
 };
 
 function manejarSeleccionArchivo(inputOrData) {
@@ -193,7 +199,6 @@ function manejarSeleccionArchivo(inputOrData) {
     const prompt = document.getElementById('dropZonePrompt');
     const t = i18n[currentLang];
     
-    // Ahora SOLO valida el peso total del archivo, sin importar su tipo
     if (file && file.size > MAX_SIZE_BYTES) {
         if(document.getElementById('fileInput')) document.getElementById('fileInput').value = "";
         archivoCargado = null;
@@ -335,7 +340,6 @@ function verificarLinkCompartido() {
 
             const urlObjeto = URL.createObjectURL(data.blob);
 
-            // MANEJO INTELIGENTE Y UNIVERSAL DE RENDERIZADO
             if (data.type.startsWith("image/")) {
                 contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px;">`;
             } else if (data.type === "application/pdf") {
@@ -365,7 +369,6 @@ function verificarLinkCompartido() {
                 };
                 lectorTexto.readAsText(fragmentoSeguro);
             } else {
-                // FALLBACK DE SEGURIDAD PARA ARCHIVOS COMPRIMIDOS, EXCEL, WORD, AUDIOS, VIDEOS, ETC.
                 contentDiv.innerHTML = `
                     <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
                         <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${t.noPreviewNotice}</p>
@@ -387,6 +390,44 @@ function eliminarArchivoDB(id) {
 // ==========================================
 // FUNCIONES SIMULADAS DE LICENCIA PREMIUM
 // ==========================================
+
+async function detectarYAdvertirIncognito() {
+    const t = i18n[currentLang];
+    const avisoId = "incognito-alert-msg";
+    
+    const avisoPrevio = document.getElementById(avisoId);
+    if (avisoPrevio) avisoPrevio.remove();
+
+    if (navigator.storage && navigator.storage.estimate) {
+        try {
+            const estimacion = await navigator.storage.estimate();
+            const esIncognito = estimacion.quota && (estimacion.quota < 120 * 1024 * 1024);
+
+            if (esIncognito) {
+                const inputLicencia = document.getElementById('licenseKeyInput');
+                if (inputLicencia) {
+                    const warningDiv = document.createElement('div');
+                    warningDiv.id = avisoId;
+                    warningDiv.style.cssText = `
+                        color: #e67e22;
+                        background: rgba(230, 126, 34, 0.1);
+                        border: 1px dashed #e67e22;
+                        padding: 10px;
+                        border-radius: 4px;
+                        font-size: 0.85em;
+                        margin-top: 10px;
+                        text-align: left;
+                        line-height: 1.4;
+                    `;
+                    warningDiv.innerText = t.incognitoWarning;
+                    inputLicencia.parentNode.appendChild(warningDiv);
+                }
+            }
+        } catch (error) {
+            console.error("Error al estimar el almacenamiento:", error);
+        }
+    }
+}
 
 function activarLicenciaGumroad() {
     const key = document.getElementById('licenseKeyInput').value.trim();
