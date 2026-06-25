@@ -129,43 +129,48 @@ function aplicarTraduccion() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
     document.getElementById('themeBtn').innerText = currentTheme === 'dark' ? t.themeLight : t.themeDark;
 
-    document.getElementById('infoBoxContainer').innerHTML = `
-        <div class="brand-container">
-            <img src="giraffe.png" alt="Mascota" class="mascot-img">
-        </div>
-        <p class="highlight-yellow"><strong>${t.hook}</strong></p>
-        <p>${t.desc1}</p>
-        <p>${t.desc2}</p>
-        <p><strong>${t.useTitle}</strong></p>
-        <ul style="padding-left: 20px;">
-            <li>${t.use1}</li>
-            <li>${t.use2}</li>
-            <li>${t.use3}</li>
-        </ul>
-    `;
-
-    document.getElementById('lblPrepare').innerText = t.prepare;
-    
-    const esPremium = localStorage.getItem('giraffile_premium') === 'true';
-    document.getElementById('lblDropZone').innerText = esPremium ? t.dropLabelPremium : t.dropLabel;
-    
-    document.getElementById('lblExpiry').innerText = t.expiryLabel;
-    document.getElementById('opt15m').innerText = t.opt15;
-    document.getElementById('opt30m').innerText = t.opt30;
-    document.getElementById('opt1m').innerText = t.opt1;
-    document.getElementById('btnGenerar').innerText = t.btnGenerate;
-    document.getElementById('lblPreviewTitle').innerText = t.previewTitle;
-    document.getElementById('lblTimeRemaining').innerText = t.timeRemaining;
-    document.getElementById('footerText').innerText = t.footer;
-
-    if (!archivoCargado) {
-        document.getElementById('dropZonePrompt').innerText = t.dropPrompt;
-    } else {
-        const tamanoMB = (archivoCargado.size / (1024 * 1024)).toFixed(2);
-        document.getElementById('dropZonePrompt').innerHTML = `<strong>${t.dropSelected}</strong> ${archivoCargado.name} (${tamanoMB} MB)`;
+    const infoBox = document.getElementById('infoBoxContainer');
+    if (infoBox) {
+        infoBox.innerHTML = `
+            <div class="brand-container">
+                <img src="giraffe.png" alt="Mascota" class="mascot-img">
+            </div>
+            <p class="highlight-yellow"><strong>${t.hook}</strong></p>
+            <p>${t.desc1}</p>
+            <p>${t.desc2}</p>
+            <p><strong>${t.useTitle}</strong></p>
+            <ul style="padding-left: 20px;">
+                <li>${t.use1}</li>
+                <li>${t.use2}</li>
+                <li>${t.use3}</li>
+            </ul>
+        `;
     }
 
-    // Ejecuta la detección tras actualizar los textos de traducción
+    if (document.getElementById('lblPrepare')) document.getElementById('lblPrepare').innerText = t.prepare;
+    
+    const esPremium = localStorage.getItem('giraffile_premium') === 'true';
+    if (document.getElementById('lblDropZone')) document.getElementById('lblDropZone').innerText = esPremium ? t.dropLabelPremium : t.dropLabel;
+    
+    if (document.getElementById('lblExpiry')) document.getElementById('lblExpiry').innerText = t.expiryLabel;
+    if (document.getElementById('opt15m')) document.getElementById('opt15m').innerText = t.opt15;
+    if (document.getElementById('opt30m')) document.getElementById('opt30m').innerText = t.opt30;
+    if (document.getElementById('opt1m')) document.getElementById('opt1m').innerText = t.opt1;
+    if (document.getElementById('btnGenerar')) document.getElementById('btnGenerar').innerText = t.btnGenerate;
+    if (document.getElementById('lblPreviewTitle')) document.getElementById('lblPreviewTitle').innerText = t.previewTitle;
+    if (document.getElementById('lblTimeRemaining')) document.getElementById('lblTimeRemaining').innerText = t.timeRemaining;
+    if (document.getElementById('footerText')) document.getElementById('footerText').innerText = t.footer;
+
+    const prompt = document.getElementById('dropZonePrompt');
+    if (prompt) {
+        if (!archivoCargado) {
+            prompt.innerText = t.dropPrompt;
+        } else {
+            const tamanoMB = (archivoCargado.size / (1024 * 1024)).toFixed(2);
+            prompt.innerHTML = `<strong>${t.dropSelected}</strong> ${archivoCargado.name} (${tamanoMB} MB)`;
+        }
+    }
+
     detectarYAdvertirIncognito();
 }
 
@@ -187,7 +192,6 @@ window.onload = function() {
     ajustarInterfazPremium();
     aplicarTraduccion();
     verificarLinkCompartido();
-    detectarYAdvertirIncognito();
 };
 
 function manejarSeleccionArchivo(inputOrData) {
@@ -199,22 +203,22 @@ function manejarSeleccionArchivo(inputOrData) {
     if (file && file.size > MAX_SIZE_BYTES) {
         if(document.getElementById('fileInput')) document.getElementById('fileInput').value = "";
         archivoCargado = null;
-        prompt.innerText = t.dropPrompt + " 🦒";
-        errorMsg.innerText = t.errNotAllowed;
+        if (prompt) prompt.innerText = t.dropPrompt + " 🦒";
+        if (errorMsg) errorMsg.innerText = t.errNotAllowed;
         return;
     }
-    errorMsg.innerText = "";
+    if (errorMsg) errorMsg.innerText = "";
     if(file) {
         archivoCargado = file;
         const tamanoMB = (file.size / (1024 * 1024)).toFixed(2);
-        prompt.innerHTML = `<strong>${t.dropSelected}</strong> ${file.name} (${tamanoMB} MB)`;
+        if (prompt) prompt.innerHTML = `<strong>${t.dropSelected}</strong> ${file.name} (${tamanoMB} MB)`;
     }
 }
 
 function generarLink() {
     const t = i18n[currentLang];
     if (!archivoCargado) {
-        document.getElementById('errorMsg').innerText = t.errNoFile;
+        if (document.getElementById('errorMsg')) document.getElementById('errorMsg').innerText = t.errNoFile;
         return;
     }
 
@@ -245,11 +249,13 @@ function generarLink() {
             const origen = window.location.origin === "null" ? "file://" : window.location.origin;
             const link = origen + window.location.pathname + "#" + idUnico;
             
-            document.getElementById('output').innerHTML = `
-                <p style="color: green; font-weight: bold;">${t.successLink}</p>
-                <textarea id="copyTarget" readonly onclick="this.select()">${link}</textarea>
-                <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${t.btnCopy}</button>
-            `;
+            if (document.getElementById('output')) {
+                document.getElementById('output').innerHTML = `
+                    <p style="color: green; font-weight: bold;">${t.successLink}</p>
+                    <textarea id="copyTarget" readonly onclick="this.select()">${link}</textarea>
+                    <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${t.btnCopy}</button>
+                `;
+            }
         };
     });
 }
@@ -293,26 +299,26 @@ function verificarLinkCompartido() {
             const data = e.target.result;
 
             if (!data) {
-                previewDiv.style.display = "block";
-                contentDiv.innerHTML = `<p class='error'>${t.errNoExist}</p>`;
+                if (previewDiv) previewDiv.style.display = "block";
+                if (contentDiv) contentDiv.innerHTML = `<p class='error'>${t.errNoExist}</p>`;
                 return;
             }
 
             const ahoraInicial = Math.floor(Date.now() / 1000);
             if (ahoraInicial > (data.t + data.d)) {
                 eliminarArchivoDB(hash);
-                previewDiv.style.display = "block";
-                contentDiv.innerHTML = `<p class='error'>${t.errExpired}</p>`;
+                if (previewDiv) previewDiv.style.display = "block";
+                if (contentDiv) contentDiv.innerHTML = `<p class='error'>${t.errExpired}</p>`;
                 return;
             }
 
-            previewDiv.style.display = "block";
-            metaDiv.innerHTML = `<strong>${t.fileLabel}</strong> ${data.name} (${(data.size / (1024*1024)).toFixed(2)} MB)`;
+            if (previewDiv) previewDiv.style.display = "block";
+            if (metaDiv) metaDiv.innerHTML = `<strong>${t.fileLabel}</strong> ${data.name} (${(data.size / (1024*1024)).toFixed(2)} MB)`;
             
             const timerGroup = document.getElementById('timerGroup');
             const lifeBar = document.getElementById('lifeBar');
             const timeString = document.getElementById('timeString');
-            timerGroup.style.display = "block";
+            if (timerGroup) timerGroup.style.display = "block";
 
             if (intervaloTemporizador) clearInterval(intervaloTemporizador);
             
@@ -323,19 +329,21 @@ function verificarLinkCompartido() {
                 if (tiempoRestante <= 0) {
                     clearInterval(intervaloTemporizador);
                     eliminarArchivoDB(hash);
-                    timerGroup.style.display = "none";
-                    metaDiv.style.display = "none";
-                    contentDiv.innerHTML = `<p class='error'>${t.errTimeOut}</p>`;
+                    if (timerGroup) timerGroup.style.display = "none";
+                    if (metaDiv) metaDiv.style.display = "none";
+                    if (contentDiv) contentDiv.innerHTML = `<p class='error'>${t.errTimeOut}</p>`;
                     return;
                 }
 
-                lifeBar.value = (tiempoRestante / data.d) * 100;
+                if (lifeBar) lifeBar.value = (tiempoRestante / data.d) * 100;
                 const minutes = Math.floor(tiempoRestante / 60);
                 const segundos = tiempoRestante % 60;
-                timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+                if (timeString) timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
             }, 1000);
 
             const urlObjeto = URL.createObjectURL(data.blob);
+
+            if (!contentDiv) return;
 
             if (data.type.startsWith("image/")) {
                 contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px;">`;
@@ -385,7 +393,7 @@ function eliminarArchivoDB(id) {
 }
 
 // ==========================================
-// FUNCIONES SIMULADAS DE LICENCIA PREMIUM
+// DETECCIÓN DINÁMICA DE MODO INCÓGNITO
 // ==========================================
 
 async function detectarYAdvertirIncognito() {
@@ -401,8 +409,10 @@ async function detectarYAdvertirIncognito() {
             const esIncognito = estimacion.quota && (estimacion.quota < 120 * 1024 * 1024);
 
             if (esIncognito) {
-                const inputLicencia = document.getElementById('licenseKeyInput');
-                if (inputLicencia) {
+                // Buscamos un contenedor estable según el estado de la UI (inicio o vista compartida)
+                let contenedorDestino = document.getElementById('premium-panel') || document.getElementById('main-wrapper');
+                
+                if (contenedorDestino) {
                     const warningDiv = document.createElement('div');
                     warningDiv.id = avisoId;
                     warningDiv.style.cssText = `
@@ -412,12 +422,21 @@ async function detectarYAdvertirIncognito() {
                         padding: 10px;
                         border-radius: 4px;
                         font-size: 0.85em;
-                        margin-top: 10px;
+                        margin: 15px 0;
                         text-align: left;
                         line-height: 1.4;
+                        width: 100%;
+                        box-sizing: border-box;
                     `;
                     warningDiv.innerText = t.incognitoWarning;
-                    inputLicencia.parentNode.appendChild(warningDiv);
+                    
+                    // Si se inyecta en el main-wrapper (ej. vista de solo lectura), va arriba del todo
+                    if (contenedorDestino.id === 'main-wrapper') {
+                        contenedorDestino.insertBefore(warningDiv, contenedorDestino.firstChild);
+                    } else {
+                        // Si está en el panel superior, se posiciona justo debajo de él
+                        contenedorDestino.parentNode.insertBefore(warningDiv, contenedorDestino.nextSibling);
+                    }
                 }
             }
         } catch (error) {
