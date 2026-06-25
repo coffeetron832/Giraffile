@@ -1,21 +1,38 @@
-MIT License
+Giraffile Source-Available License
 
-Copyright (c) 2026 jahp
+Copyright (c) 2026 jahp. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Permission is hereby granted to any person accessing this software solely to
+view, inspect, and audit the source code for the purpose of verifying the 
+privacy, security, and local execution (client-side) protocols of the application.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+IT IS STRICTLY PROHIBITED TO:
+1. Copy, modify, adapt, or create derivative works of this software, in whole or in part.
+2. Distribute, sublicense, rent, sell, or commercially exploit the source code or its binaries.
+3. Host, publish, or deploy this software on any third-party server, web domain, or platform (public or private) to offer it as a service.
+4. Bypass, alter, or remove the commercial license validation mechanisms (including the Gumroad verification module).
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+IMPLIED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR 
+OTHER LIABILITY ARISING FROM THE USE OR HANDLING OF THIS SOFTWARE.
+
+---
+
+Giraffile Source-Available License (Licencia de Código Disponible)
+
+Copyright (c) 2026 jahp. Todos los derechos reservados.
+
+Por la presente se concede permiso a cualquier persona que acceda a este software 
+únicamente para visualizar, inspeccionar y auditar el código fuente con el fin de 
+verificar los protocolos de privacidad, seguridad y ejecución local (client-side) 
+de la aplicación.
+
+QUEDA ESTRICTAMENTE PROHIBIDO:
+1. Copiar, modificar, adaptar o crear obras derivadas de este software, total o parcialmente.
+2. Distribuir, sublicenciar, alquilar, vender o explotar comercialmente el código fuente o sus binarios.
+3. Alojar, publicar o desplegar este software en cualquier servidor, dominio web o plataforma de terceros (pública o privada) para ofrecerlo como un servicio.
+4. Eludir, alterar o remover los mecanismos de validación de licencias comerciales (incluyendo el módulo de verificación de Gumroad).
+
+EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO, EXPRESA O 
+IMPLÍCITA. EN NINGÚN CASO EL AUTOR SERÁ RESPONSABLE DE NINGUNA RECLAMACIÓN, DAÑO 
+U OTRA RESPONSABILIDAD QUE SURJA DEL USO O MANIPULACIÓN DE ESTE SOFTWARE.
