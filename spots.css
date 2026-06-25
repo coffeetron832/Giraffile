@@ -22,14 +22,43 @@
 
 body { 
     font-family: Arial, sans-serif; 
-    max-width: 600px; 
-    margin: 40px auto; 
+    margin: 0; 
     padding: 20px; 
     line-height: 1.6; 
     background-color: var(--bg-color); 
     color: var(--text-color); 
     transition: background-color 0.3s, color 0.3s; 
 }
+
+/* ==========================================
+   ESTRUCTURA Y LAYOUT (DOS COLUMNAS)
+   ========================================== */
+
+#main-wrapper {
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 0 10px;
+    box-sizing: border-box;
+}
+
+.layout-columns {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.column-left, .column-right {
+    flex: 1;
+    min-width: 320px;
+    box-sizing: border-box;
+}
+
+/* ==========================================
+   COMPONENTES DE LA INTERFAZ
+   ========================================== */
 
 .info-box { 
     border: 1px solid var(--box-border); 
@@ -39,18 +68,32 @@ body {
     margin-bottom: 25px; 
 }
 
-.brand-container { text-align: center; margin-bottom: 15px; }
-.brand-container h2 { margin-bottom: 10px; }
+.brand-container { 
+    text-align: center; 
+    margin-bottom: 15px; 
+}
 
 .brand-container h2 {
     font-size: 2rem;
     margin-bottom: 10px;
 }
 
-.mascot-img { max-width: 220px; height: auto; display: block; margin: 0 auto; }
+.mascot-img { 
+    max-width: 220px; 
+    height: auto; 
+    display: block; 
+    margin: 0 auto; 
+}
 
-.control-group { margin-bottom: 15px; }
-.error { color: #ff4d4d; font-weight: bold; word-break: break-word; }
+.control-group { 
+    margin-bottom: 15px; 
+}
+
+.error { 
+    color: #ff4d4d; 
+    font-weight: bold; 
+    word-break: break-word; 
+}
 
 .drop-zone { 
     border: 2px dashed var(--box-border); 
@@ -62,8 +105,15 @@ body {
     transition: border-color 0.2s; 
     word-break: break-word; 
 }
-.drop-zone--over { border-color: var(--accent-color); background: var(--timer-bg); }
-.drop-zone input { display: none; }
+
+.drop-zone--over { 
+    border-color: var(--accent-color); 
+    background: var(--timer-bg); 
+}
+
+.drop-zone input { 
+    display: none; 
+}
 
 textarea { 
     width: 100%; 
@@ -79,29 +129,63 @@ textarea {
     resize: none; 
 }
 
-footer { 
-    margin-top: 40px; 
-    font-size: 0.85em; 
-    color: var(--footer-color); 
-    text-align: center; 
-    border-top: 1px solid var(--box-border); 
-    padding-top: 10px; 
+#preview { 
+    margin-top: 20px; 
+    padding: 15px; 
+    border: 1px dashed var(--box-border); 
+    border-radius: 8px; 
+    display: none; 
 }
 
-#preview { margin-top: 20px; padding: 15px; border: 1px dashed var(--box-border); border-radius: 8px; display: none; }
-.timer-container { margin: 15px 0; background: var(--timer-bg); padding: 10px; border-radius: 5px; }
+.timer-container { 
+    margin: 15px 0; 
+    background: var(--timer-bg); 
+    padding: 10px; 
+    border-radius: 5px; 
+}
 
 #fileContent img, #fileContent embed, #fileContent pre {
     max-width: 100%;
     box-sizing: border-box;
 }
 
-progress { width: 100%; height: 15px; border-radius: 10px; overflow: hidden; border: none; }
-progress::-webkit-progress-bar { background-color: var(--bg-color); }
-progress::-webkit-progress-value { background-color: var(--accent-color); }
+progress { 
+    width: 100%; 
+    height: 15px; 
+    border-radius: 10px; 
+    overflow: hidden; 
+    border: none; 
+}
 
-.top-controls { position: fixed; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 1000; }
-.theme-toggle, .lang-toggle { padding: 8px 12px; border-radius: 20px; border: 1px solid var(--box-border); background-color: var(--box-bg); color: var(--text-color); cursor: pointer; font-size: 0.9em; font-weight: bold; }
+progress::-webkit-progress-bar { 
+    background-color: var(--bg-color); 
+}
+
+progress::-webkit-progress-value { 
+    background-color: var(--accent-color); 
+}
+
+/* Controles superiores fijados a la esquina */
+.top-controls { 
+    position: fixed; 
+    top: 20px; 
+    right: 20px; 
+    display: flex; 
+    gap: 10px; 
+    z-index: 1000; 
+}
+
+.theme-toggle, .lang-toggle { 
+    padding: 8px 12px; 
+    border-radius: 20px; 
+    border: 1px solid var(--box-border); 
+    background-color: var(--box-bg); 
+    color: var(--text-color); 
+    cursor: pointer; 
+    font-size: 0.9em; 
+    font-weight: bold; 
+    font-family: Arial, Helvetica, sans-serif;
+}
 
 .btn { 
     padding: 10px 18px; 
@@ -115,10 +199,28 @@ progress::-webkit-progress-value { background-color: var(--accent-color); }
     transition: background 0.2s; 
     display: inline-block;
 }
-.btn:hover { background: var(--timer-bg); }
-.btn-primary { background: var(--accent-color); color: #121212; border: none; font-family: Arial, sans-serif; }
-.btn-primary:hover { opacity: 0.9; }
-.file-meta { font-size: 0.9em; color: var(--footer-color); margin-bottom: 10px; word-break: break-all; }
+
+.btn:hover { 
+    background: var(--timer-bg); 
+}
+
+.btn-primary { 
+    background: var(--accent-color); 
+    color: #121212; 
+    border: none; 
+    font-family: Arial, sans-serif; 
+}
+
+.btn-primary:hover { 
+    opacity: 0.9; 
+}
+
+.file-meta { 
+    font-size: 0.9em; 
+    color: var(--footer-color); 
+    margin-bottom: 10px; 
+    word-break: break-all; 
+}
 
 .highlight-yellow {
     background-color: #fff9c4; 
@@ -134,9 +236,32 @@ progress::-webkit-progress-value { background-color: var(--accent-color); }
     color: #e0e0e0;
 }
 
-.lang-toggle,
-.theme-toggle {
-    font-family: Arial, Helvetica, sans-serif;
+footer { 
+    margin-top: 40px; 
+    font-size: 0.85em; 
+    color: var(--footer-color); 
+    text-align: center; 
+    border-top: 1px solid var(--box-border); 
+    padding-top: 10px; 
+    width: 100%;
+}
+
+/* ==========================================
+   MEDIA QUERIES (RESPONSIVE)
+   ========================================== */
+
+@media (max-width: 768px) {
+    #main-wrapper {
+        margin: 20px auto;
+    }
+    
+    .layout-columns {
+        gap: 20px;
+    }
+    
+    .column-left, .column-right {
+        flex: 1 1 100%; /* Las columnas pasan a ocupar todo el ancho */
+    }
 }
 
 @media (max-width: 640px) {
@@ -159,7 +284,6 @@ progress::-webkit-progress-value { background-color: var(--accent-color); }
     .mascot-img {
         max-width: 130px;
     }
-
     
     .btn, button.btn {
         width: 100%;
