@@ -8,13 +8,12 @@
 </head>
 <body>
 
-    <div class="top-controls" style="display: flex; gap: 10px; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap;">
+    <div class="top-controls" style="display: flex; gap: 10px; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; margin-bottom: 20px;">
         <div>
             <button class="lang-toggle" onclick="toggleLanguage()" id="langBtn">English</button>
             <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Modo Oscuro 🌙</button>
         </div>
         
-        <!-- Panel de Activación para el periodo de pruebas -->
         <div id="premium-panel" style="display: flex; gap: 5px; align-items: center;">
             <input type="text" id="licenseKeyInput" placeholder="Introduce tu clave Gumroad" style="padding: 6px; border: 1px solid var(--box-border); border-radius: 4px; background: var(--box-bg); color: var(--text-color);">
             <button class="btn" onclick="activarLicenciaGumroad()" id="btnActivar" style="padding: 6px 12px; cursor: pointer;">Activar Premium</button>
@@ -22,34 +21,42 @@
         </div>
     </div>
 
-    <div id="main-wrapper" style="display: flex; flex-direction: column;">
-
-        <div class="info-box" id="infoBoxContainer"></div>
-
-        <h3 id="lblPrepare">Prepara tu archivo para enviar</h3>
+    <div id="main-wrapper" style="display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 1000px; margin: 0 auto;">
         
-        <div class="control-group">
-            <label id="lblDropZone">Arrastra tu archivo o haz clic abajo (Máx 25MB):</label><br><br>
-            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-                <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
-                <input type="file" id="fileInput" accept="image/*, application/pdf, text/plain" onchange="manejarSeleccionArchivo(this)">
+        <div class="layout-columns" style="display: flex; gap: 40px; justify-content: center; align-items: flex-start; flex-wrap: wrap;">
+            
+            <div class="column-left" style="flex: 1; min-width: 300px;">
+                <div class="info-box" id="infoBoxContainer"></div>
             </div>
-            <p id="errorMsg" class="error"></p>
+
+            <div class="column-right" style="flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 15px;">
+                <h3 id="lblPrepare" style="margin-top: 0;">Prepara tu archivo para enviar</h3>
+                
+                <div class="control-group">
+                    <label id="lblDropZone">Arrastra tu archivo o haz clic abajo (Máx 25MB):</label><br><br>
+                    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                        <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
+                        <input type="file" id="fileInput" accept="image/*, application/pdf, text/plain" onchange="manejarSeleccionArchivo(this)">
+                    </div>
+                    <p id="errorMsg" class="error"></p>
+                </div>
+
+                <div class="control-group">
+                    <label id="lblExpiry">Tiempo de Caducidad:</label><br>
+                    <select id="expiry" style="background: var(--box-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 6px; border-radius: 4px; margin-top: 5px; width: 100%;">
+                        <option value="900" id="opt15m">15 Minutos</option>
+                        <option value="1800" id="opt30m">30 Minutos</option>
+                        <option value="60" id="opt1m">1 Minuto (Para Pruebas)</option> 
+                    </select>
+                </div>
+                
+                <button class="btn btn-primary" id="btnGenerar" onclick="generarLink()" style="width: 100%;">Generar enlace seguro</button>
+                <div id="output"></div>
+            </div>
+
         </div>
 
-        <div class="control-group">
-            <label id="lblExpiry">Tiempo de Caducidad:</label><br>
-            <select id="expiry" style="background: var(--box-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 6px; border-radius: 4px; margin-top: 5px;">
-                <option value="900" id="opt15m">15 Minutos</option>
-                <option value="1800" id="opt30m">30 Minutos</option>
-                <option value="60" id="opt1m">1 Minuto (Para Pruebas)</option> 
-            </select>
-        </div>
-        
-        <button class="btn btn-primary" id="btnGenerar" onclick="generarLink()">Generar enlace seguro</button>
-        <div id="output"></div>
-
-        <div id="preview" style="display: none;">
+        <div id="preview" style="display: none; width: 100%; margin-top: 20px;">
             <h4 id="lblPreviewTitle">Visualizador de Archivo Seguro</h4>
             <div id="fileMeta" class="file-meta"></div>
             
@@ -58,15 +65,15 @@
                     <span id="lblTimeRemaining">Tiempo restante de visualización:</span>
                     <strong id="timeString">--:--</strong>
                 </div>
-                <progress id="lifeBar" value="100" max="100"></progress>
+                <progress id="lifeBar" value="100" max="100" style="width: 100%;"></progress>
             </div>
 
-            <div id="fileContent"></div>
+            <div id="fileContent" style="margin-top: 15px;"></div>
         </div>
 
     </div>
 
-    <footer id="footerText">
+    <footer id="footerText" style="margin-top: 40px; text-align: center; width: 100%;">
         Giraffile v0.4.2 | © 2026 jahp. Todos los derechos reservados.
     </footer>
 
