@@ -260,7 +260,7 @@ function generarLink() {
                 `;
             }
 
-            // INVENTO P2P: Se activa el modo de transmisión directa en la computadora emisora
+            // Se activa el modo de transmisión directa en la computadora emisora
             inicializarTransmisionP2P(idUnico, payload);
         };
     });
@@ -304,7 +304,7 @@ function verificarLinkCompartido() {
         request.onsuccess = function(e) {
             const data = e.target.result;
 
-            // LÓGICA CORREGIDA HÍBRIDA: Si no existe localmente, salta al túnel P2P seguro
+            // LÓGICA HÍBRIDA: Si no existe localmente, salta al túnel P2P seguro
             if (!data) {
                 if (previewDiv) previewDiv.style.display = "block";
                 conectarYDescargarP2P(hash, contentDiv, metaDiv, previewDiv);
@@ -326,7 +326,7 @@ function verificarLinkCompartido() {
 }
 
 // ==========================================
-// NUEVAS FUNCIONES DE INFRAESTRUCTURA P2P
+// INFRAESTRUCTURA P2P (BUFFER BINARIO SEGURO CORREGIDO)
 // ==========================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -338,16 +338,20 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance.on('connection', (conn) => {
         conn.on('data', (data) => {
             if (data.request === 'DOWNLOAD_FILE_STREAM') {
-                // Envía el paquete completo directamente de dispositivo a dispositivo
-                conn.send({
-                    id: payload.id,
-                    t: payload.t,
-                    d: payload.d,
-                    name: payload.name,
-                    type: payload.type,
-                    size: payload.size,
-                    blob: payload.blob
-                });
+                // Usamos FileReader para transformar el Blob en bits puros (ArrayBuffer) antes de enviarlo
+                const lector = new FileReader();
+                lector.onload = function(evento) {
+                    conn.send({
+                        id: payload.id,
+                        t: payload.t,
+                        d: payload.d,
+                        name: payload.name,
+                        type: payload.type,
+                        size: payload.size,
+                        bufferArchivo: evento.target.result // Datos binarios crudos sin riesgo de corrupción
+                    });
+                };
+                lector.readAsArrayBuffer(payload.blob);
             }
         });
     });
@@ -369,13 +373,26 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         });
 
         conn.on('data', (data) => {
-            if (data && data.blob) {
+            if (data && data.bufferArchivo) {
+                // El teléfono recibe los bits puros y los reconstruye en un Blob real con su formato original
+                const blobReconstruido = new Blob([data.bufferArchivo], { type: data.type });
+                
+                const objetoPayload = {
+                    id: data.id,
+                    t: data.t,
+                    d: data.d,
+                    name: data.name,
+                    type: data.type,
+                    size: data.size,
+                    blob: blobReconstruido // Objeto listo para procesarse en las vistas previas locales
+                };
+
                 // Guarda en la base de datos local del receptor para persistencia de sesión
                 abrirDB(function(db) {
                     const tx = db.transaction([STORE_NAME], "readwrite");
-                    tx.objectStore(STORE_NAME).put(data);
+                    tx.objectStore(STORE_NAME).put(objetoPayload);
                     tx.oncomplete = function() {
-                        renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv);
+                        renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
                     };
                 });
             }
@@ -387,7 +404,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 contentDiv.innerHTML = `<p class='error'>${t.errNoExist}</p>`;
                 if (peerInstance) peerInstance.destroy();
             }
-        }, 8000); // 8 segundos de espera inteligente
+        }, 12000); // 12 segundos de espera inteligente para buffers grandes
     });
 
     peerInstance.on('error', () => {
