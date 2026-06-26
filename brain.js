@@ -50,7 +50,7 @@ const i18n = {
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
         incognitoWarning: "⚠️ Estás en modo incógnito. Tu clave se validará correctamente, pero al cerrar esta pestaña se perderá el acceso Premium y los enlaces generados se destruirán inmediatamente.",
         footer: "Giraffile v0.4.2 | © 2026 jahp. Todos los derechos reservados.",
-        p2pConnecting: "Conectando directamente con el emisor por enlace seguro P2P... 🦒⏳"
+        p2pConnecting: "Cargando archivo... 🦒⏳"
     },
     en: {
         themeDark: "Dark Mode 🌙",
@@ -90,7 +90,7 @@ const i18n = {
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
         incognitoWarning: "⚠️ You are in incognito mode. Your key will validate correctly, but closing this tab will lose Premium access and any generated links will be destroyed immediately.",
         footer: "Giraffile v0.4.2 | © 2026 jahp. All rights reserved.",
-        p2pConnecting: "Connecting directly to the sender via secure P2P link... 🦒⏳"
+        p2pConnecting: "Loading file... 🦒⏳"
     }
 };
 
