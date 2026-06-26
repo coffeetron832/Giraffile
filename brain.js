@@ -2,6 +2,7 @@ let MAX_SIZE_BYTES = 25 * 1024 * 1024; // Empieza en 25MB para usuarios gratuito
 let intervaloTemporizador = null;
 let archivoCargado = null;
 let currentLang = 'es';
+let peerInstance = null; // Almacena la conexión P2P activa
 
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
@@ -48,7 +49,8 @@ const i18n = {
         errExpired: "¡Este enlace ha caducado y el contenido fue destruido permanentemente!",
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
         incognitoWarning: "⚠️ Estás en modo incógnito. Tu clave se validará correctamente, pero al cerrar esta pestaña se perderá el acceso Premium y los enlaces generados se destruirán inmediatamente.",
-        footer: "Giraffile v0.4.2 | © 2026 jahp. Todos los derechos reservados."
+        footer: "Giraffile v0.4.2 | © 2026 jahp. Todos los derechos reservados.",
+        p2pConnecting: "Conectando directamente con el emisor por enlace seguro P2P... 🦒⏳"
     },
     en: {
         themeDark: "Dark Mode 🌙",
@@ -87,7 +89,8 @@ const i18n = {
         errExpired: "This link has expired and the content was permanently destroyed!",
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
         incognitoWarning: "⚠️ You are in incognito mode. Your key will validate correctly, but closing this tab will lose Premium access and any generated links will be destroyed immediately.",
-        footer: "Giraffile v0.4.2 | © 2026 jahp. All rights reserved."
+        footer: "Giraffile v0.4.2 | © 2026 jahp. All rights reserved.",
+        p2pConnecting: "Connecting directly to the sender via secure P2P link... 🦒⏳"
     }
 };
 
@@ -256,6 +259,9 @@ function generarLink() {
                     <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${t.btnCopy}</button>
                 `;
             }
+
+            // INVENTO P2P: Se activa el modo de transmisión directa en la computadora emisora
+            inicializarTransmisionP2P(idUnico, payload);
         };
     });
 }
@@ -298,9 +304,10 @@ function verificarLinkCompartido() {
         request.onsuccess = function(e) {
             const data = e.target.result;
 
+            // LÓGICA CORREGIDA HÍBRIDA: Si no existe localmente, salta al túnel P2P seguro
             if (!data) {
                 if (previewDiv) previewDiv.style.display = "block";
-                if (contentDiv) contentDiv.innerHTML = `<p class='error'>${t.errNoExist}</p>`;
+                conectarYDescargarP2P(hash, contentDiv, metaDiv, previewDiv);
                 return;
             }
 
@@ -312,78 +319,153 @@ function verificarLinkCompartido() {
                 return;
             }
 
-            if (previewDiv) previewDiv.style.display = "block";
-            if (metaDiv) metaDiv.innerHTML = `<strong>${t.fileLabel}</strong> ${data.name} (${(data.size / (1024*1024)).toFixed(2)} MB)`;
-            
-            const timerGroup = document.getElementById('timerGroup');
-            const lifeBar = document.getElementById('lifeBar');
-            const timeString = document.getElementById('timeString');
-            if (timerGroup) timerGroup.style.display = "block";
-
-            if (intervaloTemporizador) clearInterval(intervaloTemporizador);
-            
-            intervaloTemporizador = setInterval(function() {
-                const ahora = Math.floor(Date.now() / 1000);
-                const tiempoRestante = data.d - (ahora - data.t);
-
-                if (tiempoRestante <= 0) {
-                    clearInterval(intervaloTemporizador);
-                    eliminarArchivoDB(hash);
-                    if (timerGroup) timerGroup.style.display = "none";
-                    if (metaDiv) metaDiv.style.display = "none";
-                    if (contentDiv) contentDiv.innerHTML = `<p class='error'>${t.errTimeOut}</p>`;
-                    return;
-                }
-
-                if (lifeBar) lifeBar.value = (tiempoRestante / data.d) * 100;
-                const minutes = Math.floor(tiempoRestante / 60);
-                const segundos = tiempoRestante % 60;
-                if (timeString) timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
-            }, 1000);
-
-            const urlObjeto = URL.createObjectURL(data.blob);
-
-            if (!contentDiv) return;
-
-            if (data.type.startsWith("image/")) {
-                contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px;">`;
-            } else if (data.type === "application/pdf") {
-                contentDiv.innerHTML = `
-                    <embed src="${urlObjeto}" type="application/pdf" width="100%" height="450px" style="border-radius: 4px; margin-bottom:10px;">
-                    <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration:none; text-align:center; display:block;">${t.btnDownload}</a>
-                `;
-            } else if (data.type.startsWith("text/") || data.name.endsWith(".json") || data.name.endsWith(".js") || data.name.endsWith(".css")) {
-                const bytesVistaPrevia = 50 * 1024;
-                const fragmentoSeguro = data.blob.slice(0, bytesVistaPrevia);
-                const lectorTexto = new FileReader();
-                
-                lectorTexto.onload = function(evt) {
-                    let textoFormateado = evt.target.result;
-                    let descargaAdicional = '';
-                    
-                    if (data.size > bytesVistaPrevia) {
-                        textoFormateado += "\n\n[... Archivo truncado por rendimiento ...]";
-                        descargaAdicional = `<p style="font-size:0.9em; margin: 15px 0 5px 0; color:var(--footer-color); text-align:center;">${t.textPreviewNotice}</p>`;
-                    }
-                    
-                    contentDiv.innerHTML = `
-                        <pre style="white-space: pre-wrap; background: var(--timer-bg); padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.9em; text-align:left;">${textoFormateado}</pre>
-                        ${descargaAdicional}
-                        <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block; margin-top:5px;">${t.btnDownload}</a>
-                    `;
-                };
-                lectorTexto.readAsText(fragmentoSeguro);
-            } else {
-                contentDiv.innerHTML = `
-                    <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
-                        <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${t.noPreviewNotice}</p>
-                        <strong style="word-break: break-all; font-size: 1.1em; display: block; color: var(--text-color);">${data.name}</strong>
-                    </div>
-                    <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block;">${t.btnDownload}</a>
-                `;
-            }
+            // Si existe en la base de datos (Emisor), lo renderiza localmente
+            renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv);
         };
     });
+}
+
+// ==========================================
+// NUEVAS FUNCIONES DE INFRAESTRUCTURA P2P
+// ==========================================
+
+function inicializarTransmisionP2P(fileId, payload) {
+    if (peerInstance) peerInstance.destroy();
+    
+    // La computadora se anuncia en la red usando el identificador exacto del link
+    peerInstance = new Peer(fileId);
+
+    peerInstance.on('connection', (conn) => {
+        conn.on('data', (data) => {
+            if (data.request === 'DOWNLOAD_FILE_STREAM') {
+                // Envía el paquete completo directamente de dispositivo a dispositivo
+                conn.send({
+                    id: payload.id,
+                    t: payload.t,
+                    d: payload.d,
+                    name: payload.name,
+                    type: payload.type,
+                    size: payload.size,
+                    blob: payload.blob
+                });
+            }
+        });
+    });
+}
+
+function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
+    const t = i18n[currentLang];
+    if (contentDiv) contentDiv.innerHTML = `<p style="color: var(--text-color); font-weight: bold; animation: pulse 1.5s infinite;">${t.p2pConnecting}</p>`;
+    
+    if (peerInstance) peerInstance.destroy();
+    peerInstance = new Peer(); // El receptor genera una ID temporal aleatoria
+
+    peerInstance.on('open', () => {
+        // Se conecta a la ID del archivo especificada en el hash del enlace
+        const conn = peerInstance.connect(fileId);
+        
+        conn.on('open', () => {
+            conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
+        });
+
+        conn.on('data', (data) => {
+            if (data && data.blob) {
+                // Guarda en la base de datos local del receptor para persistencia de sesión
+                abrirDB(function(db) {
+                    const tx = db.transaction([STORE_NAME], "readwrite");
+                    tx.objectStore(STORE_NAME).put(data);
+                    tx.oncomplete = function() {
+                        renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv);
+                    };
+                });
+            }
+        });
+
+        // Manejo del error si la máquina de origen se apagó o cerró la pestaña
+        setTimeout(() => {
+            if (contentDiv && contentDiv.innerHTML.includes(t.p2pConnecting)) {
+                contentDiv.innerHTML = `<p class='error'>${t.errNoExist}</p>`;
+                if (peerInstance) peerInstance.destroy();
+            }
+        }, 8000); // 8 segundos de espera inteligente
+    });
+
+    peerInstance.on('error', () => {
+        if (contentDiv) contentDiv.innerHTML = `<p class='error'>${t.errNoExist}</p>`;
+    });
+}
+
+function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
+    const t = i18n[currentLang];
+    if (previewDiv) previewDiv.style.display = "block";
+    if (metaDiv) metaDiv.innerHTML = `<strong>${t.fileLabel}</strong> ${data.name} (${(data.size / (1024*1024)).toFixed(2)} MB)`;
+    
+    const timerGroup = document.getElementById('timerGroup');
+    const lifeBar = document.getElementById('lifeBar');
+    const timeString = document.getElementById('timeString');
+    if (timerGroup) timerGroup.style.display = "block";
+
+    if (intervaloTemporizador) clearInterval(intervaloTemporizador);
+    
+    intervaloTemporizador = setInterval(function() {
+        const ahora = Math.floor(Date.now() / 1000);
+        const tiempoRestante = data.d - (ahora - data.t);
+
+        if (tiempoRestante <= 0) {
+            clearInterval(intervaloTemporizador);
+            eliminarArchivoDB(data.id);
+            if (timerGroup) timerGroup.style.display = "none";
+            if (metaDiv) metaDiv.style.display = "none";
+            if (contentDiv) contentDiv.innerHTML = `<p class='error'>${t.errTimeOut}</p>`;
+            return;
+        }
+
+        if (lifeBar) lifeBar.value = (tiempoRestante / data.d) * 100;
+        const minutes = Math.floor(tiempoRestante / 60);
+        const segundos = tiempoRestante % 60;
+        if (timeString) timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+    }, 1000);
+
+    const urlObjeto = URL.createObjectURL(data.blob);
+    if (!contentDiv) return;
+
+    if (data.type.startsWith("image/")) {
+        contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px;">`;
+    } else if (data.type === "application/pdf") {
+        contentDiv.innerHTML = `
+            <embed src="${urlObjeto}" type="application/pdf" width="100%" height="450px" style="border-radius: 4px; margin-bottom:10px;">
+            <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration:none; text-align:center; display:block;">${t.btnDownload}</a>
+        `;
+    } else if (data.type.startsWith("text/") || data.name.endsWith(".json") || data.name.endsWith(".js") || data.name.endsWith(".css")) {
+        const bytesVistaPrevia = 50 * 1024;
+        const fragmentoSeguro = data.blob.slice(0, bytesVistaPrevia);
+        const lectorTexto = new FileReader();
+        
+        lectorTexto.onload = function(evt) {
+            let textoFormateado = evt.target.result;
+            let descargaAdicional = '';
+            
+            if (data.size > bytesVistaPrevia) {
+                textoFormateado += "\n\n[... Archivo truncado por rendimiento ...]";
+                descargaAdicional = `<p style="font-size:0.9em; margin: 15px 0 5px 0; color:var(--footer-color); text-align:center;">${t.textPreviewNotice}</p>`;
+            }
+            
+            contentDiv.innerHTML = `
+                <pre style="white-space: pre-wrap; background: var(--timer-bg); padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.9em; text-align:left;">${textoFormateado}</pre>
+                ${descargaAdicional}
+                <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block; margin-top:5px;">${t.btnDownload}</a>
+            `;
+        };
+        lectorTexto.readAsText(fragmentoSeguro);
+    } else {
+        contentDiv.innerHTML = `
+            <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
+                <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${t.noPreviewNotice}</p>
+                <strong style="word-break: break-all; font-size: 1.1em; display: block; color: var(--text-color);">${data.name}</strong>
+            </div>
+            <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block;">${t.btnDownload}</a>
+        `;
+    }
 }
 
 function eliminarArchivoDB(id) {
@@ -409,7 +491,6 @@ async function detectarYAdvertirIncognito() {
             const esIncognito = estimacion.quota && (estimacion.quota < 120 * 1024 * 1024);
 
             if (esIncognito) {
-                // Buscamos un contenedor estable según el estado de la UI (inicio o vista compartida)
                 let contenedorDestino = document.getElementById('premium-panel') || document.getElementById('main-wrapper');
                 
                 if (contenedorDestino) {
@@ -430,11 +511,9 @@ async function detectarYAdvertirIncognito() {
                     `;
                     warningDiv.innerText = t.incognitoWarning;
                     
-                    // Si se inyecta en el main-wrapper (ej. vista de solo lectura), va arriba del todo
                     if (contenedorDestino.id === 'main-wrapper') {
                         contenedorDestino.insertBefore(warningDiv, contenedorDestino.firstChild);
                     } else {
-                        // Si está en el panel superior, se posiciona justo debajo de él
                         contenedorDestino.parentNode.insertBefore(warningDiv, contenedorDestino.nextSibling);
                     }
                 }
