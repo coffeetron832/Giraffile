@@ -1,7 +1,7 @@
 # Giraffile
 
 <p align="center">
-  <img src="giraffe02.png" width="300" alt="Mascota Giraffile">
+  <img src="giraffe02.png" width="300" alt="Mascota Giraffile" style="filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.25));">
 </p>
 
 Giraffile is a **local privacy** tool designed to share files quickly and securely without relying on cloud servers. 
