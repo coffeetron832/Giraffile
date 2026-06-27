@@ -85,7 +85,7 @@ body {
 }
 
 .mascot-img { 
-    max-width: 195px; /* Incrementado para que se vea un poco más grande */
+    max-width: 295px; /* Incrementado para que se vea un poco más grande */
     height: auto; 
     display: block; 
     margin: 0 auto; 
