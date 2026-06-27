@@ -24,6 +24,7 @@ body {
     font-family: Arial, sans-serif; 
     margin: 0; 
     padding: 15px; 
+    padding-bottom: 45px;
     line-height: 1.5; /* Reducido de 1.6 */
     background-color: var(--bg-color); 
     color: var(--text-color); 
