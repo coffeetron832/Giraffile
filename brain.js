@@ -8,7 +8,7 @@ let peerInstance = null;
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
-const CHUNK_SIZE = 65536;
+const CHUNK_SIZE = 256 * 1024; 
 
 const i18n = {
     es: {
@@ -306,9 +306,6 @@ function verificarLinkCompartido() {
 // =========================================================================
 // MOTOR P2P MÁXIMA OPTIMIZACIÓN (BLOQUES DE 256KB Y FLUJO ASÍNCRONO FLUIDO)
 // =========================================================================
-
-// Aumentamos a 256KB para reducir al mínimo el número de mensajes en archivos grandes
-const CHUNK_SIZE = 256 * 1024; 
 
 function inicializarTransmisionP2P(fileId, payload) {
     if (peerInstance) peerInstance.destroy();
