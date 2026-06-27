@@ -440,9 +440,11 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
 
     if (intervaloTemporizador) clearInterval(intervaloTemporizador);
     
+    // CORRECCIÓN ARITMÉTICA MANTENIDA: Cálculo seguro basado en marcas de tiempo Unix en segundos
     intervaloTemporizador = setInterval(function() {
         const ahora = Math.floor(Date.now() / 1000);
-        const tiempoRestante = data.d - (ahora - data.t);
+        const tiempoTranscurrido = ahora - data.t;
+        const tiempoRestante = data.d - tiempoTranscurrido;
 
         if (tiempoRestante <= 0) {
             clearInterval(intervaloTemporizador);
