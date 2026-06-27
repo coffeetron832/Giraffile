@@ -1,7 +1,12 @@
 # Giraffile
 
 <p align="center">
-  <img src="giraffe02.png" width="300" alt="Mascota Giraffile" style="filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.25));">
+  <picture>
+    <!-- Si el usuario usa modo oscuro, muestra la del contorno blanco limpia -->
+    <source media="(prefers-color-scheme: dark)" srcset="giraffe02.png">
+    <!-- Si usa modo claro, puedes aplicarle un filtro de silueta negra/oscura con CSS -->
+    <img src="giraffe03.png" width="300" alt="Mascota Giraffile" style="filter: drop-shadow(0px 2px 5px rgba(0,0,0,0.3));">
+  </picture>
 </p>
 
 Giraffile is a **local privacy** tool designed to share files quickly and securely without relying on cloud servers. 
