@@ -3,7 +3,7 @@ const MAX_SIZE_BYTES = 1500 * 1024 * 1024;
 let intervaloTemporizador = null;
 let archivoCargado = null;
 let currentLang = 'es';
-let peerInstance = null; // Almacena la conexión P2P activa
+let peerInstance = null; 
 
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
@@ -87,7 +87,6 @@ const i18n = {
     }
 };
 
-// Configuración de Drag and Drop
 document.addEventListener("DOMContentLoaded", () => {
     const dropZone = document.getElementById('dropZone');
     if (dropZone) {
@@ -212,12 +211,15 @@ function generarLink() {
     }
 
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
-    const duracion = parseInt(document.getElementById('expiry').value);
+    
+    // CORRECCIÓN 1: Multiplicar por 60 para almacenar segundos reales en la DB
+    const duracionMinutos = parseInt(document.getElementById('expiry').value);
+    const duracionSegundos = duracionMinutos * 60; 
     
     const payload = {
         id: idUnico,
         t: Math.floor(Date.now() / 1000),
-        d: duracion,
+        d: duracionSegundos,
         name: archivoCargado.name,
         type: archivoCargado.type,
         size: archivoCargado.size,
@@ -303,7 +305,7 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR DE INFRAESTRUCTURA P2P (OPTIMIZADO PARA GRANDES VOLÚMENES - CHUNKS)
+// MOTOR P2P OPTIMIZADO (BACKPRESSURE PARA GRANDES VOLÚMENES)
 // =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -317,10 +319,15 @@ function inicializarTransmisionP2P(fileId, payload) {
                 let offset = 0;
                 const totalSize = payload.blob.size;
 
-                // Envío inteligente fragmentado por flujos lógicos continuos
                 function leerYEnviarSiguienteBloque() {
                     if (offset >= totalSize) {
                         conn.send({ eof: true });
+                        return;
+                    }
+
+                    // CORRECCIÓN 2: Buffer de salida controlado para no saturar el canal WebRTC
+                    if (conn.bufferSize > 56 * 1024) { 
+                        setTimeout(leerYEnviarSiguienteBloque, 20);
                         return;
                     }
 
@@ -340,8 +347,8 @@ function inicializarTransmisionP2P(fileId, payload) {
                         });
                         offset += CHUNK_SIZE;
                         
-                        // setTimeout evita bloqueos de la UI en archivos gigantescos
-                        setTimeout(leerYEnviarSiguienteBloque, 1);
+                        // Pequeño delay dinámico de 2ms para dar aire a los hilos de red compartidos
+                        setTimeout(leerYEnviarSiguienteBloque, 2);
                     };
                     lector.readAsArrayBuffer(fragmento);
                 }
@@ -377,16 +384,15 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             }
 
             if (data.eof) {
-                // Reconstrucción atómica y óptima reduciendo la huella de memoria
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: data.type || "application/octet-stream" });
-                arraysDeFragmentos = []; // Liberación inmediata de RAM
+                arraysDeFragmentos = []; 
 
                 const objetoPayload = {
                     id: fileId,
-                    t: data.t || Math.floor(Date.now() / 1000),
-                    d: data.d || 900,
-                    name: data.name || "archivo_descargado",
-                    type: data.type || "application/octet-stream",
+                    t: data.t,
+                    d: data.d,
+                    name: data.name,
+                    type: data.type,
                     size: blobReconstruido.size,
                     blob: blobReconstruido 
                 };
@@ -443,8 +449,7 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
     const urlObjeto = URL.createObjectURL(data.blob);
     if (!contentDiv) return;
 
-    // Límite estricto de renderizado en vivo para no congelar la pestaña con archivos masivos
-    const LIMITE_PREVIEW_VIVO = 40 * 1024 * 1024; // 40MB
+    const LIMITE_PREVIEW_VIVO = 40 * 1024 * 1024; 
 
     if (data.type.startsWith("image/") && data.size <= LIMITE_PREVIEW_VIVO) {
         contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px;">`;
@@ -475,7 +480,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         };
         lectorTexto.readAsText(fragmentoSeguro);
     } else {
-        // Ejecución limpia para archivos pesados (ZIP, Videos, ISOs, audios grandes, etc.)
         contentDiv.innerHTML = `
             <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
                 <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${t.noPreviewNotice}</p>
