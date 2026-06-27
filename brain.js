@@ -1,4 +1,5 @@
-let MAX_SIZE_BYTES = 25 * 1024 * 1024; // Empieza en 25MB para usuarios gratuitos (Simulación)
+// Límite universal estable (200MB) para evitar cuellos de botella de RAM en móviles
+const MAX_SIZE_BYTES = 200 * 1024 * 1024; 
 let intervaloTemporizador = null;
 let archivoCargado = null;
 let currentLang = 'es';
@@ -7,9 +8,6 @@ let peerInstance = null; // Almacena la conexión P2P activa
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
-
-// CLAVE FICTICIA PARA SIMULACIÓN DE PRUEBAS
-const CLAVE_TEST_VALIDA = "GIRA-TEST-2026";
 
 const i18n = {
     es: {
@@ -25,14 +23,13 @@ const i18n = {
         use2: "<strong>Cualquier Formato:</strong> Envía imágenes, PDFs, archivos comprimidos (ZIP/RAR), audios o videos.",
         use3: "<strong>Privacidad total:</strong> Envío seguro de archivos sin dejar rastro en servidores externos.",
         prepare: "Prepara tu archivo para enviar",
-        dropLabel: "Arrastra cualquier archivo o haz clic abajo (Máx 25MB):",
-        dropLabelPremium: "Arrastra cualquier archivo o haz clic abajo (Máx 500MB):",
+        dropLabel: "Arrastra cualquier archivo o haz clic abajo (Máx 200MB):",
         dropPrompt: "Arrastra un archivo aquí o haz clic para buscar",
         dropSelected: "Archivo seleccionado:",
         expiryLabel: "Tiempo de Caducidad:",
         opt15: "15 Minutos",
         opt30: "30 Minutos",
-        opt1: "1 Minute (Para Pruebas)",
+        opt1: "1 Minuto (Para Pruebas)",
         btnGenerate: "Generar enlace seguro",
         btnCopy: "Copiar Enlace 📋",
         btnCopied: "¡Enlace Copiado! ✓",
@@ -40,7 +37,7 @@ const i18n = {
         textPreviewNotice: "📋 Mostrando una vista previa del archivo de texto. Para ver todo el contenido:",
         noPreviewNotice: "📦 Este formato no admite vista previa en el navegador. Usa el botón de abajo para descargarlo de manera segura:",
         errNoFile: "Por favor, selecciona o arrastra un archivo primero.",
-        errNotAllowed: "El archivo excede el tamaño máximo permitido para tu plan actual.",
+        errNotAllowed: "El archivo excede el tamaño máximo permitido (Máx 200MB).",
         successLink: "¡Enlace creado con éxito!",
         previewTitle: "Echa un vistazo a tu archivo",
         timeRemaining: "Tiempo restante de visualización:",
@@ -48,7 +45,6 @@ const i18n = {
         errNoExist: "El archivo no existe o ya ha sido eliminado por seguridad.",
         errExpired: "¡Este enlace ha caducado y el contenido fue destruido permanentemente!",
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
-        incognitoWarning: "⚠️ Estás en modo incógnito. Tu clave se validará correctamente, pero al cerrar esta pestaña se perderá el acceso Premium y los enlaces generados se destruirán inmediatamente.",
         footer: "Giraffile v0.4.2 | © 2026 jahp. Todos los derechos reservados.",
         p2pConnecting: "Cargando archivo... 🦒⏳"
     },
@@ -65,8 +61,7 @@ const i18n = {
         use2: "<strong>Any Format:</strong> Send images, PDFs, compressed archives (ZIP/RAR), audios, or videos.",
         use3: "<strong>Total Privacy:</strong> Send files without leaving a trace on external servers.",
         prepare: "Prepare your file to send",
-        dropLabel: "Drag any file or click below (Max 25MB):",
-        dropLabelPremium: "Drag any file or click below (Max 500MB):",
+        dropLabel: "Drag any file or click below (Max 200MB):",
         dropPrompt: "Drag a file here or click to browse",
         dropSelected: "Selected file:",
         expiryLabel: "Expiration Time:",
@@ -80,7 +75,7 @@ const i18n = {
         textPreviewNotice: "📋 Showing a preview of the text file. To see the full content:",
         noPreviewNotice: "📦 Preview is not supported for this file type in the browser. Use the button below to download securely:",
         errNoFile: "Please select or drag a file first.",
-        errNotAllowed: "The file exceeds the maximum size allowed for your current plan.",
+        errNotAllowed: "The file exceeds the maximum size allowed (Max 200MB).",
         successLink: "Link created successfully!",
         previewTitle: "Take a look at your file",
         timeRemaining: "Remaining viewing time:",
@@ -88,7 +83,6 @@ const i18n = {
         errNoExist: "The file does not exist or has already been deleted for security.",
         errExpired: "This link has expired and the content was permanently destroyed!",
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
-        incognitoWarning: "⚠️ You are in incognito mode. Your key will validate correctly, but closing this tab will lose Premium access and any generated links will be destroyed immediately.",
         footer: "Giraffile v0.4.2 | © 2026 jahp. All rights reserved.",
         p2pConnecting: "Loading file... 🦒⏳"
     }
@@ -151,10 +145,7 @@ function aplicarTraduccion() {
     }
 
     if (document.getElementById('lblPrepare')) document.getElementById('lblPrepare').innerText = t.prepare;
-    
-    const esPremium = localStorage.getItem('giraffile_premium') === 'true';
-    if (document.getElementById('lblDropZone')) document.getElementById('lblDropZone').innerText = esPremium ? t.dropLabelPremium : t.dropLabel;
-    
+    if (document.getElementById('lblDropZone')) document.getElementById('lblDropZone').innerText = t.dropLabel;
     if (document.getElementById('lblExpiry')) document.getElementById('lblExpiry').innerText = t.expiryLabel;
     if (document.getElementById('opt15m')) document.getElementById('opt15m').innerText = t.opt15;
     if (document.getElementById('opt30m')) document.getElementById('opt30m').innerText = t.opt30;
@@ -173,8 +164,6 @@ function aplicarTraduccion() {
             prompt.innerHTML = `<strong>${t.dropSelected}</strong> ${archivoCargado.name} (${tamanoMB} MB)`;
         }
     }
-
-    detectarYAdvertirIncognito();
 }
 
 function abrirDB(callback) {
@@ -192,7 +181,6 @@ window.onload = function() {
     const savedTheme = localStorage.getItem('girafile-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     
-    ajustarInterfazPremium();
     aplicarTraduccion();
     verificarLinkCompartido();
 };
@@ -228,12 +216,6 @@ function generarLink() {
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
     const duracion = parseInt(document.getElementById('expiry').value);
     
-    const esPremium = localStorage.getItem('giraffile_premium') === 'true';
-    if (duracion === 1800 && !esPremium) {
-        alert("La caducidad de 30 minutos es una función Premium en pruebas. Usa la clave GIRA-TEST-2026.");
-        return;
-    }
-    
     const payload = {
         id: idUnico,
         t: Math.floor(Date.now() / 1000),
@@ -260,7 +242,6 @@ function generarLink() {
                 `;
             }
 
-            // Se activa el modo de transmisión directa en la computadora emisora
             inicializarTransmisionP2P(idUnico, payload);
         };
     });
@@ -304,7 +285,6 @@ function verificarLinkCompartido() {
         request.onsuccess = function(e) {
             const data = e.target.result;
 
-            // LÓGICA HÍBRIDA: Si no existe localmente, salta al túnel P2P seguro
             if (!data) {
                 if (previewDiv) previewDiv.style.display = "block";
                 conectarYDescargarP2P(hash, contentDiv, metaDiv, previewDiv);
@@ -319,26 +299,23 @@ function verificarLinkCompartido() {
                 return;
             }
 
-            // Si existe en la base de datos (Emisor), lo renderiza localmente
             renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv);
         };
     });
 }
 
 // ==========================================
-// INFRAESTRUCTURA P2P (BUFFER BINARIO SEGURO CORREGIDO)
+// INFRAESTRUCTURA P2P
 // ==========================================
 
 function inicializarTransmisionP2P(fileId, payload) {
     if (peerInstance) peerInstance.destroy();
     
-    // La computadora se anuncia en la red usando el identificador exacto del link
     peerInstance = new Peer(fileId);
 
     peerInstance.on('connection', (conn) => {
         conn.on('data', (data) => {
             if (data.request === 'DOWNLOAD_FILE_STREAM') {
-                // Usamos FileReader para transformar el Blob en bits puros (ArrayBuffer) antes de enviarlo
                 const lector = new FileReader();
                 lector.onload = function(evento) {
                     conn.send({
@@ -348,7 +325,7 @@ function inicializarTransmisionP2P(fileId, payload) {
                         name: payload.name,
                         type: payload.type,
                         size: payload.size,
-                        bufferArchivo: evento.target.result // Datos binarios crudos sin riesgo de corrupción
+                        bufferArchivo: evento.target.result 
                     });
                 };
                 lector.readAsArrayBuffer(payload.blob);
@@ -362,10 +339,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     if (contentDiv) contentDiv.innerHTML = `<p style="color: var(--text-color); font-weight: bold; animation: pulse 1.5s infinite;">${t.p2pConnecting}</p>`;
     
     if (peerInstance) peerInstance.destroy();
-    peerInstance = new Peer(); // El receptor genera una ID temporal aleatoria
+    peerInstance = new Peer(); 
 
     peerInstance.on('open', () => {
-        // Se conecta a la ID del archivo especificada en el hash del enlace
         const conn = peerInstance.connect(fileId);
         
         conn.on('open', () => {
@@ -374,7 +350,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
         conn.on('data', (data) => {
             if (data && data.bufferArchivo) {
-                // El teléfono recibe los bits puros y los reconstruye en un Blob real con su formato original
                 const blobReconstruido = new Blob([data.bufferArchivo], { type: data.type });
                 
                 const objetoPayload = {
@@ -384,10 +359,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     name: data.name,
                     type: data.type,
                     size: data.size,
-                    blob: blobReconstruido // Objeto listo para procesarse en las vistas previas locales
+                    blob: blobReconstructed = blobReconstruido 
                 };
 
-                // Guarda en la base de datos local del receptor para persistencia de sesión
                 abrirDB(function(db) {
                     const tx = db.transaction([STORE_NAME], "readwrite");
                     tx.objectStore(STORE_NAME).put(objetoPayload);
@@ -398,13 +372,12 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             }
         });
 
-        // Manejo del error si la máquina de origen se apagó o cerró la pestaña
         setTimeout(() => {
             if (contentDiv && contentDiv.innerHTML.includes(t.p2pConnecting)) {
                 contentDiv.innerHTML = `<p class='error'>${t.errNoExist}</p>`;
                 if (peerInstance) peerInstance.destroy();
             }
-        }, 12000); // 12 segundos de espera inteligente para buffers grandes
+        }, 12000); 
     });
 
     peerInstance.on('error', () => {
@@ -489,94 +462,4 @@ function eliminarArchivoDB(id) {
     abrirDB(function(db) {
         db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(id);
     });
-}
-
-// ==========================================
-// DETECCIÓN DINÁMICA DE MODO INCÓGNITO
-// ==========================================
-
-async function detectarYAdvertirIncognito() {
-    const t = i18n[currentLang];
-    const avisoId = "incognito-alert-msg";
-    
-    const avisoPrevio = document.getElementById(avisoId);
-    if (avisoPrevio) avisoPrevio.remove();
-
-    if (navigator.storage && navigator.storage.estimate) {
-        try {
-            const estimacion = await navigator.storage.estimate();
-            const esIncognito = estimacion.quota && (estimacion.quota < 120 * 1024 * 1024);
-
-            if (esIncognito) {
-                let contenedorDestino = document.getElementById('premium-panel') || document.getElementById('main-wrapper');
-                
-                if (contenedorDestino) {
-                    const warningDiv = document.createElement('div');
-                    warningDiv.id = avisoId;
-                    warningDiv.style.cssText = `
-                        color: #e67e22;
-                        background: rgba(230, 126, 34, 0.1);
-                        border: 1px dashed #e67e22;
-                        padding: 10px;
-                        border-radius: 4px;
-                        font-size: 0.85em;
-                        margin: 15px 0;
-                        text-align: left;
-                        line-height: 1.4;
-                        width: 100%;
-                        box-sizing: border-box;
-                    `;
-                    warningDiv.innerText = t.incognitoWarning;
-                    
-                    if (contenedorDestino.id === 'main-wrapper') {
-                        contenedorDestino.insertBefore(warningDiv, contenedorDestino.firstChild);
-                    } else {
-                        contenedorDestino.parentNode.insertBefore(warningDiv, contenedorDestino.nextSibling);
-                    }
-                }
-            }
-        } catch (error) {
-            console.error("Error al estimar el almacenamiento:", error);
-        }
-    }
-}
-
-function activarLicenciaGumroad() {
-    const key = document.getElementById('licenseKeyInput').value.trim();
-    const btn = document.getElementById('btnActivar');
-    
-    if (!key) {
-        alert("Por favor, introduce tu clave de suscripción.");
-        return;
-    }
-
-    btn.innerText = "Verificando...";
-    btn.disabled = true;
-
-    setTimeout(() => {
-        if (key === CLAVE_TEST_VALIDA) {
-            localStorage.setItem('giraffile_premium', 'true');
-            localStorage.setItem('giraffile_license', key);
-            alert("¡Suscripción de prueba verificada con éxito! Límites extendidos a 500MB.");
-            ajustarInterfazPremium();
-            aplicarTraduccion();
-        } else {
-            alert("Clave inválida. Para pruebas locales usa: GIRA-TEST-2026");
-            btn.innerText = "Activar Premium";
-            btn.disabled = false;
-        }
-    }, 1000);
-}
-
-function ajustarInterfazPremium() {
-    const esPremium = localStorage.getItem('giraffile_premium') === 'true';
-    if (esPremium) {
-        MAX_SIZE_BYTES = 500 * 1024 * 1024;
-        const panel = document.getElementById('premium-panel');
-        if (panel) {
-            panel.innerHTML = "<span style='color: #2ecc71; font-weight: bold;'>Suscripción Premium Activa 🦒✨</span>";
-        }
-    } else {
-        MAX_SIZE_BYTES = 25 * 1024 * 1024;
-    }
 }
