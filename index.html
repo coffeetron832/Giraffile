@@ -14,7 +14,7 @@
             <button class="lang-toggle" onclick="toggleLanguage()" id="langBtn">English</button>
             <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Modo Oscuro</button>
         </div>
-        </div>
+    </div>
 
     <div id="main-wrapper" style="display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 1000px; margin: 0 auto;">
         
@@ -28,10 +28,10 @@
                 <h3 id="lblPrepare" style="margin-top: 0;">Prepara tu archivo para enviar</h3>
                 
                 <div class="control-group">
-                    <label id="lblDropZone">Arrastra tu archivo o haz clic abajo (Máx 200MB):</label><br><br>
+                    <label id="lblDropZone">Arrastra tu archivo o haz clic abajo (Máx 1.5GB):</label><br><br>
                     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
                         <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
-                        <input type="file" id="fileInput" accept="image/*, application/pdf, text/plain" onchange="manejarSeleccionArchivo(this)">
+                        <input type="file" id="fileInput" style="display: none;" onchange="manejarSeleccionArchivo(this)">
                     </div>
                     <p id="errorMsg" class="error"></p>
                 </div>
@@ -39,9 +39,9 @@
                 <div class="control-group">
                     <label id="lblExpiry">Tiempo de Caducidad:</label><br>
                     <select id="expiry" style="background: var(--box-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 6px; border-radius: 4px; margin-top: 5px; width: 100%;">
-                        <option value="900" id="opt15m">15 Minutos</option>
-                        <option value="1800" id="opt30m">30 Minutos</option>
-                        <option value="60" id="opt1m">1 Minuto (Para Pruebas)</option> 
+                        <option value="120" id="opt2m">2 Minutos</option>
+                        <option value="300" id="opt5m">5 Minutos</option>
+                        <option value="600" id="opt10m">10 Minutos</option> 
                     </select>
                 </div>
                 
