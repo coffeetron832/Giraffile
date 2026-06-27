@@ -304,7 +304,7 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR P2P ULTRA-OPTIMIZADO (CON CORRECCIÓN DE METADATOS Y TAMAÑO DE BLOB)
+// MOTOR P2P OPTIMIZADO: TRANSMISIÓN SEGURA VÍA ARRAYBUFFER (EVITA 0 BYTES)
 // =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -313,21 +313,24 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance = new Peer(fileId);
 
     peerInstance.on('connection', (conn) => {
-        conn.on('data', (data) => {
+        conn.on('data', async (data) => {
             if (data.request === 'DOWNLOAD_FILE_STREAM') {
                 let offset = 0;
                 const totalSize = payload.blob.size;
 
-                function enviarSiguienteFlujo() {
+                async function enviarSiguienteFlujo() {
                     if (conn.bufferSize > 256 * 1024) { 
                         setTimeout(enviarSiguienteFlujo, 10);
                         return;
                     }
 
                     while (offset < totalSize && conn.bufferSize <= 256 * 1024) {
-                        const fragmento = payload.blob.slice(offset, offset + CHUNK_SIZE);
+                        const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
                         offset += CHUNK_SIZE;
                         const progresoReal = Math.min((offset / totalSize) * 100, 100);
+
+                        // SOLUCIÓN: Convertimos el fragmento a ArrayBuffer de forma eficiente y rápida
+                        const bufferCargado = await fragmentoBlob.arrayBuffer();
 
                         conn.send({
                             id: payload.id,
@@ -335,8 +338,8 @@ function inicializarTransmisionP2P(fileId, payload) {
                             d: payload.d,
                             name: payload.name,
                             type: payload.type,
-                            size: payload.size, // Forzamos el envío constante del tamaño real original
-                            chunk: fragmento, 
+                            size: payload.size,
+                            chunk: bufferCargado, // Enviamos binario puro y seguro
                             progress: progresoReal
                         });
                     }
@@ -348,14 +351,14 @@ function inicializarTransmisionP2P(fileId, payload) {
                             d: payload.d,
                             name: payload.name,
                             type: payload.type,
-                            size: payload.size // Asegurado en el cierre de transmisión
+                            size: payload.size
                         });
                     } else {
                         setTimeout(enviarSiguienteFlujo, 0);
                     }
                 }
 
-                enviarSiguienteFlujo();
+                await enviarSiguienteFlujo();
             }
         });
     });
@@ -383,7 +386,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             
             if (data.chunk) {
                 arraysDeFragmentos.push(data.chunk);
-                // Respaldamos de forma estricta los metadatos reales del archivo original en el primer chunk
                 if (!metaDataBackup && data.size) {
                     metaDataBackup = { 
                         t: data.t, 
@@ -400,15 +402,14 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
 
                 const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
+                
+                // Ensamblamos los fragmentos ArrayBuffer limpios sin pérdidas de datos
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
                 arraysDeFragmentos = []; 
 
                 const tiempoOriginal = data.t || (metaDataBackup ? metaDataBackup.t : Math.floor(Date.now() / 1000));
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                
-                // SOLUCIÓN: Si por la conversión WebRTC el blobReconstruido.size llega a marcar 0, 
-                // tomamos el tamaño real respaldado en metaDataBackup.size
-                const tamanoReal = (blobReconstruido.size > 0) ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : data.size || 0);
+                const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
                 const objetoPayload = {
                     id: fileId,
@@ -416,7 +417,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     d: duracionOriginal,
                     name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
                     type: tipoMime,
-                    size: tamanoReal, // Guardamos el tamaño verificado y correcto
+                    size: tamanoReal,
                     blob: blobReconstruido 
                 };
 
@@ -439,6 +440,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         if (contentDiv) contentDiv.innerHTML = `<p class='error'>${t.errNoExist}</p>`;
     });
 }
+
 function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
     if (previewDiv) previewDiv.style.display = "block";
