@@ -211,8 +211,6 @@ function generarLink() {
     }
 
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
-    
-    // CORRECCIÓN 1: Multiplicar por 60 para almacenar segundos reales en la DB
     const duracionMinutos = parseInt(document.getElementById('expiry').value);
     const duracionSegundos = duracionMinutos * 60; 
     
@@ -321,11 +319,16 @@ function inicializarTransmisionP2P(fileId, payload) {
 
                 function leerYEnviarSiguienteBloque() {
                     if (offset >= totalSize) {
-                        conn.send({ eof: true });
+                        conn.send({ 
+                            eof: true,
+                            t: payload.t,
+                            d: payload.d,
+                            name: payload.name,
+                            type: payload.type
+                        });
                         return;
                     }
 
-                    // CORRECCIÓN 2: Buffer de salida controlado para no saturar el canal WebRTC
                     if (conn.bufferSize > 56 * 1024) { 
                         setTimeout(leerYEnviarSiguienteBloque, 20);
                         return;
@@ -335,6 +338,9 @@ function inicializarTransmisionP2P(fileId, payload) {
                     const lector = new FileReader();
                     
                     lector.onload = function(evento) {
+                        offset += CHUNK_SIZE;
+                        const progresoReal = Math.min((offset / totalSize) * 100, 100);
+
                         conn.send({
                             id: payload.id,
                             t: payload.t,
@@ -343,11 +349,9 @@ function inicializarTransmisionP2P(fileId, payload) {
                             type: payload.type,
                             size: payload.size,
                             chunk: evento.target.result,
-                            progress: (offset / totalSize) * 100
+                            progress: progresoReal
                         });
-                        offset += CHUNK_SIZE;
                         
-                        // Pequeño delay dinámico de 2ms para dar aire a los hilos de red compartidos
                         setTimeout(leerYEnviarSiguienteBloque, 2);
                     };
                     lector.readAsArrayBuffer(fragmento);
@@ -367,6 +371,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     peerInstance = new Peer(); 
 
     let arraysDeFragmentos = [];
+    let metaDataBackup = null; 
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId);
@@ -380,19 +385,25 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             
             if (data.chunk) {
                 arraysDeFragmentos.push(data.chunk);
+                if (data.t) metaDataBackup = { t: data.t, d: data.d, name: data.name, type: data.type };
                 if (loader) loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
             }
 
             if (data.eof) {
-                const blobReconstruido = new Blob(arraysDeFragmentos, { type: data.type || "application/octet-stream" });
+                if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
+
+                const blobReconstruido = new Blob(arraysDeFragmentos, { type: data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream") });
                 arraysDeFragmentos = []; 
+
+                const tiempoOriginal = data.t || (metaDataBackup ? metaDataBackup.t : Math.floor(Date.now() / 1000));
+                const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
 
                 const objetoPayload = {
                     id: fileId,
-                    t: data.t,
-                    d: data.d,
-                    name: data.name,
-                    type: data.type,
+                    t: tiempoOriginal,
+                    d: duracionOriginal,
+                    name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
+                    type: data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream"),
                     size: blobReconstruido.size,
                     blob: blobReconstruido 
                 };
@@ -402,10 +413,12 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     tx.objectStore(STORE_NAME).put(objetoPayload);
                     tx.oncomplete = function() {
                         renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
+                        if (peerInstance) {
+                            peerInstance.destroy();
+                            peerInstance = null;
+                        }
                     };
                 });
-                
-                if (peerInstance) peerInstance.destroy();
             }
         });
     });
