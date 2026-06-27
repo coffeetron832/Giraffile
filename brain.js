@@ -211,8 +211,9 @@ function generarLink() {
     }
 
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
-    const duracionMinutos = parseInt(document.getElementById('expiry').value);
-    const duracionSegundos = duracionMinutos * 60; 
+    
+    // SOLUCIÓN: El HTML ya envía los valores en segundos (60, 900, 1800). No multiplicamos por 60.
+    const duracionSegundos = parseInt(document.getElementById('expiry').value); 
     
     const payload = {
         id: idUnico,
@@ -440,7 +441,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
 
     if (intervaloTemporizador) clearInterval(intervaloTemporizador);
     
-    // CORRECCIÓN ARITMÉTICA MANTENIDA: Cálculo seguro basado en marcas de tiempo Unix en segundos
     intervaloTemporizador = setInterval(function() {
         const ahora = Math.floor(Date.now() / 1000);
         const tiempoTranscurrido = ahora - data.t;
