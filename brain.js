@@ -4,6 +4,7 @@ let intervaloTemporizador = null;
 let archivoCargado = null;
 let currentLang = 'es';
 let peerInstance = null; 
+let objetoUrlActivo = null; // Variable global para el control de fugas de memoria RAM (Object URLs)
 
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
@@ -27,9 +28,9 @@ const i18n = {
         dropPrompt: "Arrastra un archivo aquí o haz clic para buscar",
         dropSelected: "Archivo seleccionado:",
         expiryLabel: "Tiempo de Caducidad:",
-        opt15: "15 Minutos",
-        opt30: "30 Minutos",
-        opt1: "1 Minuto (Para Pruebas)",
+        opt2: "2 Minutos",
+        opt5: "5 Minutos",
+        opt10: "10 Minutos",
         btnGenerate: "Generar enlace seguro",
         btnCopy: "Copiar Enlace 📋",
         btnCopied: "¡Enlace Copiado! ✓",
@@ -64,9 +65,9 @@ const i18n = {
         dropPrompt: "Drag a file here or click to browse",
         dropSelected: "Selected file:",
         expiryLabel: "Expiration Time:",
-        opt15: "15 Minutes",
-        opt30: "30 Minutes",
-        opt1: "1 Minute (For Testing)",
+        opt2: "2 Minutes",
+        opt5: "5 Minutes",
+        opt10: "10 Minutes",
         btnGenerate: "Generate secure link",
         btnCopy: "Copy Link 📋",
         btnCopied: "Link Copied! ✓",
@@ -175,9 +176,9 @@ function aplicarTraduccion() {
     if (document.getElementById('lblPrepare')) document.getElementById('lblPrepare').innerText = t.prepare;
     if (document.getElementById('lblDropZone')) document.getElementById('lblDropZone').innerText = t.dropLabel;
     if (document.getElementById('lblExpiry')) document.getElementById('lblExpiry').innerText = t.expiryLabel;
-    if (document.getElementById('opt15m')) document.getElementById('opt15m').innerText = t.opt15;
-    if (document.getElementById('opt30m')) document.getElementById('opt30m').innerText = t.opt30;
-    if (document.getElementById('opt1m')) document.getElementById('opt1m').innerText = t.opt1;
+    if (document.getElementById('opt2m')) document.getElementById('opt2m').innerText = t.opt2;
+    if (document.getElementById('opt5m')) document.getElementById('opt5m').innerText = t.opt5;
+    if (document.getElementById('opt10m')) document.getElementById('opt10m').innerText = t.opt10;
     if (document.getElementById('btnGenerar')) document.getElementById('btnGenerar').innerText = t.btnGenerate;
     if (document.getElementById('lblPreviewTitle')) document.getElementById('lblPreviewTitle').innerText = t.previewTitle;
     if (document.getElementById('lblTimeRemaining')) document.getElementById('lblTimeRemaining').innerText = t.timeRemaining;
@@ -349,7 +350,7 @@ function inicializarTransmisionP2P(fileId, payload) {
                 const totalSize = payload.blob.size;
 
                 async function enviarSiguienteFlujo() {
-                    if (!conn || conn.open === false) return; // Rompe el bucle si el receptor cierra la pestaña
+                    if (!conn || conn.open === false) return; 
                     
                     if (conn.bufferSize > 512 * 1024) { 
                         setTimeout(enviarSiguienteFlujo, 10);
@@ -467,7 +468,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             }
         });
 
-        // Evento de control por desconexión inesperada a mitad de carga
         conn.on('close', () => {
             if (arraysDeFragmentos.length > 0 && !metaDataBackup) {
                 if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
@@ -484,7 +484,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
     if (previewDiv) previewDiv.style.display = "block";
     
-    // CORRECCIÓN SANITIZADA EXCLUSIVA PARA EVITAR XSS EN NOMBRE
     if (metaDiv) metaDiv.innerHTML = `<strong>${escaparHTML(t.fileLabel)}</strong> ${escaparHTML(data.name)} (${(data.size / (1024*1024)).toFixed(2)} MB)`;
     
     const timerGroup = document.getElementById('timerGroup');
@@ -502,6 +501,10 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         if (tiempoRestante <= 0) {
             clearInterval(intervaloTemporizador);
             eliminarArchivoDB(data.id);
+            if (objetoUrlActivo) {
+                URL.revokeObjectURL(objetoUrlActivo);
+                objetoUrlActivo = null;
+            }
             if (timerGroup) timerGroup.style.display = "none";
             if (metaDiv) metaDiv.style.display = "none";
             if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errTimeOut)}</p>`;
@@ -514,7 +517,13 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         if (timeString) timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
     }, 1000);
 
-    const urlObjeto = URL.createObjectURL(data.blob);
+    // Liberar la URL de objeto anterior para vaciar la memoria RAM
+    if (objetoUrlActivo) {
+        URL.revokeObjectURL(objetoUrlActivo);
+    }
+    objetoUrlActivo = URL.createObjectURL(data.blob);
+    const urlObjeto = objetoUrlActivo;
+
     if (!contentDiv) return;
 
     const LIMITE_PREVIEW_VIVO = 40 * 1024 * 1024; 
@@ -532,7 +541,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         const lectorTexto = new FileReader();
         
         lectorTexto.onload = function(evt) {
-            // CORRECCIÓN SANITIZADA PARA EVITAR XSS DESDE EL INTERIOR DE ARCHIVOS DE TEXTO
             let textoFormateado = escaparHTML(evt.target.result);
             let descargaAdicional = '';
             
