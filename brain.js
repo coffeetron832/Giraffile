@@ -11,9 +11,9 @@ const STORE_NAME = "archivos";
 
 const i18n = {
     es: {
-        themeDark: "Modo Oscuro 🌙",
-        themeLight: "Modo Claro ☀️",
-        langBtn: "English 🌐",
+        themeDark: "Modo Oscuro",
+        themeLight: "Modo Claro",
+        langBtn: "English",
         pageTitle: "Giraffile - La jirafa que protege tus archivos",
         hook: "¿Te preocupa dejar tus archivos rondando por internet?",
         desc1: "Olvídate de subir fotos o documentos a servidores donde pierdes el control. Con <strong>Giraffile</strong>, tú eres el dueño de tus datos de principio a fin.",
@@ -46,12 +46,12 @@ const i18n = {
         errExpired: "¡Este enlace ha caducado y el contenido fue destruido permanentemente!",
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
         footer: "Giraffile v0.4.2 | © 2026 jahp. Todos los derechos reservados.",
-        p2pConnecting: "Cargando archivo... 🦒⏳"
+        p2pConnecting: "Cargando archivo..."
     },
     en: {
-        themeDark: "Dark Mode 🌙",
-        themeLight: "Light Mode ☀️",
-        langBtn: "Español 🌐",
+        themeDark: "Dark Mode",
+        themeLight: "Light Mode",
+        langBtn: "Español",
         pageTitle: "Giraffile - The giraffe that protects your files",
         hook: "Worried about leaving your files floating around the internet?",
         desc1: "Forget about uploading photos or documents to servers where you lose control. With <strong>Giraffile</strong>, you own your data from start to finish.",
@@ -84,7 +84,7 @@ const i18n = {
         errExpired: "This link has expired and the content was permanently destroyed!",
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
         footer: "Giraffile v0.4.2 | © 2026 jahp. All rights reserved.",
-        p2pConnecting: "Loading file... 🦒⏳"
+        p2pConnecting: "Loading file..."
     }
 };
 
