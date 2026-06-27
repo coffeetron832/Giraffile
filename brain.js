@@ -304,8 +304,11 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR P2P OPTIMIZADO: TRANSMISIÓN SEGURA VÍA ARRAYBUFFER (EVITA 0 BYTES)
+// MOTOR P2P MÁXIMA OPTIMIZACIÓN (BLOQUES DE 256KB Y FLUJO ASÍNCRONO FLUIDO)
 // =========================================================================
+
+// Aumentamos a 256KB para reducir al mínimo el número de mensajes en archivos grandes
+const CHUNK_SIZE = 256 * 1024; 
 
 function inicializarTransmisionP2P(fileId, payload) {
     if (peerInstance) peerInstance.destroy();
@@ -319,17 +322,19 @@ function inicializarTransmisionP2P(fileId, payload) {
                 const totalSize = payload.blob.size;
 
                 async function enviarSiguienteFlujo() {
-                    if (conn.bufferSize > 256 * 1024) { 
+                    // Control de flujo (Backpressure): si el búfer está lleno, esperamos un ciclo corto
+                    if (conn.bufferSize > 512 * 1024) { 
                         setTimeout(enviarSiguienteFlujo, 10);
                         return;
                     }
 
-                    while (offset < totalSize && conn.bufferSize <= 256 * 1024) {
+                    // Enviamos una ráfaga controlada de bloques aprovechando el búfer al máximo
+                    while (offset < totalSize && conn.bufferSize <= 512 * 1024) {
                         const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
                         offset += CHUNK_SIZE;
                         const progresoReal = Math.min((offset / totalSize) * 100, 100);
 
-                        // SOLUCIÓN: Convertimos el fragmento a ArrayBuffer de forma eficiente y rápida
+                        // Conversión ultrarrápida a ArrayBuffer
                         const bufferCargado = await fragmentoBlob.arrayBuffer();
 
                         conn.send({
@@ -339,7 +344,7 @@ function inicializarTransmisionP2P(fileId, payload) {
                             name: payload.name,
                             type: payload.type,
                             size: payload.size,
-                            chunk: bufferCargado, // Enviamos binario puro y seguro
+                            chunk: bufferCargado, 
                             progress: progresoReal
                         });
                     }
@@ -354,6 +359,7 @@ function inicializarTransmisionP2P(fileId, payload) {
                             size: payload.size
                         });
                     } else {
+                        // Dejamos respirar al event loop del navegador usando un delay de 0ms antes de la siguiente ráfaga
                         setTimeout(enviarSiguienteFlujo, 0);
                     }
                 }
@@ -375,7 +381,11 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     let metaDataBackup = null; 
 
     peerInstance.on('open', () => {
-        const conn = peerInstance.connect(fileId, { reliable: true });
+        // Forzamos configuraciones de canal de datos de alta velocidad
+        const conn = peerInstance.connect(fileId, { 
+            reliable: true,
+            ordered: true 
+        });
         
         conn.on('open', () => {
             conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
@@ -403,9 +413,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
                 const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
                 
-                // Ensamblamos los fragmentos ArrayBuffer limpios sin pérdidas de datos
+                // Ensamblado final nativo directo desde los ArrayBuffers
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
-                arraysDeFragmentos = []; 
+                arraysDeFragmentos = []; // Liberación inmediata de RAM en el receptor
 
                 const tiempoOriginal = data.t || (metaDataBackup ? metaDataBackup.t : Math.floor(Date.now() / 1000));
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
