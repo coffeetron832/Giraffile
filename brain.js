@@ -16,7 +16,6 @@ const i18n = {
         langBtn: "English",
         pageTitle: "Giraffile - La jirafa que protege tus archivos",
         hook: "¿Te preocupa dejar tus archivos rondando por internet?",
-        desc1: "Olvídate de subir fotos o documentos a servidores donde pierdes el control. Con <strong>Giraffile</strong>, tú eres el dueño de tus datos de principio a fin.",
         desc2: "Esta herramienta te permite compartir cualquier tipo de archivo de manera privada mediante un enlace corto sin subirlos a internet. Todo el contenido se almacena de forma temporal en tu propio dispositivo de manera 100% segura.",
         useTitle: "¿Para qué puedes usar Giraffile?",
         use1: "<strong>Información sensible:</strong> Credenciales, datos financieros, contratos o documentos personales.",
@@ -54,7 +53,6 @@ const i18n = {
         langBtn: "Español",
         pageTitle: "Giraffile - The giraffe that protects your files",
         hook: "Worried about leaving your files floating around the internet?",
-        desc1: "Forget about uploading photos or documents to servers where you lose control. With <strong>Giraffile</strong>, you own your data from start to finish.",
         desc2: "This tool allows you to share any file type privately using a short link without uploading them to the internet. All content is temporarily stored on your own device in a 100% secure way.",
         useTitle: "What can you use Giraffile for?",
         use1: "<strong>Sensitive Information:</strong> Credentials, financial data, contracts, or personal documents.",
@@ -133,7 +131,6 @@ function aplicarTraduccion() {
                 <img src="giraffe.png" alt="Mascota" class="mascot-img">
             </div>
             <p class="highlight-yellow"><strong>${t.hook}</strong></p>
-            <p>${t.desc1}</p>
             <p>${t.desc2}</p>
             <p><strong>${t.useTitle}</strong></p>
             <ul style="padding-left: 20px;">
