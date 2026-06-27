@@ -16,6 +16,12 @@ In today’s world, sharing a file often means handing it over to a large corpor
 
 By using your browser’s native storage capabilities (**IndexedDB**), files travel directly from your device to the recipient’s. Once the timer expires, the file is permanently destroyed.
 
+### How It Works
+1. Drag your file to the drop zone.
+2. Select the link’s expiration time.
+3. Generate a unique link that you can send to anyone you need.
+4. When the time expires, the file disappears forever.
+
 ### Features
 * **Zero-Server:** No intermediary servers. Your data never leaves your trusted network.
 * **Self-Destruction:** Files are automatically deleted after the configured time.
@@ -23,11 +29,13 @@ By using your browser’s native storage capabilities (**IndexedDB**), files tra
 * **Dark Mode:** Designed for visual comfort in any environment.
 * **Open Source:** You can verify the code and ensure your privacy is truly protected.
 
-### How It Works
-1. Drag your file to the drop zone.
-2. Select the link’s expiration time.
-3. Generate a unique link that you can send to anyone you need.
-4. When the time expires, the file disappears forever.
+---
+
+### 🦒 Try Giraffile v1.0.0
+
+Need to share files privately and securely? Don't trust the cloud with your data.
+
+Start sharing now: https://giraffile.pages.dev/
 
 ---
 *Developed by jahp / coffetron832 | Licensed under MIT.*
