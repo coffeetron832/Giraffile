@@ -84,10 +84,16 @@ body {
 }
 
 .mascot-img { 
-    max-width: 140px; /* Reducido de 220px para no comerse el espacio vertical */
+    max-width: 195px; /* Incrementado para que se vea un poco más grande */
     height: auto; 
     display: block; 
     margin: 0 auto; 
+    transition: filter 0.3s ease; /* Transición suave al cambiar de tema */
+}
+
+/* Invierte los contornos negros a blancos cuando se activa el modo oscuro */
+[data-theme="dark"] .mascot-img {
+    filter: invert(1) brightness(0.9);
 }
 
 .control-group { 
