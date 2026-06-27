@@ -87,6 +87,37 @@ const i18n = {
     }
 };
 
+// FUNCIÓN AUXILIAR CRÍTICA: Sanitiza cadenas de texto para prevenir XSS
+function escaparHTML(cadena) {
+    if (!cadena) return '';
+    return cadena.toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// RECOLECTOR DE BASURA (Garbage Collector): Limpia IndexedDB al cargar la app
+function ejecutarLimpiezaGarbageCollector() {
+    abrirDB(function(db) {
+        const ahora = Math.floor(Date.now() / 1000);
+        const transaction = db.transaction([STORE_NAME], "readwrite");
+        const store = transaction.objectStore(STORE_NAME);
+        
+        store.openCursor().onsuccess = function(event) {
+            const cursor = event.target.result;
+            if (cursor) {
+                const registro = cursor.value;
+                if (ahora > (registro.t + registro.d)) {
+                    cursor.delete();
+                }
+                cursor.continue();
+            }
+        };
+    });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const dropZone = document.getElementById('dropZone');
     if (dropZone) {
@@ -158,7 +189,7 @@ function aplicarTraduccion() {
             prompt.innerText = t.dropPrompt;
         } else {
             const tamanoMB = (archivoCargado.size / (1024 * 1024)).toFixed(2);
-            prompt.innerHTML = `<strong>${t.dropSelected}</strong> ${archivoCargado.name} (${tamanoMB} MB)`;
+            prompt.innerHTML = `<strong>${escaparHTML(t.dropSelected)}</strong> ${escaparHTML(archivoCargado.name)} (${tamanoMB} MB)`;
         }
     }
 }
@@ -179,6 +210,7 @@ window.onload = function() {
     document.documentElement.setAttribute('data-theme', savedTheme);
     
     aplicarTraduccion();
+    ejecutarLimpiezaGarbageCollector(); // Arranca el recolector de basura de almacenamiento
     verificarLinkCompartido();
 };
 
@@ -199,7 +231,7 @@ function manejarSeleccionArchivo(inputOrData) {
     if(file) {
         archivoCargado = file;
         const tamanoMB = (file.size / (1024 * 1024)).toFixed(2);
-        if (prompt) prompt.innerHTML = `<strong>${t.dropSelected}</strong> ${file.name} (${tamanoMB} MB)`;
+        if (prompt) prompt.innerHTML = `<strong>${escaparHTML(t.dropSelected)}</strong> ${escaparHTML(file.name)} (${tamanoMB} MB)`;
     }
 }
 
@@ -211,8 +243,6 @@ function generarLink() {
     }
 
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
-    
-    // SOLUCIÓN: El HTML ya envía los valores en segundos (60, 900, 1800). No multiplicamos por 60.
     const duracionSegundos = parseInt(document.getElementById('expiry').value); 
     
     const payload = {
@@ -235,9 +265,9 @@ function generarLink() {
             
             if (document.getElementById('output')) {
                 document.getElementById('output').innerHTML = `
-                    <p style="color: green; font-weight: bold;">${t.successLink}</p>
-                    <textarea id="copyTarget" readonly onclick="this.select()">${link}</textarea>
-                    <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${t.btnCopy}</button>
+                    <p style="color: green; font-weight: bold;">${escaparHTML(t.successLink)}</p>
+                    <textarea id="copyTarget" readonly onclick="this.select()">${escaparHTML(link)}</textarea>
+                    <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${escaparHTML(t.btnCopy)}</button>
                 `;
             }
 
@@ -294,7 +324,7 @@ function verificarLinkCompartido() {
             if (ahoraInicial > (data.t + data.d)) {
                 eliminarArchivoDB(hash);
                 if (previewDiv) previewDiv.style.display = "block";
-                if (contentDiv) contentDiv.innerHTML = `<p class='error'>${t.errExpired}</p>`;
+                if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errExpired)}</p>`;
                 return;
             }
 
@@ -304,7 +334,7 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR P2P MÁXIMA OPTIMIZACIÓN (BLOQUES DE 256KB Y FLUJO ASÍNCRONO FLUIDO)
+// MOTOR P2P MÁXIMA OPTIMIZACIÓN Y CONTROL DE EXCEPCIONES
 // =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -319,19 +349,18 @@ function inicializarTransmisionP2P(fileId, payload) {
                 const totalSize = payload.blob.size;
 
                 async function enviarSiguienteFlujo() {
-                    // Control de flujo (Backpressure): si el búfer está lleno, esperamos un ciclo corto
+                    if (!conn || conn.open === false) return; // Rompe el bucle si el receptor cierra la pestaña
+                    
                     if (conn.bufferSize > 512 * 1024) { 
                         setTimeout(enviarSiguienteFlujo, 10);
                         return;
                     }
 
-                    // Enviamos una ráfaga controlada de bloques aprovechando el búfer al máximo
                     while (offset < totalSize && conn.bufferSize <= 512 * 1024) {
                         const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
                         offset += CHUNK_SIZE;
                         const progresoReal = Math.min((offset / totalSize) * 100, 100);
 
-                        // Conversión ultrarrápida a ArrayBuffer
                         const bufferCargado = await fragmentoBlob.arrayBuffer();
 
                         conn.send({
@@ -356,7 +385,6 @@ function inicializarTransmisionP2P(fileId, payload) {
                             size: payload.size
                         });
                     } else {
-                        // Dejamos respirar al event loop del navegador usando un delay de 0ms antes de la siguiente ráfaga
                         setTimeout(enviarSiguienteFlujo, 0);
                     }
                 }
@@ -369,7 +397,7 @@ function inicializarTransmisionP2P(fileId, payload) {
 
 function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
-    if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">${t.p2pConnecting} (0%)</p>`;
+    if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">${escaparHTML(t.p2pConnecting)} (0%)</p>`;
     
     if (peerInstance) peerInstance.destroy();
     peerInstance = new Peer(); 
@@ -378,7 +406,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     let metaDataBackup = null; 
 
     peerInstance.on('open', () => {
-        // Forzamos configuraciones de canal de datos de alta velocidad
         const conn = peerInstance.connect(fileId, { 
             reliable: true,
             ordered: true 
@@ -409,10 +436,8 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
 
                 const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
-                
-                // Ensamblado final nativo directo desde los ArrayBuffers
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
-                arraysDeFragmentos = []; // Liberación inmediata de RAM en el receptor
+                arraysDeFragmentos = []; 
 
                 const tiempoOriginal = data.t || (metaDataBackup ? metaDataBackup.t : Math.floor(Date.now() / 1000));
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
@@ -441,17 +466,26 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 });
             }
         });
+
+        // Evento de control por desconexión inesperada a mitad de carga
+        conn.on('close', () => {
+            if (arraysDeFragmentos.length > 0 && !metaDataBackup) {
+                if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
+            }
+        });
     });
 
     peerInstance.on('error', () => {
-        if (contentDiv) contentDiv.innerHTML = `<p class='error'>${t.errNoExist}</p>`;
+        if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
     });
 }
 
 function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
     if (previewDiv) previewDiv.style.display = "block";
-    if (metaDiv) metaDiv.innerHTML = `<strong>${t.fileLabel}</strong> ${data.name} (${(data.size / (1024*1024)).toFixed(2)} MB)`;
+    
+    // CORRECCIÓN SANITIZADA EXCLUSIVA PARA EVITAR XSS EN NOMBRE
+    if (metaDiv) metaDiv.innerHTML = `<strong>${escaparHTML(t.fileLabel)}</strong> ${escaparHTML(data.name)} (${(data.size / (1024*1024)).toFixed(2)} MB)`;
     
     const timerGroup = document.getElementById('timerGroup');
     const lifeBar = document.getElementById('lifeBar');
@@ -470,7 +504,7 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
             eliminarArchivoDB(data.id);
             if (timerGroup) timerGroup.style.display = "none";
             if (metaDiv) metaDiv.style.display = "none";
-            if (contentDiv) contentDiv.innerHTML = `<p class='error'>${t.errTimeOut}</p>`;
+            if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errTimeOut)}</p>`;
             return;
         }
 
@@ -490,7 +524,7 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
     } else if (data.type === "application/pdf" && data.size <= LIMITE_PREVIEW_VIVO) {
         contentDiv.innerHTML = `
             <embed src="${urlObjeto}" type="application/pdf" width="100%" height="450px" style="border-radius: 4px; margin-bottom:10px;">
-            <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration:none; text-align:center; display:block;">${t.btnDownload}</a>
+            <a href="${urlObjeto}" download="${escaparHTML(data.name)}" class="btn btn-primary" style="text-decoration:none; text-align:center; display:block;">${escaparHTML(t.btnDownload)}</a>
         `;
     } else if ((data.type.startsWith("text/") || data.name.endsWith(".json") || data.name.endsWith(".js") || data.name.endsWith(".css")) && data.size <= LIMITE_PREVIEW_VIVO) {
         const bytesVistaPrevia = 50 * 1024;
@@ -498,28 +532,29 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         const lectorTexto = new FileReader();
         
         lectorTexto.onload = function(evt) {
-            let textoFormateado = evt.target.result;
+            // CORRECCIÓN SANITIZADA PARA EVITAR XSS DESDE EL INTERIOR DE ARCHIVOS DE TEXTO
+            let textoFormateado = escaparHTML(evt.target.result);
             let descargaAdicional = '';
             
             if (data.size > bytesVistaPrevia) {
                 textoFormateado += "\n\n[... Archivo truncado por rendimiento ...]";
-                descargaAdicional = `<p style="font-size:0.9em; margin: 15px 0 5px 0; color:var(--footer-color); text-align:center;">${t.textPreviewNotice}</p>`;
+                descargaAdicional = `<p style="font-size:0.9em; margin: 15px 0 5px 0; color:var(--footer-color); text-align:center;">${escaparHTML(t.textPreviewNotice)}</p>`;
             }
             
             contentDiv.innerHTML = `
                 <pre style="white-space: pre-wrap; background: var(--timer-bg); padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.9em; text-align:left;">${textoFormateado}</pre>
                 ${descargaAdicional}
-                <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block; margin-top:5px;">${t.btnDownload}</a>
+                <a href="${urlObjeto}" download="${escaparHTML(data.name)}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block; margin-top:5px;">${escaparHTML(t.btnDownload)}</a>
             `;
         };
         lectorTexto.readAsText(fragmentoSeguro);
     } else {
         contentDiv.innerHTML = `
             <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
-                <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${t.noPreviewNotice}</p>
-                <strong style="word-break: break-all; font-size: 1.1em; display: block; color: var(--text-color);">${data.name}</strong>
+                <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${escaparHTML(t.noPreviewNotice)}</p>
+                <strong style="word-break: break-all; font-size: 1.1em; display: block; color: var(--text-color);">${escaparHTML(data.name}</strong>
             </div>
-            <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block;">${t.btnDownload}</a>
+            <a href="${urlObjeto}" download="${escaparHTML(data.name)}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block;">${escaparHTML(t.btnDownload)}</a>
         `;
     }
 }
