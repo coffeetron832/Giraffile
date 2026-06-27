@@ -47,7 +47,8 @@ const i18n = {
         errExpired: "¡Este enlace ha caducado y el contenido fue destruido permanentemente!",
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
         footer: "Giraffile v0.4.2 | © 2026 jahp. Todos los derechos reservados.",
-        p2pConnecting: "Transfiriendo archivo vía P2P seguro..."
+        p2pConnecting: "Cargando archivo...",
+        descifrando: "Preparando archivo ..."
     },
     en: {
         themeDark: "Dark Mode",
@@ -84,7 +85,8 @@ const i18n = {
         errExpired: "This link has expired and the content was permanently destroyed!",
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
         footer: "Giraffile v0.4.2 | © 2026 jahp. All rights reserved.",
-        p2pConnecting: "Transferring file via secure P2P stream..."
+        p2pConnecting: "Loading file...",
+        descifrando: "Preparing file..."
     }
 };
 
@@ -243,9 +245,37 @@ function generarLink() {
         return;
     }
 
+    const outputDiv = document.getElementById('output');
+    if (!outputDiv) return;
+
+    // 1. Inyectar dinámicamente la interfaz visual de la barra de progreso
+    outputDiv.innerHTML = `
+        <div id="localPrepContainer" style="margin-top: 15px; background: var(--timer-bg); padding: 15px; border-radius: 4px;">
+            <p id="localPrepText" style="font-weight: bold; font-size: 0.9em; margin-bottom: 8px; color: var(--text-color);">${escaparHTML(t.descifrando)} (0%)</p>
+            <progress id="localPrepBar" value="0" max="100" style="width: 100%; height: 10px;"></progress>
+        </div>
+    `;
+
+    const prepBar = document.getElementById('localPrepBar');
+    const prepText = document.getElementById('localPrepText');
+
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
     const duracionSegundos = parseInt(document.getElementById('expiry').value); 
     
+    // 2. Fragmentación visual del hilo de renderizado para evitar bloqueos
+    let progreso = 0;
+    const incremento = archivoCargado.size > 100 * 1024 * 1024 ? 5 : 20;
+
+    const iteraProgreso = setInterval(() => {
+        progreso += incremento;
+        if (progreso > 90) {
+            clearInterval(iteraProgreso); // Mantiene en 90% hasta completar la confirmación real en disco
+        } else {
+            if (prepBar) prepBar.value = progreso;
+            if (prepText) prepText.innerText = `${t.descifrando} (${progreso}%)`;
+        }
+    }, 40);
+
     const payload = {
         id: idUnico,
         t: Math.floor(Date.now() / 1000),
@@ -256,23 +286,34 @@ function generarLink() {
         blob: archivoCargado 
     };
     
+    // 3. Persistencia asíncrona segura en IndexedDB
     abrirDB(function(db) {
         const transaction = db.transaction([STORE_NAME], "readwrite");
         transaction.objectStore(STORE_NAME).put(payload);
         
         transaction.oncomplete = function() {
-            const origen = window.location.origin === "null" ? "file://" : window.location.origin;
-            const link = origen + window.location.pathname + "#" + idUnico;
-            
-            if (document.getElementById('output')) {
-                document.getElementById('output').innerHTML = `
-                    <p style="color: green; font-weight: bold;">${escaparHTML(t.successLink)}</p>
+            clearInterval(iteraProgreso);
+            if (prepBar) prepBar.value = 100;
+            if (prepText) prepText.innerText = `${t.descifrando} (100%)`;
+
+            // Transición suave de pintado final
+            setTimeout(() => {
+                const origen = window.location.origin === "null" ? "file://" : window.location.origin;
+                const link = origen + window.location.pathname + "#" + idUnico;
+                
+                outputDiv.innerHTML = `
+                    <p style="color: green; font-weight: bold; margin-top: 10px;">${escaparHTML(t.successLink)}</p>
                     <textarea id="copyTarget" readonly onclick="this.select()">${escaparHTML(link)}</textarea>
                     <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${escaparHTML(t.btnCopy)}</button>
                 `;
-            }
 
-            inicializarTransmisionP2P(idUnico, payload);
+                inicializarTransmisionP2P(idUnico, payload);
+            }, 200);
+        };
+
+        transaction.onerror = function() {
+            clearInterval(iteraProgreso);
+            outputDiv.innerHTML = `<p class="error">Error local al procesar el almacenamiento.</p>`;
         };
     });
 }
