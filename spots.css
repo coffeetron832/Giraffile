@@ -253,13 +253,18 @@ progress::-webkit-progress-value {
 }
 
 footer { 
-    margin-top: 25px; /* Reducido de 40px */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    margin-top: 0; /* Eliminamos el margen superior ya que está fijo */
     font-size: 0.8rem; 
     color: var(--footer-color); 
     text-align: center; 
     border-top: 1px solid var(--box-border); 
-    padding-top: 8px; 
+    padding: 8px 0; /* Padding uniforme arriba y abajo */
     width: 100%;
+    background-color: var(--bg-color); /* Fondo sólido para que el contenido no se traduzca por debajo al hacer scroll */
+    z-index: 100; /* Asegura que se mantenga por encima de otros elementos */
 }
 
 /* ==========================================
