@@ -8,7 +8,7 @@ let peerInstance = null;
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
-const CHUNK_SIZE = 16384; // Bloques óptimos de 16KB para evitar saturación de RAM
+const CHUNK_SIZE = 65536;
 
 const i18n = {
     es: {
@@ -304,9 +304,9 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR P2P OPTIMIZADO (BACKPRESSURE PARA GRANDES VOLÚMENES)
+// MOTOR P2P ULTRA-OPTIMIZADO (CHUNKS GRANDES Y TRANSMISIÓN DIRECTA DE BLOBS)
 // =========================================================================
-
+ 
 function inicializarTransmisionP2P(fileId, payload) {
     if (peerInstance) peerInstance.destroy();
     
@@ -318,7 +318,32 @@ function inicializarTransmisionP2P(fileId, payload) {
                 let offset = 0;
                 const totalSize = payload.blob.size;
 
-                function leerYEnviarSiguienteBloque() {
+                function enviarSiguienteFlujo() {
+                    // Si el búfer de PeerJS está muy lleno, esperamos un instante antes de saturarlo (Backpressure)
+                    if (conn.bufferSize > 256 * 1024) { 
+                        setTimeout(enviarSiguienteFlujo, 10);
+                        return;
+                    }
+
+                    // Enviamos ráfagas de bloques consecutivas mientras el búfer tenga espacio seguro
+                    while (offset < totalSize && conn.bufferSize <= 256 * 1024) {
+                        const fragmento = payload.blob.slice(offset, offset + CHUNK_SIZE);
+                        offset += CHUNK_SIZE;
+                        const progresoReal = Math.min((offset / totalSize) * 100, 100);
+
+                        // Enviamos el Blob directamente sin usar FileReader. ¡Mucho más rápido!
+                        conn.send({
+                            id: payload.id,
+                            t: payload.t,
+                            d: payload.d,
+                            name: payload.name,
+                            type: payload.type,
+                            size: payload.size,
+                            chunk: fragmento, // PeerJS serializa Blobs nativamente de forma eficiente
+                            progress: progresoReal
+                        });
+                    }
+
                     if (offset >= totalSize) {
                         conn.send({ 
                             eof: true,
@@ -327,38 +352,13 @@ function inicializarTransmisionP2P(fileId, payload) {
                             name: payload.name,
                             type: payload.type
                         });
-                        return;
+                    } else {
+                        // Sigue enviando en el próximo ciclo del event loop si el búfer se vacía
+                        setTimeout(enviarSiguienteFlujo, 0);
                     }
-
-                    if (conn.bufferSize > 56 * 1024) { 
-                        setTimeout(leerYEnviarSiguienteBloque, 20);
-                        return;
-                    }
-
-                    const fragmento = payload.blob.slice(offset, offset + CHUNK_SIZE);
-                    const lector = new FileReader();
-                    
-                    lector.onload = function(evento) {
-                        offset += CHUNK_SIZE;
-                        const progresoReal = Math.min((offset / totalSize) * 100, 100);
-
-                        conn.send({
-                            id: payload.id,
-                            t: payload.t,
-                            d: payload.d,
-                            name: payload.name,
-                            type: payload.type,
-                            size: payload.size,
-                            chunk: evento.target.result,
-                            progress: progresoReal
-                        });
-                        
-                        setTimeout(leerYEnviarSiguienteBloque, 2);
-                    };
-                    lector.readAsArrayBuffer(fragmento);
                 }
 
-                leerYEnviarSiguienteBloque();
+                enviarSiguienteFlujo();
             }
         });
     });
@@ -375,7 +375,8 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     let metaDataBackup = null; 
 
     peerInstance.on('open', () => {
-        const conn = peerInstance.connect(fileId);
+        // Configuramos la conexión en modo confiable (SCTP ordenado)
+        const conn = peerInstance.connect(fileId, { reliable: true });
         
         conn.on('open', () => {
             conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
@@ -393,8 +394,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             if (data.eof) {
                 if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
 
+                // Construimos el archivo final uniendo la lista de fragmentos
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream") });
-                arraysDeFragmentos = []; 
+                arraysDeFragmentos = []; // Liberamos memoria de inmediato
 
                 const tiempoOriginal = data.t || (metaDataBackup ? metaDataBackup.t : Math.floor(Date.now() / 1000));
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
