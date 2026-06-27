@@ -1,5 +1,5 @@
-// Límite universal estable (200MB) para evitar cuellos de botella de RAM en móviles
-const MAX_SIZE_BYTES = 200 * 1024 * 1024; 
+// Límite universal robusto (1.5 GB) soportado gracias al flujo por fragmentos (Chunks)
+const MAX_SIZE_BYTES = 1500 * 1024 * 1024; 
 let intervaloTemporizador = null;
 let archivoCargado = null;
 let currentLang = 'es';
@@ -8,6 +8,7 @@ let peerInstance = null; // Almacena la conexión P2P activa
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
+const CHUNK_SIZE = 16384; // Bloques óptimos de 16KB para evitar saturación de RAM
 
 const i18n = {
     es: {
@@ -22,7 +23,7 @@ const i18n = {
         use2: "<strong>Cualquier Formato:</strong> Envía imágenes, PDFs, archivos comprimidos (ZIP/RAR), audios o videos.",
         use3: "<strong>Privacidad total:</strong> Envío seguro de archivos sin dejar rastro en servidores externos.",
         prepare: "Prepara tu archivo para enviar",
-        dropLabel: "Arrastra cualquier archivo o haz clic abajo (Máx 200MB):",
+        dropLabel: "Arrastra cualquier archivo o haz clic abajo (Máx 1.5GB):",
         dropPrompt: "Arrastra un archivo aquí o haz clic para buscar",
         dropSelected: "Archivo seleccionado:",
         expiryLabel: "Tiempo de Caducidad:",
@@ -34,9 +35,9 @@ const i18n = {
         btnCopied: "¡Enlace Copiado! ✓",
         btnDownload: "Descargar Completo 📥",
         textPreviewNotice: "📋 Mostrando una vista previa del archivo de texto. Para ver todo el contenido:",
-        noPreviewNotice: "📦 Este formato no admite vista previa en el navegador. Usa el botón de abajo para descargarlo de manera segura:",
+        noPreviewNotice: "📦 Este formato no admite vista previa en el navegador o supera el tamaño de renderizado directo. Usa el botón de abajo para descargarlo de manera segura:",
         errNoFile: "Por favor, selecciona o arrastra un archivo primero.",
-        errNotAllowed: "El archivo excede el tamaño máximo permitido (Máx 200MB).",
+        errNotAllowed: "El archivo excede el tamaño máximo permitido (Máx 1.5GB).",
         successLink: "¡Enlace creado con éxito!",
         previewTitle: "Echa un vistazo a tu archivo",
         timeRemaining: "Tiempo restante de visualización:",
@@ -45,7 +46,7 @@ const i18n = {
         errExpired: "¡Este enlace ha caducado y el contenido fue destruido permanentemente!",
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
         footer: "Giraffile v0.4.2 | © 2026 jahp. Todos los derechos reservados.",
-        p2pConnecting: "Cargando archivo..."
+        p2pConnecting: "Transfiriendo archivo vía P2P seguro..."
     },
     en: {
         themeDark: "Dark Mode",
@@ -59,7 +60,7 @@ const i18n = {
         use2: "<strong>Any Format:</strong> Send images, PDFs, compressed archives (ZIP/RAR), audios, or videos.",
         use3: "<strong>Total Privacy:</strong> Send files without leaving a trace on external servers.",
         prepare: "Prepare your file to send",
-        dropLabel: "Drag any file or click below (Max 200MB):",
+        dropLabel: "Drag any file or click below (Max 1.5GB):",
         dropPrompt: "Drag a file here or click to browse",
         dropSelected: "Selected file:",
         expiryLabel: "Expiration Time:",
@@ -71,9 +72,9 @@ const i18n = {
         btnCopied: "Link Copied! ✓",
         btnDownload: "Download Full File 📥",
         textPreviewNotice: "📋 Showing a preview of the text file. To see the full content:",
-        noPreviewNotice: "📦 Preview is not supported for this file type in the browser. Use the button below to download securely:",
+        noPreviewNotice: "📦 Preview is not supported for this file type or size in the browser. Use the button below to download securely:",
         errNoFile: "Please select or drag a file first.",
-        errNotAllowed: "The file exceeds the maximum size allowed (Max 200MB).",
+        errNotAllowed: "The file exceeds the maximum size allowed (Max 1.5GB).",
         successLink: "Link created successfully!",
         previewTitle: "Take a look at your file",
         timeRemaining: "Remaining viewing time:",
@@ -82,7 +83,7 @@ const i18n = {
         errExpired: "This link has expired and the content was permanently destroyed!",
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
         footer: "Giraffile v0.4.2 | © 2026 jahp. All rights reserved.",
-        p2pConnecting: "Loading file..."
+        p2pConnecting: "Transferring file via secure P2P stream..."
     }
 };
 
@@ -301,9 +302,9 @@ function verificarLinkCompartido() {
     });
 }
 
-// ==========================================
-// INFRAESTRUCTURA P2P
-// ==========================================
+// =========================================================================
+// MOTOR DE INFRAESTRUCTURA P2P (OPTIMIZADO PARA GRANDES VOLÚMENES - CHUNKS)
+// =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
     if (peerInstance) peerInstance.destroy();
@@ -313,19 +314,39 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance.on('connection', (conn) => {
         conn.on('data', (data) => {
             if (data.request === 'DOWNLOAD_FILE_STREAM') {
-                const lector = new FileReader();
-                lector.onload = function(evento) {
-                    conn.send({
-                        id: payload.id,
-                        t: payload.t,
-                        d: payload.d,
-                        name: payload.name,
-                        type: payload.type,
-                        size: payload.size,
-                        bufferArchivo: evento.target.result 
-                    });
-                };
-                lector.readAsArrayBuffer(payload.blob);
+                let offset = 0;
+                const totalSize = payload.blob.size;
+
+                // Envío inteligente fragmentado por flujos lógicos continuos
+                function leerYEnviarSiguienteBloque() {
+                    if (offset >= totalSize) {
+                        conn.send({ eof: true });
+                        return;
+                    }
+
+                    const fragmento = payload.blob.slice(offset, offset + CHUNK_SIZE);
+                    const lector = new FileReader();
+                    
+                    lector.onload = function(evento) {
+                        conn.send({
+                            id: payload.id,
+                            t: payload.t,
+                            d: payload.d,
+                            name: payload.name,
+                            type: payload.type,
+                            size: payload.size,
+                            chunk: evento.target.result,
+                            progress: (offset / totalSize) * 100
+                        });
+                        offset += CHUNK_SIZE;
+                        
+                        // setTimeout evita bloqueos de la UI en archivos gigantescos
+                        setTimeout(leerYEnviarSiguienteBloque, 1);
+                    };
+                    lector.readAsArrayBuffer(fragmento);
+                }
+
+                leerYEnviarSiguienteBloque();
             }
         });
     });
@@ -333,10 +354,12 @@ function inicializarTransmisionP2P(fileId, payload) {
 
 function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
-    if (contentDiv) contentDiv.innerHTML = `<p style="color: var(--text-color); font-weight: bold; animation: pulse 1.5s infinite;">${t.p2pConnecting}</p>`;
+    if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">${t.p2pConnecting} (0%)</p>`;
     
     if (peerInstance) peerInstance.destroy();
     peerInstance = new Peer(); 
+
+    let arraysDeFragmentos = [];
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId);
@@ -346,17 +369,26 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         });
 
         conn.on('data', (data) => {
-            if (data && data.bufferArchivo) {
-                const blobReconstruido = new Blob([data.bufferArchivo], { type: data.type });
-                
+            const loader = document.getElementById("p2pLoader");
+            
+            if (data.chunk) {
+                arraysDeFragmentos.push(data.chunk);
+                if (loader) loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
+            }
+
+            if (data.eof) {
+                // Reconstrucción atómica y óptima reduciendo la huella de memoria
+                const blobReconstruido = new Blob(arraysDeFragmentos, { type: data.type || "application/octet-stream" });
+                arraysDeFragmentos = []; // Liberación inmediata de RAM
+
                 const objetoPayload = {
-                    id: data.id,
-                    t: data.t,
-                    d: data.d,
-                    name: data.name,
-                    type: data.type,
-                    size: data.size,
-                    blob: blobReconstructed = blobReconstruido 
+                    id: fileId,
+                    t: data.t || Math.floor(Date.now() / 1000),
+                    d: data.d || 900,
+                    name: data.name || "archivo_descargado",
+                    type: data.type || "application/octet-stream",
+                    size: blobReconstruido.size,
+                    blob: blobReconstruido 
                 };
 
                 abrirDB(function(db) {
@@ -366,15 +398,10 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                         renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
                     };
                 });
-            }
-        });
-
-        setTimeout(() => {
-            if (contentDiv && contentDiv.innerHTML.includes(t.p2pConnecting)) {
-                contentDiv.innerHTML = `<p class='error'>${t.errNoExist}</p>`;
+                
                 if (peerInstance) peerInstance.destroy();
             }
-        }, 12000); 
+        });
     });
 
     peerInstance.on('error', () => {
@@ -416,14 +443,17 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
     const urlObjeto = URL.createObjectURL(data.blob);
     if (!contentDiv) return;
 
-    if (data.type.startsWith("image/")) {
+    // Límite estricto de renderizado en vivo para no congelar la pestaña con archivos masivos
+    const LIMITE_PREVIEW_VIVO = 40 * 1024 * 1024; // 40MB
+
+    if (data.type.startsWith("image/") && data.size <= LIMITE_PREVIEW_VIVO) {
         contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px;">`;
-    } else if (data.type === "application/pdf") {
+    } else if (data.type === "application/pdf" && data.size <= LIMITE_PREVIEW_VIVO) {
         contentDiv.innerHTML = `
             <embed src="${urlObjeto}" type="application/pdf" width="100%" height="450px" style="border-radius: 4px; margin-bottom:10px;">
             <a href="${urlObjeto}" download="${data.name}" class="btn btn-primary" style="text-decoration:none; text-align:center; display:block;">${t.btnDownload}</a>
         `;
-    } else if (data.type.startsWith("text/") || data.name.endsWith(".json") || data.name.endsWith(".js") || data.name.endsWith(".css")) {
+    } else if ((data.type.startsWith("text/") || data.name.endsWith(".json") || data.name.endsWith(".js") || data.name.endsWith(".css")) && data.size <= LIMITE_PREVIEW_VIVO) {
         const bytesVistaPrevia = 50 * 1024;
         const fragmentoSeguro = data.blob.slice(0, bytesVistaPrevia);
         const lectorTexto = new FileReader();
@@ -445,6 +475,7 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         };
         lectorTexto.readAsText(fragmentoSeguro);
     } else {
+        // Ejecución limpia para archivos pesados (ZIP, Videos, ISOs, audios grandes, etc.)
         contentDiv.innerHTML = `
             <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
                 <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${t.noPreviewNotice}</p>
