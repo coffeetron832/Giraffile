@@ -48,7 +48,8 @@ const i18n = {
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
         footer: "Giraffile v1.0.0 | © 2026 jahp. Todos los derechos reservados.",
         p2pConnecting: "Cargando archivo...",
-        descifrando: "Preparando archivo ..."
+        descifrando: "Preparando archivo ...",
+        qrLabel: "Escanea para recibir el archivo"
     },
     en: {
         themeDark: "Dark Mode",
