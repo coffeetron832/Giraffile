@@ -48,7 +48,8 @@ const i18n = {
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
         footer: "Giraffile v1.0.0 | © 2026 jahp. Todos los derechos reservados.",
         p2pConnecting: "Cargando archivo...",
-        descifrando: "Preparando archivo ..."
+        descifrando: "Preparando archivo ...",
+        qrLabel: "Escanea para recibir el archivo"
     },
     en: {
         themeDark: "Dark Mode",
@@ -86,7 +87,8 @@ const i18n = {
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
         footer: "Giraffile v1.0.0 | © 2026 jahp. All rights reserved.",
         p2pConnecting: "Loading file...",
-        descifrando: "Preparing file..."
+        descifrando: "Preparing file...",
+        qrLabel: "Scan to receive the file"
     }
 };
 
@@ -306,6 +308,35 @@ function generarLink() {
                     <textarea id="copyTarget" readonly onclick="this.select()">${escaparHTML(link)}</textarea>
                     <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${escaparHTML(t.btnCopy)}</button>
                 `;
+
+                // QR CODE: render the shareable link as a scannable QR
+                if (typeof QRCode !== 'undefined') {
+                    const qrWrapper = document.createElement('div');
+                    qrWrapper.id = 'qrWrapper';
+                    qrWrapper.style.cssText = 'margin-top: 14px; text-align: center;';
+
+                    const qrCaption = document.createElement('p');
+                    qrCaption.style.cssText = 'margin-top: 6px; font-size: 0.8em; color: var(--footer-color);';
+                    qrCaption.innerText = t.qrLabel;
+
+                    outputDiv.appendChild(qrWrapper);
+                    const rootStyle = getComputedStyle(document.documentElement);
+                    new QRCode(qrWrapper, {
+                        text: link,
+                        width: 180,
+                        height: 180,
+                        colorDark: rootStyle.getPropertyValue('--text-color').trim(),
+                        colorLight: rootStyle.getPropertyValue('--bg-color').trim()
+                    });
+
+                    // qrcodejs injects its own canvas + img, center both
+                    const qrCanvas = qrWrapper.querySelector('canvas');
+                    if (qrCanvas) qrCanvas.style.cssText = 'display: block; margin: 0 auto;';
+                    const qrImg = qrWrapper.querySelector('img');
+                    if (qrImg) qrImg.style.cssText = 'display: block; margin: 0 auto;';
+
+                    qrWrapper.appendChild(qrCaption);
+                }
 
                 inicializarTransmisionP2P(idUnico, payload);
 
