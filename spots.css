@@ -268,6 +268,46 @@ footer {
     z-index: 100; /* Asegura que se mantenga por encima de otros elementos */
 }
 
+.modal-disclaimer {
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: var(--bg-color, #ffffff);
+    border: 1px solid var(--timer-bg, #eee);
+    padding: 25px;
+    border-radius: 6px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    position: relative;
+}
+
+.close-disclaimer {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    color: var(--footer-color, #888);
+    font-size: 26px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-disclaimer:hover {
+    color: var(--text-color, #000);
+}
+
+
 /* ==========================================
    MEDIA QUERIES (RESPONSIVE)
    ========================================== */
