@@ -404,6 +404,21 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance.on('connection', (conn) => {
         conn.on('data', async (data) => {
             if (data.request === 'DOWNLOAD_FILE_STREAM') {
+                // GUARD DE EXPIRACIÓN FAIL-SAFE: chequea el reloj real (Date.now)
+                // en el momento de servir, no un temporizador. Los navegadores
+                // congelan/retrasan los setTimeout cuando la pestaña está en
+                // segundo plano (sobre todo en móvil), así que el borrado
+                // programado en generarLink() puede no haber corrido todavía.
+                // Sin este chequeo, un emisor con la pestaña de fondo podría
+                // servir por P2P un archivo YA vencido. Acá no dependemos del
+                // timer: si expiró, se borra y no se transmite un solo byte.
+                const ahora = Math.floor(Date.now() / 1000);
+                if (ahora > (payload.t + payload.d)) {
+                    eliminarArchivoDB(payload.id);
+                    if (peerInstance) { peerInstance.destroy(); peerInstance = null; }
+                    return;
+                }
+
                 let offset = 0;
                 const totalSize = payload.blob.size;
 
