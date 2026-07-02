@@ -9,6 +9,15 @@
   </picture>
 </p>
 
+<div align="center">
+
+![Privacy](https://img.shields.io/badge/Privacy-Zero_Server-brightgreen)
+![Version](https://img.shields.io/badge/version-1.0.1-blue)
+![License](https://img.shields.io/badge/license-MIT-yellow)
+![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
+
+</div>
+
 Giraffile is a **local privacy** tool designed to share files quickly and securely without relying on cloud servers. 
 
 ### Why Giraffile?
