@@ -46,7 +46,7 @@ const i18n = {
         errNoExist: "El archivo no existe o ya ha sido eliminado por seguridad.",
         errExpired: "¡Este enlace ha caducado y el contenido fue destruido permanentemente!",
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
-        footer: "Giraffile v1.0.0 | © 2026 jahp. Todos los derechos reservados.",
+        footer: "Giraffile v1.0.1 | © 2026 jahp. Todos los derechos reservados.",
         p2pConnecting: "Cargando archivo...",
         descifrando: "Preparando archivo ...",
         qrLabel: "Escanea para recibir el archivo"
@@ -85,7 +85,7 @@ const i18n = {
         errNoExist: "The file does not exist or has already been deleted for security.",
         errExpired: "This link has expired and the content was permanently destroyed!",
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
-        footer: "Giraffile v1.0.0 | © 2026 jahp. All rights reserved.",
+        footer: "Giraffile v1.0.1 | © 2026 jahp. All rights reserved.",
         p2pConnecting: "Loading file...",
         descifrando: "Preparing file...",
         qrLabel: "Scan to receive the file"
