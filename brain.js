@@ -308,6 +308,35 @@ function generarLink() {
                     <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${escaparHTML(t.btnCopy)}</button>
                 `;
 
+                // QR CODE: render the shareable link as a scannable QR
+                if (typeof QRCode !== 'undefined') {
+                    const qrWrapper = document.createElement('div');
+                    qrWrapper.id = 'qrWrapper';
+                    qrWrapper.style.cssText = 'margin-top: 14px; text-align: center;';
+
+                    const qrCaption = document.createElement('p');
+                    qrCaption.style.cssText = 'margin-top: 6px; font-size: 0.8em; color: var(--footer-color);';
+                    qrCaption.innerText = t.qrLabel;
+
+                    outputDiv.appendChild(qrWrapper);
+                    const rootStyle = getComputedStyle(document.documentElement);
+                    new QRCode(qrWrapper, {
+                        text: link,
+                        width: 180,
+                        height: 180,
+                        colorDark: rootStyle.getPropertyValue('--text-color').trim(),
+                        colorLight: rootStyle.getPropertyValue('--bg-color').trim()
+                    });
+
+                    // qrcodejs injects its own canvas + img, center both
+                    const qrCanvas = qrWrapper.querySelector('canvas');
+                    if (qrCanvas) qrCanvas.style.cssText = 'display: block; margin: 0 auto;';
+                    const qrImg = qrWrapper.querySelector('img');
+                    if (qrImg) qrImg.style.cssText = 'display: block; margin: 0 auto;';
+
+                    qrWrapper.appendChild(qrCaption);
+                }
+
                 inicializarTransmisionP2P(idUnico, payload);
 
                 // AUTODESTRUCCIÓN LOCAL: garantiza que el archivo se borre al
