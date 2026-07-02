@@ -103,9 +103,6 @@ const i18n = {
         `
     }
 };
-(Nota:
-    }
-};
 
 // FUNCIÓN AUXILIAR CRÍTICA: Sanitiza cadenas de texto para prevenir XSS
 function escaparHTML(cadena) {
@@ -691,7 +688,6 @@ function eliminarArchivoDB(id) {
         db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(id);
     });
 }
-
 
 function abrirDisclaimer(event) {
     event.preventDefault();
