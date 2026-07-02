@@ -308,6 +308,23 @@ function generarLink() {
                 `;
 
                 inicializarTransmisionP2P(idUnico, payload);
+
+                // AUTODESTRUCCIÓN LOCAL: garantiza que el archivo se borre al
+                // expirar aunque la pestaña siga abierta. Antes, del lado del
+                // emisor, el archivo solo se limpiaba al recargar la página
+                // (vía el Garbage Collector en window.onload), así que un blob
+                // caducado podía sobrevivir en IndexedDB hasta la próxima visita.
+                // Al vencer el tiempo también se corta la transmisión P2P para
+                // no seguir sirviendo un archivo ya destruido.
+                setTimeout(() => {
+                    eliminarArchivoDB(idUnico);
+                    // Solo cortar el P2P si aún estamos sirviendo ESTE archivo
+                    // (generar un nuevo link reemplaza peerInstance por otro).
+                    if (peerInstance && peerInstance.id === idUnico) {
+                        peerInstance.destroy();
+                        peerInstance = null;
+                    }
+                }, duracionSegundos * 1000);
             }, 200);
         };
 
