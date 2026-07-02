@@ -11,6 +11,7 @@
 
 <div align="center">
 
+![GitHub stars](https://img.shields.io/github/stars/coffeetron832/Giraffile?style=social)
 ![Privacy](https://img.shields.io/badge/Privacy-Zero_Server-brightgreen)
 ![Version](https://img.shields.io/badge/version-1.0.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
