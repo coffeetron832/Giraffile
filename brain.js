@@ -49,7 +49,13 @@ const i18n = {
         footer: "Giraffile v1.0.1 | © 2026 jahp. Todos los derechos reservados.",
         p2pConnecting: "Cargando archivo...",
         descifrando: "Preparando archivo ...",
-        qrLabel: "Escanea para recibir el archivo"
+        qrLabel: "Escanea para recibir el archivo",
+        footer: 'Giraffile v1.0.1 | © 2026 jahp. Todos los derechos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
+        disclaimerTitle: "Descargo de Responsabilidad (Disclaimer)",
+        disclaimerBody: `
+        <p><strong>Giraffile</strong> funciona como un canal de transporte privado P2P (Peer-to-Peer) directo entre dispositivos. Los archivos no se suben, analizan ni almacenan en ningún servidor externo.</p>
+        <p>⚠️ <strong>Aviso sobre malware:</strong> Al ser una transferencia directa y cifrada, la plataforma no escanea ni verifica la seguridad del contenido. <strong>Giraffile no se hace responsable</strong> por software malicioso, virus o archivos infectados transmitidos a través de los enlaces. Es responsabilidad exclusiva del receptor verificar la procedencia del archivo y contar con un antivirus activo antes de realizar la descarga.</p>
+        `
     },
     en: {
         themeDark: "Dark Mode",
@@ -88,7 +94,15 @@ const i18n = {
         footer: "Giraffile v1.0.1 | © 2026 jahp. All rights reserved.",
         p2pConnecting: "Loading file...",
         descifrando: "Preparing file...",
-        qrLabel: "Scan to receive the file"
+        qrLabel: "Scan to receive the file",
+        footer: 'Giraffile v1.0.1 | © 2026 jahp. All rights reserved. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Legal Disclaimer</a>',
+        disclaimerTitle: "Legal Disclaimer",
+        disclaimerBody: `
+        <p><strong>Giraffile</strong> operates as a private, content-agnostic P2P (Peer-to-Peer) transport channel directly between devices. Files are never uploaded, scanned, or stored on external servers.</p>
+        <p>⚠️ <strong>Malware Notice:</strong> Since transfers are direct and encrypted, the platform does not scan or verify file security. <strong>Giraffile is not responsible</strong> for any malware, viruses, or infected files transmitted through shared links. It is the sole responsibility of the recipient to verify the sender's trustworthiness and run appropriate antivirus software before downloading.</p>
+        `
+
+(Nota:
     }
 };
 
