@@ -186,7 +186,7 @@ function aplicarTraduccion() {
     if (document.getElementById('btnGenerar')) document.getElementById('btnGenerar').innerText = t.btnGenerate;
     if (document.getElementById('lblPreviewTitle')) document.getElementById('lblPreviewTitle').innerText = t.previewTitle;
     if (document.getElementById('lblTimeRemaining')) document.getElementById('lblTimeRemaining').innerText = t.timeRemaining;
-    if (document.getElementById('footerText')) document.getElementById('footerText').innerText = t.footer;
+    if (document.getElementById('footerText')) document.getElementById('footerText').innerHTML = t.footer;
 
     const prompt = document.getElementById('dropZonePrompt');
     if (prompt) {
