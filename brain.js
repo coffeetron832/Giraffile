@@ -86,7 +86,8 @@ const i18n = {
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
         footer: "Giraffile v1.0.0 | © 2026 jahp. All rights reserved.",
         p2pConnecting: "Loading file...",
-        descifrando: "Preparing file..."
+        descifrando: "Preparing file...",
+        qrLabel: "Scan to receive the file"
     }
 };
 
