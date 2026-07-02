@@ -676,3 +676,33 @@ function eliminarArchivoDB(id) {
         db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(id);
     });
 }
+
+
+function abrirDisclaimer(event) {
+    event.preventDefault();
+    const t = i18n[currentLang];
+    const modal = document.getElementById('modalDisclaimer');
+    const contenido = document.getElementById('disclaimerContenido');
+    
+    if (modal && contenido) {
+        contenido.innerHTML = `
+            <h2 style="margin-top: 0; color: var(--text-color);">${t.disclaimerTitle}</h2>
+            <hr style="border: 0; border-top: 1px solid var(--timer-bg); margin: 15px 0;">
+            <div style="color: var(--text-color); font-size: 0.95em; text-align: left; line-height: 1.5;">
+                ${t.disclaimerBody}
+            </div>
+        `;
+        modal.style.display = 'flex';
+    }
+}
+
+function cerrarDisclaimer() {
+    const modal = document.getElementById('modalDisclaimer');
+    if (modal) modal.style.display = 'none';
+}
+
+// Cerrar si el usuario hace clic fuera de la caja blanca del contenido
+window.addEventListener('click', (e) => {
+    const modal = document.getElementById('modalDisclaimer');
+    if (e.target === modal) cerrarDisclaimer();
+});
