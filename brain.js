@@ -15,6 +15,17 @@ const DB_VERSION = 1;
 const STORE_NAME = "archivos";
 const CHUNK_SIZE = 1024 * 1024; // 1MB por fragmento para optimizar CPU
 
+// CONFIGURACIÓN DE RED SEGURO PARA PASAR CORTAFUEGOS (STUN SERVERS)
+const PEER_CONFIG = {
+    config: {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' }
+        ]
+    }
+};
+
 const i18n = {
     es: {
         themeDark: "Modo Oscuro",
@@ -421,7 +432,8 @@ function inicializarTransmisionP2P(fileId, payload) {
     if (peerInstance && peerInstance.id === fileId) return; 
     if (peerInstance) peerInstance.destroy();
     
-    peerInstance = new Peer(fileId);
+    // Inyectado el servidor STUN para romper cortafuegos locales
+    peerInstance = new Peer(fileId, PEER_CONFIG);
 
     peerInstance.on('connection', (conn) => {
         conn.on('data', (data) => {
@@ -440,8 +452,9 @@ function inicializarTransmisionP2P(fileId, payload) {
                 function leerSiguienteBloque() {
                     if (!conn || conn.open === false) return;
 
+                    // Si el búfer de red de WebRTC está muy lleno, pausamos brevemente para no saturar
                     if (conn.bufferSize > 1024 * 1024) { 
-                        setTimeout(leerSiguienteBloque, 25);
+                        setTimeout(leerSiguienteBloque, 20);
                         return;
                     }
 
@@ -482,19 +495,17 @@ function inicializarTransmisionP2P(fileId, payload) {
     });
 }
 
-// =========================================================================
-// RECEPCIÓN HÍBRIDA EVITA CONGELAMIENTO EN GIGABYTES
-// =========================================================================
-
 function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
     if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">Conectando al túnel directo P2P...</p>`;
     
     if (peerInstance) peerInstance.destroy();
-    peerInstance = new Peer(); 
+    
+    // Inyectado el servidor STUN para romper cortafuegos locales
+    peerInstance = new Peer(PEER_CONFIG); 
 
     let metaDataBackup = null; 
-    let chunksArrayBuffer = []; // Búfer de respaldo si StreamSaver falla en abrirse
+    let chunksArrayBuffer = []; 
     let streamSaverExitoso = false;
 
     peerInstance.on('open', () => {
@@ -511,7 +522,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             const loader = document.getElementById("p2pLoader");
             
             if (data.chunk) {
-                // Inicialización de Metadatos
                 if (!metaDataBackup && data.size) {
                     metaDataBackup = { 
                         t: data.t, 
@@ -522,23 +532,19 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     };
 
                     try {
-                        // Intentar inicializar StreamSaver
                         const fileStream = streamSaver.createWriteStream(data.name);
                         currentFileWriter = fileStream.getWriter();
                         streamSaverExitoso = true;
                     } catch (err) {
-                        // Fallback automático si las políticas de origen bloquean StreamSaver
                         streamSaverExitoso = false;
                         chunksArrayBuffer = [];
                     }
                 }
                 
-                // Escritura o Almacenamiento según el canal activo
                 if (streamSaverExitoso && currentFileWriter) {
                     try {
                         await currentFileWriter.write(new Uint8Array(data.chunk));
                     } catch(e) {
-                        // Si falla en medio de la transmisión, conmuta al almacenamiento virtual
                         streamSaverExitoso = false;
                         chunksArrayBuffer.push(data.chunk);
                     }
@@ -560,13 +566,10 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 if (streamSaverExitoso && currentFileWriter) {
                     await currentFileWriter.close();
                     currentFileWriter = null;
-                    // Archivo ya guardado directo en descargas del sistema
                     blobFinal = new Blob(["Descargado exitosamente por streaming directo vía StreamSaver."], { type: "text/plain" });
                 } else {
-                    // Reconstrucción desde el búfer de contingencia masiva
                     blobFinal = new Blob(chunksArrayBuffer, { type: data.type || "application/octet-stream" });
                     
-                    // Disparar descarga nativa forzada al usuario
                     const urlDescargaForzada = URL.createObjectURL(blobFinal);
                     const linkTemporal = document.createElement('a');
                     linkTemporal.href = urlDescargaForzada;
