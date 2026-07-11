@@ -489,7 +489,8 @@ function inicializarTransmisionP2P(fileId, payload) {
 
 function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
-    if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">${escaparHTML(t.p2pConnecting)} (0%)</p>`;
+    // Se ha cambiado temporalmente el texto base de carga para indicar conexión inicial
+    if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">Estableciendo conexión P2P directa...</p>`;
     
     if (peerInstance) peerInstance.destroy();
     peerInstance = new Peer(); 
@@ -528,11 +529,21 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     await currentFileWriter.write(new Uint8Array(data.chunk));
                 }
                 
-                if (loader) loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
+                if (loader) {
+                    // CORRECCIÓN PROTECTORA: Si el progreso es indefinido o nulo, fuerza un 0 numérico limpio
+                    const progresoCalculado = (data.progress !== undefined && data.progress !== null) ? Math.floor(data.progress) : 0;
+                    
+                    // MEJORADA UI: Evitamos el congelamiento visual mostrando un estado de preparación si es estrictamente 0%
+                    if (progresoCalculado === 0) {
+                        loader.innerText = "Preparando transferencia directa y disco local...";
+                    } else {
+                        loader.innerText = `Descargando archivo: ${progresoCalculado}%`;
+                    }
+                }
             }
 
             if (data.eof) {
-                if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
+                if (loader) loader.innerText = "Descargando archivo: 100%";
 
                 if (currentFileWriter) {
                     await currentFileWriter.close();
@@ -545,8 +556,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 const tamanoReal = data.size || (metaDataBackup ? metaDataBackup.size : 0);
                 const nombreFinal = data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado");
 
-                // Generamos un blob vacío o con metadatos para la UI ya que el archivo real está salvado en descargas.
-                // Para activar la propagación en cascada pura sin RAM persistente, las dApps leen del disco o se anuncian.
                 const objetoPayload = {
                     id: fileId,
                     t: tiempoOriginal,
@@ -563,7 +572,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     tx.oncomplete = function() {
                         renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
                         
-                        // Innovación: Convertir el nodo receptor en Seeder independiente del enjambre original
                         setTimeout(() => {
                             inicializarTransmisionP2P(fileId, objetoPayload);
                         }, 500);
@@ -580,7 +588,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     });
 
     peerInstance.on('error', () => {
-        if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
+        if (contentDiv) {
+            contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
+        }
     });
 }
 
@@ -629,8 +639,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
 
     if (!contentDiv) return;
 
-    // Al usar StreamSaver, los archivos gigantes se descargan dinámicamente en tiempo real. 
-    // Para la UI de confirmación, mostramos el contenedor estático optimizado.
     contentDiv.innerHTML = `
         <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
             <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${escaparHTML(t.noPreviewNotice)}</p>
