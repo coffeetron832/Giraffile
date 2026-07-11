@@ -54,10 +54,12 @@ const i18n = {
         errNoExist: "El archivo no existe, el emisor se desconectó o ya ha sido eliminado por seguridad.",
         errExpired: "¡Este enlace ha caducado y el contenido fue destruido permanentemente!",
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
-        footer: "Giraffile v1.0.1 | © 2026 jahp. Todos los derechos reservados.",
         p2pConnecting: "Cargando archivo...",
         descifrando: "Preparando archivo ...",
         qrLabel: "Escanea para recibir el archivo",
+        etaLabel: "Tiempo estimado restante:",
+        etaCalculando: "Calculando...",
+        etaCompletado: "¡Transferencia completada!",
         footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v1.0.1 | © 2026 jahp. Todos los derechos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
         disclaimerTitle: "Descargo de Responsabilidad (Disclaimer)",
         disclaimerBody: `
@@ -99,10 +101,12 @@ const i18n = {
         errNoExist: "The file does not exist, the sender went offline, or it has already been deleted for security.",
         errExpired: "This link has expired and the content was permanently destroyed!",
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
-        footer: "Giraffile v1.0.1 | © 2026 jahp. All rights reserved.",
         p2pConnecting: "Loading file...",
         descifrando: "Preparing file...",
         qrLabel: "Scan to receive the file",
+        etaLabel: "Estimated time remaining:",
+        etaCalculando: "Calculating...",
+        etaCompletado: "Transfer completed!",
         footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v1.0.1 | © 2026 jahp. All rights reserved. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Legal Disclaimer</a>',
         disclaimerTitle: "Legal Disclaimer",
         disclaimerBody: `
@@ -437,7 +441,6 @@ function inicializarTransmisionP2P(fileId, payload) {
 
     peerInstance.on('connection', (conn) => {
         conn.on('data', async (data) => {
-            // El receptor solicita formalmente información del metadato o un offset específico
             if (data.request === 'GET_META') {
                 conn.send({
                     type: 'META',
@@ -465,7 +468,7 @@ function inicializarTransmisionP2P(fileId, payload) {
                     const bufferCargado = await fragmentoBlob.arrayBuffer();
                     const progresoReal = Math.min(((offset + bufferCargado.byteLength) / totalSize) * 100, 100);
 
-                    // Optimización Zero-Copy: Se añade el buffer al array de Transferibles en el segundo argumento
+                    // Optimización Zero-Copy: Transferencia binaria explícita mediante el mapeo del buffer en el segundo argumento
                     conn.send({
                         type: 'CHUNK',
                         chunk: bufferCargado,
@@ -482,13 +485,19 @@ function inicializarTransmisionP2P(fileId, payload) {
 
 function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
-    if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">${escaparHTML(t.p2pConnecting)} (0%)</p>`;
+    if (contentDiv) {
+        contentDiv.innerHTML = `
+            <p id="p2pLoader" style="color: var(--text-color); font-weight: bold; margin-bottom: 5px;">${escaparHTML(t.p2pConnecting)} (0%)</p>
+            <p id="p2pEta" style="font-size: 0.9em; color: var(--footer-color); margin-bottom: 15px;">${escaparHTML(t.etaLabel)} ${escaparHTML(t.etaCalculando)}</p>
+        `;
+    }
     
     if (peerInstance) peerInstance.destroy();
     peerInstance = new Peer(); 
 
     let metaDataBackup = null; 
     let proxOffset = 0;
+    let tiempoInicio = null;
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId, { 
@@ -497,12 +506,12 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         });
         
         conn.on('open', () => {
-            // Inicia pidiendo la cabecera / metadatos del archivo
             conn.send({ request: 'GET_META' });
         });
 
         conn.on('data', async (data) => {
             const loader = document.getElementById("p2pLoader");
+            const etaDisplay = document.getElementById("p2pEta");
             
             if (data.type === 'META') {
                 metaDataBackup = { 
@@ -521,14 +530,13 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     console.error("StreamSaver falló al instanciarse nativamente:", err);
                 }
 
-                // Solicita el primer fragmento inmediatamente
+                tiempoInicio = performance.now();
                 proxOffset = 0;
                 conn.send({ request: 'GET_CHUNK', offset: proxOffset });
             }
 
             else if (data.type === 'CHUNK') {
                 if (currentFileWriter && data.chunk) {
-                    // Escritura directa reactiva en disco
                     await currentFileWriter.write(new Uint8Array(data.chunk));
                 }
                 
@@ -536,13 +544,35 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
                 }
 
-                // ARQUITECTURA PULL: Una vez escrito con éxito, pide el siguiente offset (Evita saturar RAM)
+                // --- CÁLCULO DE TIEMPO RESTANTE DINÁMICO (ETA) ---
+                if (etaDisplay && metaDataBackup && tiempoInicio) {
+                    const tiempoTranscurridoMS = performance.now() - tiempoInicio;
+                    
+                    if (tiempoTranscurridoMS > 500 && data.offsetLeido > 0) {
+                        const velocidadBytesPorSegundo = data.offsetLeido / (tiempoTranscurridoMS / 1000);
+                        const bytesRestantes = metaDataBackup.size - data.offsetLeido;
+                        
+                        if (velocidadBytesPorSegundo > 0) {
+                            const segundosRestantesTotales = bytesRestantes / velocidadBytesPorSegundo;
+                            const minutos = Math.floor(segundosRestantesTotales / 60);
+                            const segundos = Math.floor(segundosRestantesTotales % 60);
+                            
+                            if (minutos > 0) {
+                                etaDisplay.innerText = `${t.etaLabel} ~ ${minutos} min y ${segundos} seg`;
+                            } else {
+                                etaDisplay.innerText = `${t.etaLabel} ~ ${segundos} seg`;
+                            }
+                        }
+                    }
+                }
+
                 proxOffset = data.offsetLeido;
                 conn.send({ request: 'GET_CHUNK', offset: proxOffset });
             }
 
             else if (data.type === 'EOF') {
                 if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
+                if (etaDisplay) etaDisplay.innerText = t.etaCompletado;
 
                 if (currentFileWriter) {
                     await currentFileWriter.close();
@@ -551,7 +581,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
                 if (!metaDataBackup) return;
 
-                // Guardamos un payload referencial / marcador en la IndexedDB local del receptor
                 const objetoPayload = {
                     id: fileId,
                     t: metaDataBackup.t,
@@ -666,7 +695,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         };
         lectorTexto.readAsText(fragmentoSeguro);
     } else {
-        // Interfaz limpia y optimizada para archivos masivos procesados vía Streaming
         contentDiv.innerHTML = `
             <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
                 <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${escaparHTML(t.noPreviewNotice)}</p>
