@@ -15,17 +15,6 @@ const DB_VERSION = 1;
 const STORE_NAME = "archivos";
 const CHUNK_SIZE = 256 * 1024; 
 
-// CONFIGURACIÓN DE RED EQUILIBRADA: Rápida, privada y libre de advertencias en consola
-const PEER_CONFIG = {
-    config: {
-        iceServers: [
-            { urls: 'stun:stun.services.mozilla.com' }, // Principal: Servidor neutral y privado de Mozilla
-            { urls: 'stun:stun1.l.google.com:19302' }    // Respaldo: Servidor global de alta disponibilidad
-        ],
-        iceCandidatePoolSize: 4
-    }
-};
-
 const i18n = {
     es: {
         themeDark: "Modo Oscuro",
@@ -269,7 +258,6 @@ function generarLink() {
     const outputDiv = document.getElementById('output');
     if (!outputDiv) return;
 
-    // Ajustado para usar un fallback de texto si 't.descifrando' no está mapeado aún en tu objeto original
     const textoCarga = t.descifrando || "Almacenando metadatos";
 
     outputDiv.innerHTML = `
@@ -432,14 +420,15 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR P2P MÁXIMA OPTIMIZACIÓN Y TRANSMISIÓN EN CASCADA
+// MOTOR P2P MÁXIMA OPTIMIZACIÓN Y TRANSMISIÓN EN CASCADA (SIN PEER_CONFIG)
 // =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
     if (peerInstance && peerInstance.id === fileId) return; 
     if (peerInstance) peerInstance.destroy();
     
-    peerInstance = new Peer(fileId, PEER_CONFIG); // Añadidos los servidores ICE optimizados aquí
+    // Inicialización limpia usando los servidores STUN por defecto de PeerJS
+    peerInstance = new Peer(fileId); 
 
     peerInstance.on('connection', (conn) => {
         conn.on('data', async (data) => {
@@ -506,7 +495,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">Estableciendo conexión P2P directa...</p>`;
     
     if (peerInstance) peerInstance.destroy();
-    peerInstance = new Peer(PEER_CONFIG); // Añadidos los servidores ICE optimizados aquí
+    
+    // Inicialización limpia usando los servidores STUN por defecto de PeerJS
+    peerInstance = new Peer(); 
 
     let metaDataBackup = null; 
 
