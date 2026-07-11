@@ -468,7 +468,6 @@ function inicializarTransmisionP2P(fileId, payload) {
                     const bufferCargado = await fragmentoBlob.arrayBuffer();
                     const progresoReal = Math.min(((offset + bufferCargado.byteLength) / totalSize) * 100, 100);
 
-                    // Optimización Zero-Copy: Transferencia binaria explícita mediante el mapeo del buffer en el segundo argumento
                     conn.send({
                         type: 'CHUNK',
                         chunk: bufferCargado,
@@ -695,12 +694,13 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         };
         lectorTexto.readAsText(fragmentoSeguro);
     } else {
+        // CORRECCIÓN SOLICITADA: Quitamos el texto de descarga en disco y renderizamos el botón de descarga nativo
         contentDiv.innerHTML = `
-            <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
+            <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 15px;">
                 <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${escaparHTML(t.noPreviewNotice)}</p>
-                <strong style="word-break: break-all; font-size: 1.1em; display: block; color: var(--text-color);">${escaparHTML(data.name)}</strong>
+                <strong style="word-break: break-all; font-size: 1.1em; display: block; color: var(--text-color); margin-bottom: 10px;">${escaparHTML(data.name)}</strong>
             </div>
-            <div style="color: #28a745; font-weight: bold; margin-bottom: 10px; text-align: center;">✓ El archivo se ha descargado y guardado directamente en tu sistema local.</div>
+            <a href="${urlObjeto}" download="${escaparHTML(data.name)}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block; margin-top:5px;">${escaparHTML(t.btnDownload)}</a>
         `;
     }
 }
