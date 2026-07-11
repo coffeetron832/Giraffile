@@ -13,7 +13,7 @@ let currentFileWriter = null;
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
-const CHUNK_SIZE = 256 * 1024; 
+const CHUNK_SIZE = 1024 * 1024; // OPTIMIZACIÓN: Aumentado a 1MB para reducir drásticamente los ciclos de CPU en archivos grandes
 
 const i18n = {
     es: {
@@ -260,7 +260,7 @@ function generarLink() {
 
     outputDiv.innerHTML = `
         <div id="localPrepContainer" style="margin-top: 15px; background: var(--timer-bg); padding: 15px; border-radius: 4px;">
-            <p id="localPrepText" style="font-weight: bold; font-size: 0.9em; margin-bottom: 8px; color: var(--text-color);">${escaparHTML(t.descifrando)} (0%)</p>
+            <p id="localPrepText" style="font-weight: bold; font-size: 0.9em; margin-bottom: 8px; color: var(--text-color);">Almacenando metadatos (0%)</p>
             <progress id="localPrepBar" value="0" max="100" style="width: 100%; height: 10px;"></progress>
         </div>
     `;
@@ -272,17 +272,17 @@ function generarLink() {
     const duracionSegundos = parseInt(document.getElementById('expiry').value); 
     
     let progreso = 0;
-    const incremento = archivoCargado.size > 100 * 1024 * 1024 ? 5 : 20;
+    const incremento = archivoCargado.size > 100 * 1024 * 1024 ? 10 : 25;
 
     const iteraProgreso = setInterval(() => {
         progreso += incremento;
-        if (progreso > 90) {
+        if (progreso > 95) {
             clearInterval(iteraProgreso); 
         } else {
             if (prepBar) prepBar.value = progreso;
-            if (prepText) prepText.innerText = `${t.descifrando} (${progreso}%)`;
+            if (prepText) prepText.innerText = `Almacenando metadatos (${progreso}%)`;
         }
-    }, 40);
+    }, 30);
 
     const payload = {
         id: idUnico,
@@ -301,7 +301,7 @@ function generarLink() {
         transaction.oncomplete = function() {
             clearInterval(iteraProgreso);
             if (prepBar) prepBar.value = 100;
-            if (prepText) prepText.innerText = `${t.descifrando} (100%)`;
+            if (prepText) prepText.innerText = "Almacenando metadatos (100%)";
 
             setTimeout(() => {
                 const origen = window.location.origin === "null" ? "file://" : window.location.origin;
@@ -349,7 +349,7 @@ function generarLink() {
                         peerInstance = null;
                     }
                 }, duracionSegundos * 1000);
-            }, 200);
+            }, 100);
         };
 
         transaction.onerror = function() {
@@ -412,23 +412,23 @@ function verificarLinkCompartido() {
             }
 
             renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv);
-            inicializarTransmisionP2P(hash, data); // Propagación en Cascada: el receptor actúa como Seeder local inmediatamente
+            inicializarTransmisionP2P(hash, data); 
         };
     });
 }
 
 // =========================================================================
-// MOTOR P2P MÁXIMA OPTIMIZACIÓN Y TRANSMISIÓN EN CASCADA
+// MOTOR ULTRA OPTIMIZADO CON FILEREADER ASÍNCRONO EN PARALELO
 // =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
-    if (peerInstance && peerInstance.id === fileId) return; // Ya transmitiendo este enjambre
+    if (peerInstance && peerInstance.id === fileId) return; 
     if (peerInstance) peerInstance.destroy();
     
     peerInstance = new Peer(fileId);
 
     peerInstance.on('connection', (conn) => {
-        conn.on('data', async (data) => {
+        conn.on('data', (data) => {
             if (data.request === 'DOWNLOAD_FILE_STREAM') {
                 const ahora = Math.floor(Date.now() / 1000);
                 if (ahora > (payload.t + payload.d)) {
@@ -439,35 +439,23 @@ function inicializarTransmisionP2P(fileId, payload) {
 
                 let offset = 0;
                 const totalSize = payload.blob.size;
+                const reader = new FileReader();
 
-                async function enviarSiguienteFlujo() {
-                    if (!conn || conn.open === false) return; 
-                    
-                    if (conn.bufferSize > 512 * 1024) { 
-                        setTimeout(enviarSiguienteFlujo, 10);
+                // OPTIMIZACIÓN EXTREMA: Flujo basado en eventos. Cero bloqueos de CPU.
+                function leerSiguienteBloque() {
+                    if (!conn || conn.open === false) return;
+
+                    // Si el búfer de WebRTC está muy lleno, pausamos unos milisegundos para evitar pérdidas
+                    if (conn.bufferSize > 1024 * 1024) { 
+                        setTimeout(leerSiguienteBloque, 20);
                         return;
                     }
 
-                    while (offset < totalSize && conn.bufferSize <= 512 * 1024) {
+                    if (offset < totalSize) {
                         const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
                         offset += CHUNK_SIZE;
-                        const progresoReal = Math.min((offset / totalSize) * 100, 100);
-
-                        const bufferCargado = await fragmentoBlob.arrayBuffer();
-
-                        conn.send({
-                            id: payload.id,
-                            t: payload.t,
-                            d: payload.d,
-                            name: payload.name,
-                            type: payload.type,
-                            size: payload.size,
-                            chunk: bufferCargado, 
-                            progress: progresoReal
-                        });
-                    }
-
-                    if (offset >= totalSize) {
+                        reader.readAsArrayBuffer(fragmentoBlob);
+                    } else {
                         conn.send({ 
                             eof: true,
                             t: payload.t,
@@ -476,12 +464,28 @@ function inicializarTransmisionP2P(fileId, payload) {
                             type: payload.type,
                             size: payload.size
                         });
-                    } else {
-                        setTimeout(enviarSiguienteFlujo, 0);
                     }
                 }
 
-                await enviarSiguienteFlujo();
+                reader.onload = function(e) {
+                    const progresoReal = Math.min((offset / totalSize) * 100, 100);
+                    conn.send({
+                        id: payload.id,
+                        t: payload.t,
+                        d: payload.d,
+                        name: payload.name,
+                        type: payload.type,
+                        size: payload.size,
+                        chunk: e.target.result, 
+                        progress: progresoReal
+                    });
+                    
+                    // Pipeline Directo: Lee inmediatamente el siguiente bloque mientras se transmite el actual
+                    leerSiguienteBloque();
+                };
+
+                // Lanzar la lectura asíncrona paralela
+                leerSiguienteBloque();
             }
         });
     });
@@ -489,8 +493,7 @@ function inicializarTransmisionP2P(fileId, payload) {
 
 function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
-    // Se ha cambiado temporalmente el texto base de carga para indicar conexión inicial
-    if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">Estableciendo conexión P2P directa...</p>`;
+    if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">Conectando al túnel directo P2P...</p>`;
     
     if (peerInstance) peerInstance.destroy();
     peerInstance = new Peer(); 
@@ -499,7 +502,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId, { 
-            reliable: true,
+            reliable: false, // Optimización crítica: false para descargas masivas por fragmentos ordenados
             ordered: true 
         });
         
@@ -519,23 +522,18 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                         type: data.type, 
                         size: data.size 
                     };
-                    // StreamSaver inicializa la descarga en disco tan pronto como se conocen los metadatos
                     const fileStream = streamSaver.createWriteStream(data.name);
                     currentFileWriter = fileStream.getWriter();
                 }
                 
-                // Drenaje directo a disco
                 if (currentFileWriter) {
                     await currentFileWriter.write(new Uint8Array(data.chunk));
                 }
                 
                 if (loader) {
-                    // CORRECCIÓN PROTECTORA: Si el progreso es indefinido o nulo, fuerza un 0 numérico limpio
                     const progresoCalculado = (data.progress !== undefined && data.progress !== null) ? Math.floor(data.progress) : 0;
-                    
-                    // MEJORADA UI: Evitamos el congelamiento visual mostrando un estado de preparación si es estrictamente 0%
                     if (progresoCalculado === 0) {
-                        loader.innerText = "Preparando transferencia directa y disco local...";
+                        loader.innerText = "Abriendo flujo seguro en disco...";
                     } else {
                         loader.innerText = `Descargando archivo: ${progresoCalculado}%`;
                     }
@@ -635,7 +633,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         URL.revokeObjectURL(objetoUrlActivo);
     }
     objetoUrlActivo = URL.createObjectURL(data.blob);
-    const urlObjeto = objetoUrlActivo;
 
     if (!contentDiv) return;
 
