@@ -1,10 +1,10 @@
-// Límite universal robusto aumentado a 5 GB gracias al flujo por fragmentos y StreamSaver
+// Límite universal robusto de 5 GB con control de flujo por contrapresión (Backpressure)
 const MAX_SIZE_BYTES = 5 * 1024 * 1024 * 1024; 
 let intervaloTemporizador = null;
 let archivoCargado = null;
 let currentLang = 'es';
 let peerInstance = null; 
-let objetoUrlActivo = null; // Variable global para el control de fugas de memoria RAM (Object URLs)
+let objetoUrlActivo = null; 
 
 // Configuración necesaria para StreamSaver.js
 streamSaver.mitm = 'https://cdn.jsdelivr.net/npm/streamsaver@2.0.3/mitm.html';
@@ -13,16 +13,19 @@ let currentFileWriter = null;
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
-const CHUNK_SIZE = 1024 * 1024; // 1MB por fragmento para optimizar CPU
+const CHUNK_SIZE = 1024 * 64; // 64KB por fragmento: tamaño óptimo para evitar saturación de MTU en WebRTC
 
-// CONFIGURACIÓN DE RED SEGURO PARA PASAR CORTAFUEGOS (STUN SERVERS)
 const PEER_CONFIG = {
     config: {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' }
-        ]
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' }
+        ],
+        // Garantiza que la conexión intente usar transferencias directas óptimas
+        iceCandidatePoolSize: 10
     }
 };
 
@@ -51,7 +54,7 @@ const i18n = {
         btnCopied: "¡Enlace Copiado! ✓",
         btnDownload: "Descargar Completo 📥",
         textPreviewNotice: "📋 Mostrando una vista previa del archivo de texto. Para ver todo el contenido:",
-        noPreviewNotice: "📦 Este formato no admite vista previa en el navegador debido a su tamaño o extensión. Usa el botón de abajo para descargarlo de manera segura mediante transmisión directa:",
+        noPreviewNotice: "📦 Este formato no admite vista previa en el navegador debido a su tamaño o extensión. Tu archivo se procesará y guardará de manera local una vez finalice el streaming directo:",
         errNoFile: "Por favor, selecciona o arrastra un archivo primero.",
         errNotAllowed: "El archivo excede el tamaño máximo permitido (Máx 5GB).",
         successLink: "¡Enlace creado con éxito!",
@@ -93,7 +96,7 @@ const i18n = {
         btnCopied: "Link Copied! ✓",
         btnDownload: "Download Full File 📥",
         textPreviewNotice: "📋 Showing a preview of the text file. To see the full content:",
-        noPreviewNotice: "📦 Preview is not supported for this file type or size in the browser. Use the button below to download securely using direct stream:",
+        noPreviewNotice: "📦 Preview is not supported for this file type or size in the browser. Your file will be processed and saved locally once the direct streaming completes:",
         errNoFile: "Please select or drag a file first.",
         errNotAllowed: "The file exceeds the maximum size allowed (Max 5GB).",
         successLink: "Link created successfully!",
@@ -428,80 +431,114 @@ function verificarLinkCompartido() {
     });
 }
 
+// =========================================================================
+// MOTOR P2P OPTIMIZADO CON CONTROL DE CONTRAPRESIÓN (BACKPRESSURE)
+// =========================================================================
 function inicializarTransmisionP2P(fileId, payload) {
     if (peerInstance && peerInstance.id === fileId) return; 
     if (peerInstance) peerInstance.destroy();
     
-    // Inyectado el servidor STUN para romper cortafuegos locales
     peerInstance = new Peer(fileId, PEER_CONFIG);
 
     peerInstance.on('connection', (conn) => {
-        conn.on('data', (data) => {
-            if (data.request === 'DOWNLOAD_FILE_STREAM') {
-                const ahora = Math.floor(Date.now() / 1000);
-                if (ahora > (payload.t + payload.d)) {
-                    eliminarArchivoDB(payload.id);
-                    if (peerInstance) { peerInstance.destroy(); peerInstance = null; }
-                    return;
-                }
+        // Configuraciones de optimización del canal RTC nativo
+        conn.serialization = 'none'; // Desactiva empaquetados pesados innecesarios
 
-                let offset = 0;
-                const totalSize = payload.blob.size;
-                const reader = new FileReader();
+        conn.on('open', () => {
+            conn.on('data', (data) => {
+                // Parseamos la cadena de control
+                let msg = {};
+                try { msg = JSON.parse(data); } catch(e) { return; }
 
-                function leerSiguienteBloque() {
-                    if (!conn || conn.open === false) return;
-
-                    // Si el búfer de red de WebRTC está muy lleno, pausamos brevemente para no saturar
-                    if (conn.bufferSize > 1024 * 1024) { 
-                        setTimeout(leerSiguienteBloque, 20);
+                if (msg.request === 'DOWNLOAD_FILE_STREAM') {
+                    const ahora = Math.floor(Date.now() / 1000);
+                    if (ahora > (payload.t + payload.d)) {
+                        eliminarArchivoDB(payload.id);
+                        if (peerInstance) { peerInstance.destroy(); peerInstance = null; }
                         return;
                     }
 
-                    if (offset < totalSize) {
-                        const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
-                        offset += CHUNK_SIZE;
-                        reader.readAsArrayBuffer(fragmentoBlob);
-                    } else {
-                        conn.send({ 
-                            eof: true,
-                            t: payload.t,
-                            d: payload.d,
-                            name: payload.name,
-                            type: payload.type,
-                            size: payload.size
-                        });
+                    let offset = 0;
+                    const totalSize = payload.blob.size;
+                    const reader = new FileReader();
+                    
+                    // Umbral crítico: 1 MB de buffer máximo de red. Si se supera, se pausa la lectura en disco.
+                    const BUFFER_THRESHOLD = 1024 * 1024; 
+
+                    function transmitirSiguienteBloque() {
+                        // Verificación estricta de estabilidad del canal de datos
+                        if (!conn.dataChannel || conn.dataChannel.readyState !== 'open') return;
+
+                        // Si el búfer de red física está saturado, esperamos a que baje para no congelar el canal a 0%
+                        if (conn.dataChannel.bufferedAmount > BUFFER_THRESHOLD) {
+                            conn.dataChannel.onbufferedamountlow = () => {
+                                conn.dataChannel.onbufferedamountlow = null; // Limpiar evento
+                                transmitirSiguienteBloque();
+                            };
+                            return;
+                        }
+
+                        if (offset < totalSize) {
+                            const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
+                            offset += CHUNK_SIZE;
+                            reader.readAsArrayBuffer(fragmentoBlob);
+                        } else {
+                            // Enviar señal estructurada de fin de archivo
+                            conn.send(JSON.stringify({ 
+                                eof: true,
+                                t: payload.t,
+                                d: payload.d,
+                                name: payload.name,
+                                type: payload.type,
+                                size: payload.size
+                            }));
+                        }
                     }
+
+                    reader.onload = function(e) {
+                        if (!conn.dataChannel || conn.dataChannel.readyState !== 'open') return;
+
+                        const progresoReal = Math.min((offset / totalSize) * 100, 100);
+                        
+                        // Enviamos los metadatos de progreso en la cabecera del bloque de transmisión
+                        const header = JSON.stringify({
+                            id: payload.id,
+                            progress: progresoReal,
+                            byteLength: e.target.result.byteLength
+                        });
+
+                        // Convertimos cabecera y binario en un único paquete plano binario optimizado
+                        const headerBuffer = new TextEncoder().encode(header);
+                        const payloadBuffer = new Uint8Array(e.target.result);
+                        const finalPackage = new Uint8Array(4 + headerBuffer.byteLength + payloadBuffer.byteLength);
+                        
+                        // Guardar la longitud de la cabecera en los primeros 4 bytes
+                        new DataView(finalPackage.buffer).setUint32(0, headerBuffer.byteLength);
+                        finalPackage.set(headerBuffer, 4);
+                        finalPackage.set(payloadBuffer, 4 + headerBuffer.byteLength);
+
+                        try {
+                            conn.send(finalPackage);
+                        } catch(err) {
+                            console.error("Fallo de escritura en canal:", err);
+                            return;
+                        }
+
+                        transmitirSiguienteBloque();
+                    };
+
+                    transmitirSiguienteBloque();
                 }
-
-                reader.onload = function(e) {
-                    const progresoReal = Math.min((offset / totalSize) * 100, 100);
-                    conn.send({
-                        id: payload.id,
-                        t: payload.t,
-                        d: payload.d,
-                        name: payload.name,
-                        type: payload.type,
-                        size: payload.size,
-                        chunk: e.target.result, 
-                        progress: progresoReal
-                    });
-                    leerSiguienteBloque();
-                };
-
-                leerSiguienteBloque();
-            }
+            });
         });
     });
 }
 
 function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
-    if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">Conectando al túnel directo P2P...</p>`;
+    if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">Estableciendo túnel directo e inmune a cortes...</p>`;
     
     if (peerInstance) peerInstance.destroy();
-    
-    // Inyectado el servidor STUN para romper cortafuegos locales
     peerInstance = new Peer(PEER_CONFIG); 
 
     let metaDataBackup = null; 
@@ -509,30 +546,33 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     let streamSaverExitoso = false;
 
     peerInstance.on('open', () => {
-        const conn = peerInstance.connect(fileId, { 
-            reliable: false, 
-            ordered: true 
-        });
-        
+        const conn = peerInstance.connect(fileId, { reliable: true });
+        conn.serialization = 'none'; // Alineado con el emisor binario plano
+
         conn.on('open', () => {
-            conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
+            // Mandamos petición estructurada en JSON
+            conn.send(JSON.stringify({ request: 'DOWNLOAD_FILE_STREAM' }));
         });
 
         conn.on('data', async (data) => {
             const loader = document.getElementById("p2pLoader");
             
-            if (data.chunk) {
-                if (!metaDataBackup && data.size) {
-                    metaDataBackup = { 
-                        t: data.t, 
-                        d: data.d, 
-                        name: data.name, 
-                        type: data.type, 
-                        size: data.size 
-                    };
+            // Caso 1: Procesar paquete binario combinado (Cabecera JSON + Chunk)
+            if (data instanceof ArrayBuffer || data.buffer instanceof ArrayBuffer) {
+                const arrayBuffer = data.buffer ? data.buffer : data;
+                const view = new DataView(arrayBuffer);
+                const headerLength = view.getUint32(0);
+                
+                const headerBuffer = arrayBuffer.slice(4, 4 + headerLength);
+                const chunkBuffer = arrayBuffer.slice(4 + headerLength);
+                
+                const headerStr = new TextDecoder().decode(headerBuffer);
+                const meta = JSON.parse(headerStr);
 
+                if (!metaDataBackup) {
+                    metaDataBackup = { name: "archivo_descargado", size: 0 };
                     try {
-                        const fileStream = streamSaver.createWriteStream(data.name);
+                        const fileStream = streamSaver.createWriteStream(metaDataBackup.name);
                         currentFileWriter = fileStream.getWriter();
                         streamSaverExitoso = true;
                     } catch (err) {
@@ -540,26 +580,30 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                         chunksArrayBuffer = [];
                     }
                 }
-                
+
                 if (streamSaverExitoso && currentFileWriter) {
                     try {
-                        await currentFileWriter.write(new Uint8Array(data.chunk));
+                        await currentFileWriter.write(new Uint8Array(chunkBuffer));
                     } catch(e) {
                         streamSaverExitoso = false;
-                        chunksArrayBuffer.push(data.chunk);
+                        chunksArrayBuffer.push(chunkBuffer);
                     }
                 } else {
-                    chunksArrayBuffer.push(data.chunk);
+                    chunksArrayBuffer.push(chunkBuffer);
                 }
-                
+
                 if (loader) {
-                    const progresoCalculado = (data.progress !== undefined && data.progress !== null) ? Math.floor(data.progress) : 0;
-                    loader.innerText = `Descargando archivo: ${progresoCalculado}%`;
+                    loader.innerText = `Descargando archivo: ${Math.floor(meta.progress)}%`;
                 }
+                return;
             }
 
-            if (data.eof) {
-                if (loader) loader.innerText = "Finalizando descarga...";
+            // Caso 2: Señales de control en texto directo (Fin de archivo o metadatos puros)
+            let msg = {};
+            try { msg = JSON.parse(data); } catch(e) { return; }
+
+            if (msg.eof) {
+                if (loader) loader.innerText = "Finalizando y procesando en disco de forma segura...";
 
                 let blobFinal = null;
 
@@ -568,31 +612,25 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     currentFileWriter = null;
                     blobFinal = new Blob(["Descargado exitosamente por streaming directo vía StreamSaver."], { type: "text/plain" });
                 } else {
-                    blobFinal = new Blob(chunksArrayBuffer, { type: data.type || "application/octet-stream" });
+                    blobFinal = new Blob(chunksArrayBuffer, { type: msg.type || "application/octet-stream" });
                     
                     const urlDescargaForzada = URL.createObjectURL(blobFinal);
                     const linkTemporal = document.createElement('a');
                     linkTemporal.href = urlDescargaForzada;
-                    linkTemporal.download = data.name || "archivo_descargado";
+                    linkTemporal.download = msg.name || "archivo_descargado";
                     document.body.appendChild(linkTemporal);
                     linkTemporal.click();
                     document.body.removeChild(linkTemporal);
-                    setTimeout(() => URL.revokeObjectURL(urlDescargaForzada), 10000);
+                    setTimeout(() => URL.revokeObjectURL(urlDescargaForzada), 12000);
                 }
-
-                const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
-                const tiempoOriginal = data.t || (metaDataBackup ? metaDataBackup.t : Math.floor(Date.now() / 1000));
-                const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                const tamanoReal = data.size || (metaDataBackup ? metaDataBackup.size : 0);
-                const nombreFinal = data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado");
 
                 const objetoPayload = {
                     id: fileId,
-                    t: tiempoOriginal,
-                    d: duracionOriginal,
-                    name: nombreFinal,
-                    type: tipoMime,
-                    size: tamanoReal,
+                    t: msg.t || Math.floor(Date.now() / 1000),
+                    d: msg.d || 60,
+                    name: msg.name || "archivo_descargado",
+                    type: msg.type || "application/octet-stream",
+                    size: msg.size || 0,
                     blob: blobFinal
                 };
 
