@@ -15,17 +15,15 @@ const DB_VERSION = 1;
 const STORE_NAME = "archivos";
 const CHUNK_SIZE = 1024 * 64; // 64KB por fragmento: tamaño óptimo para evitar saturación de MTU en WebRTC
 
+// CONFIGURACIÓN DE RED EQUILIBRADA: Rápida, privada y libre de advertencias
 const PEER_CONFIG = {
     config: {
         iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' }
+            { urls: 'stun:stun.services.mozilla.com' }, // Principal: Servidor neutral y privado de Mozilla
+            { urls: 'stun:stun1.l.google.com:19302' }    // Respaldo: Servidor global de alta disponibilidad
         ],
-        // Garantiza que la conexión intente usar transferencias directas óptimas
-        iceCandidatePoolSize: 10
+        // Reducido a 4 para acelerar drásticamente el descubrimiento de rutas sin congelar el navegador
+        iceCandidatePoolSize: 4
     }
 };
 
