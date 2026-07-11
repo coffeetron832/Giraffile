@@ -1,16 +1,10 @@
-// Límite universal robusto ajustado a 3.5 GB para maximizar la fluidez del navegador
-const MAX_SIZE_BYTES = 3.5 * 1024 * 1024 * 1024; 
+// Límite universal robusto (1.5 GB) soportado gracias al flujo por fragmentos (Chunks)
+const MAX_SIZE_BYTES = 1500 * 1024 * 1024; 
 let intervaloTemporizador = null;
 let archivoCargado = null;
 let currentLang = 'es';
 let peerInstance = null; 
 let objetoUrlActivo = null; // Variable global para el control de fugas de memoria RAM (Object URLs)
-
-// Configuración de endpoint e infraestructura necesaria para StreamSaver.js
-if (typeof streamSaver !== 'undefined') {
-    streamSaver.mitm = 'https://cdn.jsdelivr.net/npm/streamsaver@2.0.3/mitm.html';
-}
-let currentFileWriter = null;
 
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
@@ -30,7 +24,7 @@ const i18n = {
         use2: "<strong>Cualquier Formato:</strong> Envía imágenes, PDFs, archivos comprimidos (ZIP/RAR), audios o videos.",
         use3: "<strong>Privacidad total:</strong> Envío seguro de archivos sin dejar rastro en servidores externos.",
         prepare: "Prepara tu archivo para enviar",
-        dropLabel: "Arrastra cualquier archivo o haz clic abajo (Máx 3.5GB):",
+        dropLabel: "Arrastra cualquier archivo o haz clic abajo (Máx 1.5GB):",
         dropPrompt: "Arrastra un archivo aquí o haz clic para buscar",
         dropSelected: "Archivo seleccionado:",
         expiryLabel: "Tiempo de Caducidad:",
@@ -42,14 +36,14 @@ const i18n = {
         btnCopied: "¡Enlace Copiado! ✓",
         btnDownload: "Descargar Completo 📥",
         textPreviewNotice: "📋 Mostrando una vista previa del archivo de texto. Para ver todo el contenido:",
-        noPreviewNotice: "📦 Este formato no admite vista previa en el navegador debido a su tamaño o extensión. Usa el botón de abajo para descargarlo de manera segura mediante transmisión directa:",
+        noPreviewNotice: "📦 Este formato no admite vista previa en el navegador o supera el tamaño de renderizado directo. Usa el botón de abajo para descargarlo de manera segura:",
         errNoFile: "Por favor, selecciona o arrastra un archivo primero.",
-        errNotAllowed: "El archivo excede el tamaño máximo permitido (Máx 3.5GB).",
+        errNotAllowed: "El archivo excede el tamaño máximo permitido (Máx 1.5GB).",
         successLink: "¡Enlace creado con éxito!",
         previewTitle: "Echa un vistazo a tu archivo",
         timeRemaining: "Tiempo restante de visualización:",
         fileLabel: "Archivo:",
-        errNoExist: "El archivo no existe, el emisor se desconectó o ya ha sido eliminado por seguridad.",
+        errNoExist: "El archivo no existe o ya ha sido eliminado por seguridad.",
         errExpired: "¡Este enlace ha caducado y el contenido fue destruido permanentemente!",
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
         footer: "Giraffile v1.0.1 | © 2026 jahp. Todos los derechos reservados.",
@@ -75,7 +69,7 @@ const i18n = {
         use2: "<strong>Any Format:</strong> Send images, PDFs, compressed archives (ZIP/RAR), audios, or videos.",
         use3: "<strong>Total Privacy:</strong> Send files without leaving a trace on external servers.",
         prepare: "Prepare your file to send",
-        dropLabel: "Drag any file or click below (Max 3.5GB):",
+        dropLabel: "Drag any file or click below (Max 1.5GB):",
         dropPrompt: "Drag a file here or click to browse",
         dropSelected: "Selected file:",
         expiryLabel: "Expiration Time:",
@@ -87,14 +81,14 @@ const i18n = {
         btnCopied: "Link Copied! ✓",
         btnDownload: "Download Full File 📥",
         textPreviewNotice: "📋 Showing a preview of the text file. To see the full content:",
-        noPreviewNotice: "📦 Preview is not supported for this file type or size in the browser. Use the button below to download securely using direct stream:",
+        noPreviewNotice: "📦 Preview is not supported for this file type or size in the browser. Use the button below to download securely:",
         errNoFile: "Please select or drag a file first.",
-        errNotAllowed: "The file exceeds the maximum size allowed (Max 3.5GB).",
+        errNotAllowed: "The file exceeds the maximum size allowed (Max 1.5GB).",
         successLink: "Link created successfully!",
         previewTitle: "Take a look at your file",
         timeRemaining: "Remaining viewing time:",
         fileLabel: "File:",
-        errNoExist: "The file does not exist, the sender went offline, or it has already been deleted for security.",
+        errNoExist: "The file does not exist or has already been deleted for security.",
         errExpired: "This link has expired and the content was permanently destroyed!",
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
         footer: "Giraffile v1.0.1 | © 2026 jahp. All rights reserved.",
@@ -110,6 +104,7 @@ const i18n = {
     }
 };
 
+// FUNCIÓN AUXILIAR CRÍTICA: Sanitiza cadenas de texto para prevenir XSS
 function escaparHTML(cadena) {
     if (!cadena) return '';
     return cadena.toString()
@@ -120,6 +115,7 @@ function escaparHTML(cadena) {
         .replace(/'/g, "&#039;");
 }
 
+// RECOLECTOR DE BASURA (Garbage Collector): Limpia IndexedDB al cargar la app
 function ejecutarLimpiezaGarbageCollector() {
     abrirDB(function(db) {
         const ahora = Math.floor(Date.now() / 1000);
@@ -231,7 +227,7 @@ window.onload = function() {
     document.documentElement.setAttribute('data-theme', savedTheme);
     
     aplicarTraduccion();
-    ejecutarLimpiezaGarbageCollector(); 
+    ejecutarLimpiezaGarbageCollector(); // Arranca el recolector de basura de almacenamiento
     verificarLinkCompartido();
 };
 
@@ -266,6 +262,7 @@ function generarLink() {
     const outputDiv = document.getElementById('output');
     if (!outputDiv) return;
 
+    // 1. Inyectar dinámicamente la interfaz visual de la barra de progreso
     outputDiv.innerHTML = `
         <div id="localPrepContainer" style="margin-top: 15px; background: var(--timer-bg); padding: 15px; border-radius: 4px;">
             <p id="localPrepText" style="font-weight: bold; font-size: 0.9em; margin-bottom: 8px; color: var(--text-color);">${escaparHTML(t.descifrando)} (0%)</p>
@@ -279,13 +276,14 @@ function generarLink() {
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
     const duracionSegundos = parseInt(document.getElementById('expiry').value); 
     
+    // 2. Fragmentación visual del hilo de renderizado para evitar bloqueos
     let progreso = 0;
     const incremento = archivoCargado.size > 100 * 1024 * 1024 ? 5 : 20;
 
     const iteraProgreso = setInterval(() => {
         progreso += incremento;
         if (progreso > 90) {
-            clearInterval(iteraProgreso); 
+            clearInterval(iteraProgreso); // Mantiene en 90% hasta completar la confirmación real en disco
         } else {
             if (prepBar) prepBar.value = progreso;
             if (prepText) prepText.innerText = `${t.descifrando} (${progreso}%)`;
@@ -302,6 +300,7 @@ function generarLink() {
         blob: archivoCargado 
     };
     
+    // 3. Persistencia asíncrona segura en IndexedDB
     abrirDB(function(db) {
         const transaction = db.transaction([STORE_NAME], "readwrite");
         transaction.objectStore(STORE_NAME).put(payload);
@@ -311,6 +310,7 @@ function generarLink() {
             if (prepBar) prepBar.value = 100;
             if (prepText) prepText.innerText = `${t.descifrando} (100%)`;
 
+            // Transición suave de pintado final
             setTimeout(() => {
                 const origen = window.location.origin === "null" ? "file://" : window.location.origin;
                 const link = origen + window.location.pathname + "#" + idUnico;
@@ -321,6 +321,7 @@ function generarLink() {
                     <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${escaparHTML(t.btnCopy)}</button>
                 `;
 
+                // QR CODE: render the shareable link as a scannable QR
                 if (typeof QRCode !== 'undefined') {
                     const qrWrapper = document.createElement('div');
                     qrWrapper.id = 'qrWrapper';
@@ -340,6 +341,7 @@ function generarLink() {
                         colorLight: rootStyle.getPropertyValue('--bg-color').trim()
                     });
 
+                    // qrcodejs injects its own canvas + img, center both
                     const qrCanvas = qrWrapper.querySelector('canvas');
                     if (qrCanvas) qrCanvas.style.cssText = 'display: block; margin: 0 auto;';
                     const qrImg = qrWrapper.querySelector('img');
@@ -350,8 +352,17 @@ function generarLink() {
 
                 inicializarTransmisionP2P(idUnico, payload);
 
+                // AUTODESTRUCCIÓN LOCAL: garantiza que el archivo se borre al
+                // expirar aunque la pestaña siga abierta. Antes, del lado del
+                // emisor, el archivo solo se limpiaba al recargar la página
+                // (vía el Garbage Collector en window.onload), así que un blob
+                // caducado podía sobrevivir en IndexedDB hasta la próxima visita.
+                // Al vencer el tiempo también se corta la transmisión P2P para
+                // no seguir sirviendo un archivo ya destruido.
                 setTimeout(() => {
                     eliminarArchivoDB(idUnico);
+                    // Solo cortar el P2P si aún estamos sirviendo ESTE archivo
+                    // (generar un nuevo link reemplaza peerInstance por otro).
                     if (peerInstance && peerInstance.id === idUnico) {
                         peerInstance.destroy();
                         peerInstance = null;
@@ -425,7 +436,7 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR P2P OPTIMIZADO PARA ARCHIVOS DE HASTA 3.5GB (MÁXIMA EFICIENCIA RAM)
+// MOTOR P2P MÁXIMA OPTIMIZACIÓN Y CONTROL DE EXCEPCIONES
 // =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -436,6 +447,14 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance.on('connection', (conn) => {
         conn.on('data', async (data) => {
             if (data.request === 'DOWNLOAD_FILE_STREAM') {
+                // GUARD DE EXPIRACIÓN FAIL-SAFE: chequea el reloj real (Date.now)
+                // en el momento de servir, no un temporizador. Los navegadores
+                // congelan/retrasan los setTimeout cuando la pestaña está en
+                // segundo plano (sobre todo en móvil), así que el borrado
+                // programado en generarLink() puede no haber corrido todavía.
+                // Sin este chequeo, un emisor con la pestaña de fondo podría
+                // servir por P2P un archivo YA vencido. Acá no dependemos del
+                // timer: si expiró, se borra y no se transmite un solo byte.
                 const ahora = Math.floor(Date.now() / 1000);
                 if (ahora > (payload.t + payload.d)) {
                     eliminarArchivoDB(payload.id);
@@ -493,7 +512,6 @@ function inicializarTransmisionP2P(fileId, payload) {
     });
 }
 
-// OPTIMIZACIÓN EMBLEMÁTICA: Escritura inmediata en disco duro vía StreamSaver sin colapsar RAM
 function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
     if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">${escaparHTML(t.p2pConnecting)} (0%)</p>`;
@@ -501,6 +519,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     if (peerInstance) peerInstance.destroy();
     peerInstance = new Peer(); 
 
+    let arraysDeFragmentos = [];
     let metaDataBackup = null; 
 
     peerInstance.on('open', () => {
@@ -513,11 +532,11 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
         });
 
-        conn.on('data', async (data) => {
+        conn.on('data', (data) => {
             const loader = document.getElementById("p2pLoader");
             
             if (data.chunk) {
-                // Configurar StreamSaver en la primera llegada de datos sin guardar arrays intermedios en RAM
+                arraysDeFragmentos.push(data.chunk);
                 if (!metaDataBackup && data.size) {
                     metaDataBackup = { 
                         t: data.t, 
@@ -526,46 +545,29 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                         type: data.type, 
                         size: data.size 
                     };
-                    try {
-                        const fileStream = streamSaver.createWriteStream(data.name);
-                        currentFileWriter = fileStream.getWriter();
-                    } catch (err) {
-                        console.error("StreamSaver falló:", err);
-                    }
                 }
-                
-                if (currentFileWriter) {
-                    await currentFileWriter.write(new Uint8Array(data.chunk));
-                }
-                
-                if (loader) {
-                    loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
-                }
+                if (loader) loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
             }
 
             if (data.eof) {
                 if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
 
-                if (currentFileWriter) {
-                    await currentFileWriter.close();
-                    currentFileWriter = null;
-                }
-
                 const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
+                const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
+                arraysDeFragmentos = []; 
+
                 const tiempoOriginal = data.t || (metaDataBackup ? metaDataBackup.t : Math.floor(Date.now() / 1000));
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                const tamanoReal = data.size || (metaDataBackup ? metaDataBackup.size : 0);
-                const nombreFinal = data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado");
+                const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
-                // Creamos un Payload marcador para IndexedDB que sirva para renderizar la UI temporalmente sin guardar los gigabytes reales
                 const objetoPayload = {
                     id: fileId,
                     t: tiempoOriginal,
                     d: duracionOriginal,
-                    name: nombreFinal,
+                    name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
                     type: tipoMime,
                     size: tamanoReal,
-                    blob: new Blob(["Descargado exitosamente por streaming directo vía StreamSaver."], { type: "text/plain" })
+                    blob: blobReconstruido 
                 };
 
                 abrirDB(function(db) {
@@ -583,16 +585,14 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         });
 
         conn.on('close', () => {
-            if (!metaDataBackup) {
+            if (arraysDeFragmentos.length > 0 && !metaDataBackup) {
                 if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
             }
         });
     });
 
     peerInstance.on('error', () => {
-        if (contentDiv) {
-            contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
-        }
+        if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
     });
 }
 
@@ -633,6 +633,7 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         if (timeString) timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
     }, 1000);
 
+    // Liberar la URL de objeto anterior para vaciar la memoria RAM
     if (objetoUrlActivo) {
         URL.revokeObjectURL(objetoUrlActivo);
     }
@@ -672,13 +673,12 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         };
         lectorTexto.readAsText(fragmentoSeguro);
     } else {
-        // Interfaz especial de confirmación para archivos que se descargaron fluidamente en cascada (Streaming)
         contentDiv.innerHTML = `
             <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
                 <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${escaparHTML(t.noPreviewNotice)}</p>
                 <strong style="word-break: break-all; font-size: 1.1em; display: block; color: var(--text-color);">${escaparHTML(data.name)}</strong>
             </div>
-            <div style="color: #28a745; font-weight: bold; margin-bottom: 10px; text-align: center;">✓ Archivo descargado y procesado de forma directa en tu sistema.</div>
+            <a href="${urlObjeto}" download="${escaparHTML(data.name)}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block;">${escaparHTML(t.btnDownload)}</a>
         `;
     }
 }
@@ -712,6 +712,7 @@ function cerrarDisclaimer() {
     if (modal) modal.style.display = 'none';
 }
 
+// Cerrar si el usuario hace clic fuera de la caja blanca del contenido
 window.addEventListener('click', (e) => {
     const modal = document.getElementById('modalDisclaimer');
     if (e.target === modal) cerrarDisclaimer();
