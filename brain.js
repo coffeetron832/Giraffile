@@ -13,7 +13,7 @@ let currentFileWriter = null;
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
-const CHUNK_SIZE = 1024 * 1024; // OPTIMIZACIÓN: Aumentado a 1MB para reducir drásticamente los ciclos de CPU en archivos grandes
+const CHUNK_SIZE = 1024 * 1024; // 1MB por fragmento para optimizar CPU
 
 const i18n = {
     es: {
@@ -417,10 +417,6 @@ function verificarLinkCompartido() {
     });
 }
 
-// =========================================================================
-// MOTOR ULTRA OPTIMIZADO CON FILEREADER ASÍNCRONO EN PARALELO
-// =========================================================================
-
 function inicializarTransmisionP2P(fileId, payload) {
     if (peerInstance && peerInstance.id === fileId) return; 
     if (peerInstance) peerInstance.destroy();
@@ -441,13 +437,11 @@ function inicializarTransmisionP2P(fileId, payload) {
                 const totalSize = payload.blob.size;
                 const reader = new FileReader();
 
-                // OPTIMIZACIÓN EXTREMA: Flujo basado en eventos. Cero bloqueos de CPU.
                 function leerSiguienteBloque() {
                     if (!conn || conn.open === false) return;
 
-                    // Si el búfer de WebRTC está muy lleno, pausamos unos milisegundos para evitar pérdidas
                     if (conn.bufferSize > 1024 * 1024) { 
-                        setTimeout(leerSiguienteBloque, 20);
+                        setTimeout(leerSiguienteBloque, 25);
                         return;
                     }
 
@@ -479,17 +473,18 @@ function inicializarTransmisionP2P(fileId, payload) {
                         chunk: e.target.result, 
                         progress: progresoReal
                     });
-                    
-                    // Pipeline Directo: Lee inmediatamente el siguiente bloque mientras se transmite el actual
                     leerSiguienteBloque();
                 };
 
-                // Lanzar la lectura asíncrona paralela
                 leerSiguienteBloque();
             }
         });
     });
 }
+
+// =========================================================================
+// RECEPCIÓN HÍBRIDA EVITA CONGELAMIENTO EN GIGABYTES
+// =========================================================================
 
 function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
@@ -499,10 +494,12 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     peerInstance = new Peer(); 
 
     let metaDataBackup = null; 
+    let chunksArrayBuffer = []; // Búfer de respaldo si StreamSaver falla en abrirse
+    let streamSaverExitoso = false;
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId, { 
-            reliable: false, // Optimización crítica: false para descargas masivas por fragmentos ordenados
+            reliable: false, 
             ordered: true 
         });
         
@@ -514,6 +511,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             const loader = document.getElementById("p2pLoader");
             
             if (data.chunk) {
+                // Inicialización de Metadatos
                 if (!metaDataBackup && data.size) {
                     metaDataBackup = { 
                         t: data.t, 
@@ -522,30 +520,61 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                         type: data.type, 
                         size: data.size 
                     };
-                    const fileStream = streamSaver.createWriteStream(data.name);
-                    currentFileWriter = fileStream.getWriter();
+
+                    try {
+                        // Intentar inicializar StreamSaver
+                        const fileStream = streamSaver.createWriteStream(data.name);
+                        currentFileWriter = fileStream.getWriter();
+                        streamSaverExitoso = true;
+                    } catch (err) {
+                        // Fallback automático si las políticas de origen bloquean StreamSaver
+                        streamSaverExitoso = false;
+                        chunksArrayBuffer = [];
+                    }
                 }
                 
-                if (currentFileWriter) {
-                    await currentFileWriter.write(new Uint8Array(data.chunk));
+                // Escritura o Almacenamiento según el canal activo
+                if (streamSaverExitoso && currentFileWriter) {
+                    try {
+                        await currentFileWriter.write(new Uint8Array(data.chunk));
+                    } catch(e) {
+                        // Si falla en medio de la transmisión, conmuta al almacenamiento virtual
+                        streamSaverExitoso = false;
+                        chunksArrayBuffer.push(data.chunk);
+                    }
+                } else {
+                    chunksArrayBuffer.push(data.chunk);
                 }
                 
                 if (loader) {
                     const progresoCalculado = (data.progress !== undefined && data.progress !== null) ? Math.floor(data.progress) : 0;
-                    if (progresoCalculado === 0) {
-                        loader.innerText = "Abriendo flujo seguro en disco...";
-                    } else {
-                        loader.innerText = `Descargando archivo: ${progresoCalculado}%`;
-                    }
+                    loader.innerText = `Descargando archivo: ${progresoCalculado}%`;
                 }
             }
 
             if (data.eof) {
-                if (loader) loader.innerText = "Descargando archivo: 100%";
+                if (loader) loader.innerText = "Finalizando descarga...";
 
-                if (currentFileWriter) {
+                let blobFinal = null;
+
+                if (streamSaverExitoso && currentFileWriter) {
                     await currentFileWriter.close();
                     currentFileWriter = null;
+                    // Archivo ya guardado directo en descargas del sistema
+                    blobFinal = new Blob(["Descargado exitosamente por streaming directo vía StreamSaver."], { type: "text/plain" });
+                } else {
+                    // Reconstrucción desde el búfer de contingencia masiva
+                    blobFinal = new Blob(chunksArrayBuffer, { type: data.type || "application/octet-stream" });
+                    
+                    // Disparar descarga nativa forzada al usuario
+                    const urlDescargaForzada = URL.createObjectURL(blobFinal);
+                    const linkTemporal = document.createElement('a');
+                    linkTemporal.href = urlDescargaForzada;
+                    linkTemporal.download = data.name || "archivo_descargado";
+                    document.body.appendChild(linkTemporal);
+                    linkTemporal.click();
+                    document.body.removeChild(linkTemporal);
+                    setTimeout(() => URL.revokeObjectURL(urlDescargaForzada), 10000);
                 }
 
                 const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
@@ -561,7 +590,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     name: nombreFinal,
                     type: tipoMime,
                     size: tamanoReal,
-                    blob: new Blob(["Descargado exitosamente por streaming directo vía StreamSaver."], { type: "text/plain" })
+                    blob: blobFinal
                 };
 
                 abrirDB(function(db) {
@@ -569,7 +598,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     tx.objectStore(STORE_NAME).put(objetoPayload);
                     tx.oncomplete = function() {
                         renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
-                        
                         setTimeout(() => {
                             inicializarTransmisionP2P(fileId, objetoPayload);
                         }, 500);
