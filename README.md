@@ -48,4 +48,24 @@ Need to share files privately and securely? Don't trust the cloud with your data
 Start sharing now: https://giraffile.pages.dev/
 
 ---
+
+## ❤️ Acknowledgements
+
+This project would not have been possible without the ecosystem of open-source tools and the valuable contributions from the community.
+
+### 🛠️ Technologies That Made It Possible
+We are deeply grateful to the creators and maintainers of the key libraries that power the core of the application:
+*   **[PeerJS](https://peerjs.com/):** For brilliantly facilitating direct P2P (*Peer-to-Peer*) connection architecture between browsers without the need for intermediate storage servers.
+*   **[JSZip](https://stuk.github.io/jszip/):** For enabling efficient and transparent real-time multiple file compression directly on the user’s device.
+*   **[QRCode.js](https://davidshimjs.github.io/qrcodejs/):** For the dynamic and clean generation of QR codes to facilitate reception and interoperability with mobile devices.
+
+### Project Contributors
+A very special thank you to the developers who dedicated their time and talent to improving the platform through their *pull requests*:
+
+*   **[@RamVignesh B](https://github.com/ramvignesh-b):** For their valuable contribution to implementing the QR code to improve the tool's usability.
+*   **[@Daniel Angel](https://github.com/danansa86):** For their key contribution to the file transfer workflow. 
+
+Thank you for helping the giraffe continue to protect everyone's privacy! 🦒
+
+---
 *Developed by jahp / coffetron832 | Licensed under MIT.*
