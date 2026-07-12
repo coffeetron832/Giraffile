@@ -340,8 +340,6 @@ function generarLink() {
                         prepText.innerText = `${t.descifrando} (Preparando: ${archivosProcesados + 1}/${coleccionArchivos.length})`;
                     }
                     
-                    // SOLUCCIÓN RADICAL RAM: JSZip nativamente acepta objetos 'Blob' o 'File' directamente 
-                    // sin necesidad de pre-cargar un ArrayBuffer gigante en memoria.
                     zip.file(file.name, file, { binary: true });
                     
                     archivosProcesados++;
@@ -352,8 +350,6 @@ function generarLink() {
                 if (prepText) prepText.innerText = `${t.descifrando} (Procesando empaquetado seguro...)`;
                 await new Promise(r => setTimeout(r, 10));
                 
-                // Forzamos tipo de salida como BLOB nativo directo en lugar de Uint8Array. 
-                // JSZip internamente puede estructurar el blob por partes si no se activa compresión pesada (STORE).
                 blobFinalParaGuardar = await zip.generateAsync({ 
                     type: "blob",
                     compression: "STORE"
@@ -389,6 +385,7 @@ function generarLink() {
             }
         }, 40);
 
+        // Se guarda el timestamp inicial provisional para evitar desajustes
         const payload = {
             id: idUnico,
             t: Math.floor(Date.now() / 1000),
@@ -408,45 +405,53 @@ function generarLink() {
                 if (prepBar) prepBar.value = 100;
                 if (prepText) prepText.innerText = `${t.descifrando} (100%)`;
 
-                setTimeout(() => {
-                    const origen = window.location.origin === "null" ? "file://" : window.location.origin;
-                    const link = origen + window.location.pathname + "#" + idUnico;
-                    
-                    outputDiv.innerHTML = `
-                        <p style="color: green; font-weight: bold; margin-top: 10px;">${escaparHTML(t.successLink)}</p>
-                        <textarea id="copyTarget" readonly onclick="this.select()">${escaparHTML(link)}</textarea>
-                        <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${escaparHTML(t.btnCopy)}</button>
-                    `;
+                // CORRECCIÓN CRÍTICA: Capturamos el tiempo exacto en el que el empaque se completó
+                payload.t = Math.floor(Date.now() / 1000);
+                
+                const txTiempo = db.transaction([STORE_NAME], "readwrite");
+                txTiempo.objectStore(STORE_NAME).put(payload);
 
-                    if (typeof QRCode !== 'undefined') {
-                        const qrWrapper = document.createElement('div');
-                        qrWrapper.id = 'qrWrapper';
-                        qrWrapper.style.cssText = 'margin-top: 14px; text-align: center;';
+                txTiempo.oncomplete = function() {
+                    setTimeout(() => {
+                        const origen = window.location.origin === "null" ? "file://" : window.location.origin;
+                        const link = origen + window.location.pathname + "#" + idUnico;
+                        
+                        outputDiv.innerHTML = `
+                            <p style="color: green; font-weight: bold; margin-top: 10px;">${escaparHTML(t.successLink)}</p>
+                            <textarea id="copyTarget" readonly onclick="this.select()">${escaparHTML(link)}</textarea>
+                            <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${escaparHTML(t.btnCopy)}</button>
+                        `;
 
-                        const qrCaption = document.createElement('p');
-                        qrCaption.style.cssText = 'margin-top: 6px; font-size: 0.8em; color: var(--footer-color);';
-                        qrCaption.innerText = t.qrLabel;
+                        if (typeof QRCode !== 'undefined') {
+                            const qrWrapper = document.createElement('div');
+                            qrWrapper.id = 'qrWrapper';
+                            qrWrapper.style.cssText = 'margin-top: 14px; text-align: center;';
 
-                        outputDiv.appendChild(qrWrapper);
-                        const rootStyle = getComputedStyle(document.documentElement);
-                        new QRCode(qrWrapper, {
-                            text: link,
-                            width: 180,
-                            height: 180,
-                            colorDark: rootStyle.getPropertyValue('--text-color').trim(),
-                            colorLight: rootStyle.getPropertyValue('--bg-color').trim()
-                        });
+                            const qrCaption = document.createElement('p');
+                            qrCaption.style.cssText = 'margin-top: 6px; font-size: 0.8em; color: var(--footer-color);';
+                            qrCaption.innerText = t.qrLabel;
 
-                        const qrCanvas = qrWrapper.querySelector('canvas');
-                        if (qrCanvas) qrCanvas.style.cssText = 'display: block; margin: 0 auto;';
-                        const qrImg = qrWrapper.querySelector('img');
-                        if (qrImg) qrImg.style.cssText = 'display: block; margin: 0 auto;';
+                            outputDiv.appendChild(qrWrapper);
+                            const rootStyle = getComputedStyle(document.documentElement);
+                            new QRCode(qrWrapper, {
+                                text: link,
+                                width: 180,
+                                height: 180,
+                                colorDark: rootStyle.getPropertyValue('--text-color').trim(),
+                                colorLight: rootStyle.getPropertyValue('--bg-color').trim()
+                            });
 
-                        qrWrapper.appendChild(qrCaption);
-                    }
+                            const qrCanvas = qrWrapper.querySelector('canvas');
+                            if (qrCanvas) qrCanvas.style.cssText = 'display: block; margin: 0 auto;';
+                            const qrImg = qrWrapper.querySelector('img');
+                            if (qrImg) qrImg.style.cssText = 'display: block; margin: 0 auto;';
 
-                    inicializarTransmisionP2P(idUnico, payload);
-                }, 200);
+                            qrWrapper.appendChild(qrCaption);
+                        }
+
+                        inicializarTransmisionP2P(idUnico, payload);
+                    }, 200);
+                };
             };
 
             transaction.onerror = function() {
@@ -526,13 +531,6 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance.on('connection', (conn) => {
         conn.on('data', async (data) => {
             if (data.request === 'DOWNLOAD_FILE_STREAM') {
-                const ahora = Math.floor(Date.now() / 1000);
-                if (ahora > (payload.t + payload.d)) {
-                    eliminarArchivoDB(payload.id);
-                    if (peerInstance) { peerInstance.destroy(); peerInstance = null; }
-                    return;
-                }
-
                 let offset = 0;
                 const totalSize = payload.blob.size;
 
@@ -559,14 +557,25 @@ function inicializarTransmisionP2P(fileId, payload) {
                             type: payload.type,
                             size: payload.size,
                             chunk: bufferCargado, 
-                            progress: progresoReal
+                            progress: progresoReal,
+                            enProgresoP2P: true // Bandera que indica que la transferencia está activa
                         });
                     }
 
                     if (offset >= totalSize) {
+                        // CORRECCIÓN CRÍTICA: Se reinicia el contador al segundo exacto de finalización del envío
+                        const tiempoFinDescarga = Math.floor(Date.now() / 1000);
+                        payload.t = tiempoFinDescarga;
+
+                        // Se actualiza el IndexedDB del emisor
+                        abrirDB(function(db) {
+                            const tx = db.transaction([STORE_NAME], "readwrite");
+                            tx.objectStore(STORE_NAME).put(payload);
+                        });
+
                         conn.send({ 
                             eof: true,
-                            t: payload.t,
+                            t: tiempoFinDescarga, // Pasamos el tiempo final limpio al receptor
                             d: payload.d,
                             name: payload.name,
                             type: payload.type,
@@ -638,6 +647,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     };
                 }
 
+                // Congelamos visualmente el render del tiempo enviando la bandera activa
+                renderizarVistaArchivo({ ...metaDataBackup, enProgresoP2P: true }, contentDiv, metaDiv, previewDiv);
+
                 if (loader) {
                     loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
                 }
@@ -674,13 +686,13 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
                 arraysDeFragmentos = []; 
 
-                const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
+                // El receptor inicia su cuenta regresiva usando el 't' actualizado del emisor
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
+                const tamanoReal = blobReconstructed.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
                 const objetoPayload = {
                     id: fileId,
-                    t: tiempoExactoDeDescargaCompleta, 
+                    t: data.t, // Tiempo exacto sincronizado
                     d: duracionOriginal,
                     name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
                     type: tipoMime,
@@ -729,29 +741,38 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
 
     if (intervaloTemporizador) clearInterval(intervaloTemporizador);
     
-    intervaloTemporizador = setInterval(function() {
-        const ahora = Math.floor(Date.now() / 1000);
-        const tiempoTranscurrido = ahora - data.t;
-        const tiempoRestante = data.d - tiempoTranscurrido;
+    // CORRECCIÓN CRÍTICA: Mientras se está transfiriendo, pausamos o fijamos la UI del contador
+    if (data.enProgresoP2P) {
+        if (lifeBar) lifeBar.value = 100;
+        if (timeString) timeString.innerText = "⏳ Descargando P2P...";
+    } else {
+        intervaloTemporizador = setInterval(function() {
+            const ahora = Math.floor(Date.now() / 1000);
+            const tiempoTranscurrido = ahora - data.t;
+            const tiempoRestante = data.d - tiempoTranscurrido;
 
-        if (tiempoRestante <= 0) {
-            clearInterval(intervaloTemporizador);
-            eliminarArchivoDB(data.id);
-            if (objetoUrlActivo) {
-                URL.revokeObjectURL(objetoUrlActivo);
-                objetoUrlActivo = null;
+            if (tiempoRestante <= 0) {
+                clearInterval(intervaloTemporizador);
+                eliminarArchivoDB(data.id);
+                if (objetoUrlActivo) {
+                    URL.revokeObjectURL(objetoUrlActivo);
+                    objetoUrlActivo = null;
+                }
+                if (timerGroup) timerGroup.style.display = "none";
+                if (metaDiv) metaDiv.style.display = "none";
+                if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errTimeOut)}</p>`;
+                return;
             }
-            if (timerGroup) timerGroup.style.display = "none";
-            if (metaDiv) metaDiv.style.display = "none";
-            if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errTimeOut)}</p>`;
-            return;
-        }
 
-        if (lifeBar) lifeBar.value = (tiempoRestante / data.d) * 100;
-        const minutes = Math.floor(tiempoRestante / 60);
-        const segundos = tiempoRestante % 60;
-        if (timeString) timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
-    }, 1000);
+            if (lifeBar) lifeBar.value = (tiempoRestante / data.d) * 100;
+            const minutes = Math.floor(tiempoRestante / 60);
+            const segundos = tiempoRestante % 60;
+            if (timeString) timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+        }, 1000);
+    }
+
+    // El renderizado gráfico del bloque condicional de previsualización no interfiere
+    if (data.enProgresoP2P) return;
 
     if (objetoUrlActivo) {
         URL.revokeObjectURL(objetoUrlActivo);
