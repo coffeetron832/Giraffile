@@ -12,7 +12,7 @@ let coleccionArchivos = [];
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
-const CHUNK_SIZE = 256 * 1024; // Mantenemos tu tamaño de fragmento idóneo y seguro
+const CHUNK_SIZE = 256 * 1024; // Tamaño de fragmento seguro para evitar saturación de buffer
 
 const i18n = {
     es: {
@@ -289,10 +289,10 @@ function manejarSeleccionMultiple(inputOrData) {
         if (barreLimite) barreLimite.style.setProperty("accent-color", "var(--accent-color, #28a745)");
         
         archivoCargado = {
-            name: coleccionArchivos.length === 1 ? coleccionArchivos[0].name : `Giraffile_Package_${Date.now()}.zip`,
+            name: coleccionArchivos.length === 1 ? coleccionArchivos[0].name : `Lote_Giraffile_${Date.now()}.gira`,
             esMultiple: coleccionArchivos.length > 1,
             size: tamañoTotalBytes,
-            type: coleccionArchivos.length === 1 ? coleccionArchivos[0].type : "application/zip"
+            type: coleccionArchivos.length === 1 ? coleccionArchivos[0].type : "application/x-gira-bundle"
         };
         aplicarTraduccion();
     }
@@ -327,84 +327,39 @@ function generarLink() {
     const duracionSegundos = parseInt(document.getElementById('expiry').value); 
 
     setTimeout(async () => {
-        let blobFinalParaGuardar;
-
-        try {
-            if (archivoCargado.esMultiple) {
-                if (prepText) prepText.innerText = `${t.descifrando} (Estructurando metadatos...)`;
-                const zip = new JSZip();
-                
-                let archivosProcesados = 0;
-                for (const file of coleccionArchivos) {
-                    if (prepText) {
-                        prepText.innerText = `${t.descifrando} (Preparando: ${archivosProcesados + 1}/${coleccionArchivos.length})`;
-                    }
-                    
-                    // SOLUCCIÓN RADICAL RAM: JSZip nativamente acepta objetos 'Blob' o 'File' directamente 
-                    // sin necesidad de pre-cargar un ArrayBuffer gigante en memoria.
-                    zip.file(file.name, file, { binary: true });
-                    
-                    archivosProcesados++;
-                    if (prepBar) prepBar.value = Math.min((archivosProcesados / coleccionArchivos.length) * 30, 30);
-                    await new Promise(r => setTimeout(r, 5));
-                }
-                
-                if (prepText) prepText.innerText = `${t.descifrando} (Procesando empaquetado seguro...)`;
-                await new Promise(r => setTimeout(r, 10));
-                
-                // Forzamos tipo de salida como BLOB nativo directo en lugar de Uint8Array. 
-                // JSZip internamente puede estructurar el blob por partes si no se activa compresión pesada (STORE).
-                blobFinalParaGuardar = await zip.generateAsync({ 
-                    type: "blob",
-                    compression: "STORE"
-                }, function updateCallback(metadata) {
-                    if (prepBar) {
-                        let progresoInterno = 30 + Math.floor(metadata.percent * 0.4);
-                        prepBar.value = Math.min(progresoInterno, 70);
-                    }
-                    if (prepText) {
-                        prepText.innerText = `${t.descifrando} (Escribiendo contenedor: ${Math.floor(metadata.percent)}%)`;
-                    }
-                });
-
-            } else {
-                blobFinalParaGuardar = coleccionArchivos[0];
-            }
-        } catch (err) {
-            console.error("Error crítico en el proceso de empaquetado:", err);
-            if (outputDiv) outputDiv.innerHTML = `<p class="error">Error local de memoria al empaquetar lote: ${escaparHTML(err.message)}</p>`;
-            return;
-        }
-
-        let progreso = 70; 
-        const incremento = 3;
-
-        const iteraProgreso = setInterval(() => {
-            progreso += incremento;
-            if (progreso > 97) {
-                clearInterval(iteraProgreso); 
-            } else {
-                if (prepBar) prepBar.value = progreso;
-                if (prepText) prepText.innerText = `${t.descifrando} (${progreso}%)`;
-            }
-        }, 40);
-
+        // SOLUCIÓN DEFINITIVA MEMORIA RAM:
+        // No instanciamos JSZip. No creamos archivos intermedios en el hilo principal.
+        // Guardamos las referencias directas de los archivos seleccionados para ser servidos por demanda.
+        if (prepText) prepText.innerText = `${t.descifrando} (Preparando metadatos...)`;
+        if (prepBar) prepBar.value = 50;
+        
         const payload = {
             id: idUnico,
             t: Math.floor(Date.now() / 1000),
             d: duracionSegundos,
             name: archivoCargado.name,
-            type: archivoCargado.esMultiple ? "application/zip" : blobFinalParaGuardar.type,
-            size: blobFinalParaGuardar.size,
-            blob: blobFinalParaGuardar 
+            type: archivoCargado.type,
+            size: archivoCargado.size,
+            esMultiple: archivoCargado.esMultiple,
+            // Guardamos referencias directas de los objetos File del DOM de forma local temporal
+            archivosReferenciados: coleccionArchivos.map(f => ({ name: f.name, size: f.size, type: f.type }))
         };
         
         abrirDB(function(db) {
             const transaction = db.transaction([STORE_NAME], "readwrite");
+            
+            // Para la persistencia del payload básico en IndexedDB sin colapsar la cuota
+            // Si es un archivo individual lo guardamos directo, si es múltiple guardaremos sus datos estructurales
+            if (!payload.esMultiple) {
+                payload.blob = coleccionArchivos[0];
+            } else {
+                // Almacenamos la estructura. Los blobs quedan persistidos en el array en memoria volátil de la sesión activa
+                payload.blob = new Blob([JSON.stringify(payload.archivosReferenciados)], { type: "application/json" });
+            }
+
             transaction.objectStore(STORE_NAME).put(payload);
             
             transaction.oncomplete = function() {
-                clearInterval(iteraProgreso);
                 if (prepBar) prepBar.value = 100;
                 if (prepText) prepText.innerText = `${t.descifrando} (100%)`;
 
@@ -450,7 +405,6 @@ function generarLink() {
             };
 
             transaction.onerror = function() {
-                clearInterval(iteraProgreso);
                 outputDiv.innerHTML = `<p class="error">Error local al procesar el almacenamiento.</p>`;
             };
         });
@@ -515,7 +469,7 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR P2P: FLUJO CONTROLADO Y AMORTIGUADO
+// MOTOR P2P: DISTRIBUCIÓN DE STREAMING SECUENCIAL (SOPORTA MULTI-ARCHIVOS)
 // =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -533,59 +487,59 @@ function inicializarTransmisionP2P(fileId, payload) {
                     return;
                 }
 
-                let offset = 0;
-                const totalSize = payload.blob.size;
+                // Ejecutamos la cola secuencial de archivos sin sobrecargar memoria RAM
+                let indexArchivoActual = 0;
 
-                async function enviarSiguienteFlujo() {
-                    if (!conn || conn.open === false) return; 
-                    
-                    if (conn.bufferSize > 512 * 1024) { 
-                        setTimeout(enviarSiguienteFlujo, 10);
+                async function procesarEnvioDeCola() {
+                    if (indexArchivoActual >= coleccionArchivos.length) {
+                        conn.send({ eof: true, t: payload.t, d: payload.d, name: payload.name, size: payload.size });
                         return;
                     }
 
-                    while (offset < totalSize && conn.bufferSize <= 512 * 1024) {
-                        const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
-                        offset += CHUNK_SIZE;
-                        const progresoReal = Math.min((offset / totalSize) * 100, 100);
+                    const ficheroAEnviar = coleccionArchivos[indexArchivoActual];
+                    let offset = 0;
+                    const totalSize = ficheroAEnviar.size;
 
-                        const bufferCargado = await fragmentoBlob.arrayBuffer();
-
-                        conn.send({
-                            id: payload.id,
-                            t: payload.t,
-                            d: payload.d,
-                            name: payload.name,
-                            type: payload.type,
-                            size: payload.size,
-                            chunk: bufferCargado, 
-                            progress: progresoReal
-                        });
-                    }
-
-                    if (offset >= totalSize) {
-                        conn.send({ 
-                            eof: true,
-                            t: payload.t,
-                            d: payload.d,
-                            name: payload.name,
-                            type: payload.type,
-                            size: payload.size
-                        });
+                    async function enviarSiguienteFlujo() {
+                        if (!conn || conn.open === false) return; 
                         
-                        setTimeout(() => {
-                            eliminarArchivoDB(payload.id);
-                            if (peerInstance && peerInstance.id === payload.id) {
-                                peerInstance.destroy();
-                                peerInstance = null;
-                            }
-                        }, payload.d * 1000);
-                    } else {
-                        setTimeout(enviarSiguienteFlujo, 0);
-                    }
-                }
+                        if (conn.bufferSize > 512 * 1024) { 
+                            setTimeout(enviarSiguienteFlujo, 15);
+                            return;
+                        }
 
-                await enviarSiguienteFlujo();
+                        while (offset < totalSize && conn.bufferSize <= 512 * 1024) {
+                            const fragmentoBlob = ficheroAEnviar.slice(offset, offset + CHUNK_SIZE);
+                            offset += CHUNK_SIZE;
+                            const progresoReal = Math.min((offset / totalSize) * 100, 100);
+
+                            const bufferCargado = await fragmentoBlob.arrayBuffer();
+
+                            conn.send({
+                                id: payload.id,
+                                t: payload.t,
+                                d: payload.d,
+                                name: ficheroAEnviar.name,
+                                type: ficheroAEnviar.type,
+                                size: ficheroAEnviar.size,
+                                chunk: bufferCargado, 
+                                progress: progresoReal,
+                                multiIndex: indexArchivoActual,
+                                multiTotal: coleccionArchivos.length
+                            });
+                        }
+
+                        if (offset >= totalSize) {
+                            indexArchivoActual++;
+                            setTimeout(procesarEnvioDeCola, 10);
+                        } else {
+                            setTimeout(enviarSiguienteFlujo, 0);
+                        }
+                    }
+                    await enviarSiguienteFlujo();
+                }
+                
+                await procesarEnvioDeCola();
             }
         });
     });
@@ -604,15 +558,13 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     peerInstance = new Peer(); 
 
     let arraysDeFragmentos = [];
+    let ficherosReconstruidosLote = [];
     let metaDataBackup = null; 
     let tiempoInicio = null;
     let ultimoTiempoActualizacionUI = 0; 
 
     peerInstance.on('open', () => {
-        const conn = peerInstance.connect(fileId, { 
-            reliable: true,
-            ordered: true 
-        });
+        const conn = peerInstance.connect(fileId, { reliable: true, ordered: true });
         
         conn.on('open', () => {
             tiempoInicio = performance.now();
@@ -629,40 +581,37 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 arraysDeFragmentos.push(data.chunk);
                 
                 if (!metaDataBackup && data.size) {
-                    metaDataBackup = { 
-                        t: data.t, 
-                        d: data.d, 
-                        name: data.name, 
-                        type: data.type, 
-                        size: data.size 
-                    };
+                    metaDataBackup = { t: data.t, d: data.d, name: data.name, type: data.type, size: data.size };
                 }
 
                 if (loader) {
-                    loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
+                    if (data.multiTotal && data.multiTotal > 1) {
+                        loader.innerText = `Recibiendo archivo ${data.multiIndex + 1} de ${data.multiTotal}: ${escaparHTML(data.name)} (${Math.floor(data.progress)}%)`;
+                    } else {
+                        loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
+                    }
                 }
 
                 if (etaDisplay && metaDataBackup && tiempoInicio && (ahoraMS - ultimoTiempoActualizacionUI >= 1000)) {
                     const tiempoTranscurridoMS = ahoraMS - tiempoInicio;
                     const bytesRecibidosHastaAhora = arraysDeFragmentos.length * CHUNK_SIZE;
+                    const bytesRestantes = data.size - bytesRecibidosHastaAhora;
                     
-                    if (tiempoTranscurridoMS > 500 && bytesRecibidosHastaAhora > 0) {
+                    if (tiempoTranscurridoMS > 500 && bytesRecibidosHastaAhora > 0 && bytesRestantes > 0) {
                         const velocidadBytesPorSegundo = bytesRecibidosHastaAhora / (tiempoTranscurridoMS / 1000);
-                        const bytesRestantes = metaDataBackup.size - bytesRecibidosHastaAhora;
-                        
-                        if (velocidadBytesPorSegundo > 0 && bytesRestantes > 0) {
-                            const segundosRestantesTotales = bytesRestantes / velocidadBytesPorSegundo;
-                            const minutes = Math.floor(segundosRestantesTotales / 60);
-                            const segundos = Math.floor(segundosRestantesTotales % 60);
-                            
-                            if (minutes > 0) {
-                                etaDisplay.innerText = `${t.etaLabel} ~ ${minutes} min y ${segundos} seg`;
-                            } else {
-                                etaDisplay.innerText = `${t.etaLabel} ~ ${segundos} seg`;
-                            }
-                            ultimoTiempoActualizacionUI = ahoraMS; 
-                        }
+                        const segundosRestantesTotales = bytesRestantes / velocidadBytesPorSegundo;
+                        const minutes = Math.floor(segundosRestantesTotales / 60);
+                        const segundos = Math.floor(segundosRestantesTotales % 60);
+                        etaDisplay.innerText = minutes > 0 ? `${t.etaLabel} ~ ${minutes} min y ${segundos} seg` : `${t.etaLabel} ~ ${segundos} seg`;
+                        ultimoTiempoActualizacionUI = ahoraMS; 
                     }
+                }
+
+                // Control interno: si un archivo individual dentro del lote finaliza streaming parcial
+                if (data.progress >= 100) {
+                    const fileBlob = new Blob(arraysDeFragmentos, { type: data.type || "application/octet-stream" });
+                    ficherosReconstruidosLote.push({ name: data.name, blob: fileBlob, type: data.type, size: fileBlob.size });
+                    arraysDeFragmentos = []; // Vaciamos RAM del chunk inmediatamente
                 }
             }
 
@@ -670,49 +619,56 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
                 if (etaDisplay) etaDisplay.innerText = t.etaCompletado;
 
-                const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
-                const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
-                arraysDeFragmentos = []; 
-
+                // Si era un lote único o múltiple estructuramos la respuesta final
+                let objetoPayload;
                 const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
-                const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
-                const objetoPayload = {
-                    id: fileId,
-                    t: tiempoExactoDeDescargaCompleta, 
-                    d: duracionOriginal,
-                    name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
-                    type: tipoMime,
-                    size: tamanoReal,
-                    blob: blobReconstruido 
-                };
+                if (ficherosReconstruidosLote.length > 1) {
+                    objetoPayload = {
+                        id: fileId,
+                        t: tiempoExactoDeDescargaCompleta,
+                        d: data.d,
+                        name: `Lote_Giraffile_${ficherosReconstruidosLote.length}_Archivos`,
+                        type: "application/x-gira-bundle",
+                        size: ficherosReconstruidosLote.reduce((a, b) => a + b.size, 0),
+                        esLoteMultiple: true,
+                        listaLote: ficherosReconstruidosLote 
+                    };
+                } else {
+                    const unicoFichero = ficherosReconstruidosLote[0] || { blob: new Blob(arraysDeFragmentos), name: data.name, type: data.type, size: data.size };
+                    objetoPayload = {
+                        id: fileId,
+                        t: tiempoExactoDeDescargaCompleta, 
+                        d: data.d || metaDataBackup.d,
+                        name: unicoFichero.name,
+                        type: unicoFichero.type || "application/octet-stream",
+                        size: unicoFichero.size,
+                        blob: unicoFichero.blob
+                    };
+                }
+
+                arraysDeFragmentos = []; 
 
                 abrirDB(function(db) {
                     const tx = db.transaction([STORE_NAME], "readwrite");
                     tx.objectStore(STORE_NAME).put(objetoPayload);
                     tx.oncomplete = function() {
                         renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
-                        if (peerInstance) {
-                            peerInstance.destroy();
-                            peerInstance = null;
-                        }
+                        if (peerInstance) { peerInstance.destroy(); peerInstance = null; }
                     };
                 });
             }
         });
 
         conn.on('close', () => {
-            if (arraysDeFragmentos.length === 0 && !metaDataBackup) {
+            if (arraysDeFragmentos.length === 0 && ficherosReconstruidosLote.length === 0) {
                 if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
             }
         });
     });
 
     peerInstance.on('error', () => {
-        if (contentDiv) {
-            contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
-        }
+        if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
     });
 }
 
@@ -737,10 +693,7 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         if (tiempoRestante <= 0) {
             clearInterval(intervaloTemporizador);
             eliminarArchivoDB(data.id);
-            if (objetoUrlActivo) {
-                URL.revokeObjectURL(objetoUrlActivo);
-                objetoUrlActivo = null;
-            }
+            if (objetoUrlActivo) { URL.revokeObjectURL(objetoUrlActivo); objetoUrlActivo = null; }
             if (timerGroup) timerGroup.style.display = "none";
             if (metaDiv) metaDiv.style.display = "none";
             if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errTimeOut)}</p>`;
@@ -753,13 +706,29 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         if (timeString) timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
     }, 1000);
 
-    if (objetoUrlActivo) {
-        URL.revokeObjectURL(objetoUrlActivo);
+    if (!contentDiv) return;
+
+    // RENDERIZADO CUANDO ES UN LOTE MULTI-ARCHIVO
+    if (data.esLoteMultiple && data.listaLote) {
+        let htmlLote = `<div style="background: var(--timer-bg); padding: 15px; border-radius: 4px; text-align: left; margin-bottom: 15px;">`;
+        htmlLote += `<p style="font-weight:bold; margin-bottom:10px; border-bottom:1px solid #ccc; padding-bottom:5px;">Archivos en este lote seguro:</p><ul style="padding-left:20px; max-height:220px; overflow-y:auto;">`;
+        
+        data.listaLote.forEach((fich, idx) => {
+            const urlItem = URL.createObjectURL(fich.blob);
+            htmlLote += `<li style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; font-size:0.95em;">
+                <span style="max-width:70%; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">📦 ${escaparHTML(fich.name)} (${(fich.size/(1024*1024)).toFixed(2)} MB)</span>
+                <a href="${urlItem}" download="${escaparHTML(fich.name)}" class="btn" style="padding:3px 8px; font-size:0.85em; margin:0; width:auto; display:inline-block; text-decoration:none;">Descargar 📥</a>
+            </li>`;
+        });
+        htmlLote += `</ul></div>`;
+        contentDiv.innerHTML = htmlLote;
+        return;
     }
+
+    // RENDERIZADO CUANDO ES UN ARCHIVO INDIVIDUAL SINGLE
+    if (objetoUrlActivo) { URL.revokeObjectURL(objetoUrlActivo); }
     objetoUrlActivo = URL.createObjectURL(data.blob);
     const urlObjeto = objetoUrlActivo;
-
-    if (!contentDiv) return;
 
     const LIMITE_PREVIEW_VIVO = 40 * 1024 * 1024; 
 
