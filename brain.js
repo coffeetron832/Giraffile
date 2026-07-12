@@ -385,7 +385,6 @@ function generarLink() {
             }
         }, 40);
 
-        // Creamos el payload base con un tiempo provisional para evitar desajustes
         const payload = {
             id: idUnico,
             t: Math.floor(Date.now() / 1000),
@@ -407,7 +406,6 @@ function generarLink() {
                 if (prepBar) prepBar.value = 100;
                 if (prepText) prepText.innerText = `${t.descifrando} (100%)`;
 
-                // Sincronizamos el tiempo exacto en el que el empaque finaliza y el link se activa
                 payload.t = Math.floor(Date.now() / 1000);
                 
                 const txTiempo = db.transaction([STORE_NAME], "readwrite");
@@ -522,7 +520,7 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR P2P: FLUJO CONTROLADO Y REACTIVO POR EVENTOS (OPTIMIZADO CON FILE STREAM)
+// MOTOR P2P: FLUJO CONTROLADO Y REACTIVO POR EVENTOS (CON FILE STREAM)
 // =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -531,7 +529,6 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance = new Peer(fileId);
 
     peerInstance.on('connection', (conn) => {
-        // Umbral bajo ideal para un procesamiento de baja latencia
         conn.bufferedAmountLowThreshold = 512 * 1024; 
 
         conn.on('data', async (data) => {
@@ -540,9 +537,6 @@ function inicializarTransmisionP2P(fileId, payload) {
                 const totalSize = payload.blob.size;
                 let enviando = false;
 
-                // MEJORA TÉCNICA CLAVE: Extraemos un Stream directo del archivo en disco de manera nativa.
-                // En vez de usar blob.slice() repetidamente que duplica espacio en memoria RAM virtual,
-                // leemos el archivo secuencialmente a través de su ReadableStream interno.
                 const streamArchivo = payload.blob.stream();
                 const lectorStream = streamArchivo.getReader();
 
@@ -551,14 +545,10 @@ function inicializarTransmisionP2P(fileId, payload) {
                     enviando = true;
 
                     try {
-                        // El bucle corre de forma segura mientras el buffer de red WebRTC no esté saturado
                         while (offset < totalSize && conn.dataChannel.bufferedAmount < 1024 * 1024) {
                             const { done, value } = await lectorStream.read();
-                            
                             if (done) break;
 
-                            // Si el fragmento devuelto por el flujo del navegador difiere de nuestro CHUNK_SIZE base,
-                            // lo enviamos directamente de forma dinámica optimizando la velocidad del hilo.
                             const bufferCargado = value.buffer; 
                             offset += value.byteLength;
                             const progresoReal = Math.min((offset / totalSize) * 100, 100);
@@ -608,7 +598,6 @@ function inicializarTransmisionP2P(fileId, payload) {
                         }, payload.d * 1000);
 
                     } else if (conn.dataChannel.bufferedAmount >= 1024 * 1024) {
-                        // Control reactivo pasivo: si el buffer se satura, pausamos y esperamos a que se vacíe.
                         conn.dataChannel.onbufferedamountlow = () => {
                             conn.dataChannel.onbufferedamountlow = null; 
                             enviarSiguienteFlujo(); 
@@ -707,7 +696,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
                 const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                const tamanoReal = blobReconstructed.size > 0 ? blobReconstructed.size : (metaDataBackup ? metaDataBackup.size : 0);
+                
+                // CORREGIDO: Ahora apunta correctamente a la variable en español 'blobReconstruido'
+                const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
                 const objetoPayload = {
                     id: fileId,
