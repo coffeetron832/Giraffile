@@ -331,17 +331,25 @@ function generarLink() {
 
         try {
             if (archivoCargado.esMultiple) {
-                if (prepText) prepText.innerText = `${t.descifrando} (Zip status...)`;
+                if (prepText) prepText.innerText = `${t.descifrando} (Preparando Zip...)`;
                 const zip = new JSZip();
-                coleccionArchivos.forEach(file => {
+                
+                // Procesamos secuencialmente para asegurar la integridad de los blobs en memoria
+                for (const file of coleccionArchivos) {
                     zip.file(file.name, file);
+                }
+                
+                // Usamos STORE para agrupar rápidamente sin re-comprimir archivos ya comprimidos (.zip)
+                blobFinalParaGuardar = await zip.generateAsync({ 
+                    type: "blob",
+                    compression: "STORE" 
                 });
-                blobFinalParaGuardar = await zip.generateAsync({ type: "blob" });
             } else {
                 blobFinalParaGuardar = coleccionArchivos[0];
             }
         } catch (err) {
-            if (outputDiv) outputDiv.innerHTML = `<p class="error">Error local al comprimir el lote de archivos.</p>`;
+            console.error("Error en JSZip:", err);
+            if (outputDiv) outputDiv.innerHTML = `<p class="error">Error local al comprimir el lote de archivos: ${escaparHTML(err.message)}</p>`;
             return;
         }
 
@@ -415,9 +423,6 @@ function generarLink() {
                     }
 
                     inicializarTransmisionP2P(idUnico, payload);
-                    
-                    // SOLUCIÓN AL TIEMPO: Se remueve el setTimeout de eliminación local automática aquí.
-                    // Ahora la cuenta regresiva e inyección/borrado en DB dependen estrictamente de cuando termine el receptor (data.eof).
                 }, 200);
             };
 
@@ -545,8 +550,6 @@ function inicializarTransmisionP2P(fileId, payload) {
                             size: payload.size
                         });
                         
-                        // Una vez que el receptor confirma la descarga completa de forma remota, 
-                        // el emisor agenda su destrucción local de memoria limpia en base a la duración real
                         setTimeout(() => {
                             eliminarArchivoDB(payload.id);
                             if (peerInstance && peerInstance.id === payload.id) {
@@ -580,7 +583,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     let arraysDeFragmentos = [];
     let metaDataBackup = null; 
     let tiempoInicio = null;
-    let ultimoTiempoActualizacionUI = 0; // Para el filtro de amortiguación (suavizado) del ETA
+    let ultimoTiempoActualizacionUI = 0; 
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId, { 
@@ -616,7 +619,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
                 }
 
-                // SOLUCIÓN AL PARPADEO (ETA): Amortiguación ejecutada sólo si ha transcurrido 1 segundo (1000ms)
                 if (etaDisplay && metaDataBackup && tiempoInicio && (ahoraMS - ultimoTiempoActualizacionUI >= 1000)) {
                     const tiempoTranscurridoMS = ahoraMS - tiempoInicio;
                     const bytesRecibidosHastaAhora = arraysDeFragmentos.length * CHUNK_SIZE;
@@ -635,7 +637,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                             } else {
                                 etaDisplay.innerText = `${t.etaLabel} ~ ${segundos} seg`;
                             }
-                            ultimoTiempoActualizacionUI = ahoraMS; // Reinicia el intervalo del filtro
+                            ultimoTiempoActualizacionUI = ahoraMS; 
                         }
                     }
                 }
@@ -649,14 +651,13 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
                 arraysDeFragmentos = []; 
 
-                // SOLUCIÓN AL TIEMPO: Seteamos el tiempo 't' actual para que empiece desde cero ahora mismo
                 const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
                 const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
                 const objetoPayload = {
                     id: fileId,
-                    t: tiempoExactoDeDescargaCompleta, // El temporizador inicia íntegro desde este instante
+                    t: tiempoExactoDeDescargaCompleta, 
                     d: duracionOriginal,
                     name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
                     type: tipoMime,
