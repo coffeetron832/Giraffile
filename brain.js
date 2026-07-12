@@ -6,6 +6,9 @@ let currentLang = 'es';
 let peerInstance = null; 
 let objetoUrlActivo = null; // Variable global para el control de fugas de memoria RAM (Object URLs)
 
+// Colección para persistir la cola de múltiples archivos seleccionados
+let coleccionArchivos = [];
+
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
@@ -24,7 +27,7 @@ const i18n = {
         use2: "<strong>Cualquier Formato:</strong> Envía imágenes, PDFs, archivos comprimidos (ZIP/RAR), audios o videos.",
         use3: "<strong>Privacidad total:</strong> Envío seguro de archivos sin dejar rastro en servidores externos.",
         prepare: "Prepara tu archivo para enviar",
-        dropLabel: "Arrastra cualquier archivo o haz clic abajo (Máx 3.5GB):",
+        dropLabel: "Arrastra tus archivos o haz clic abajo (Máx 3.5GB):",
         dropPrompt: "Arrastra un archivo aquí o haz clic para buscar",
         dropSelected: "Archivo seleccionado:",
         expiryLabel: "Tiempo de Caducidad:",
@@ -147,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drop-zone--over'));
         dropZone.addEventListener('drop', (e) => {
             dropZone.classList.remove('drop-zone--over');
-            if(e.dataTransfer.files.length) manejarSeleccionArchivo(e.dataTransfer);
+            if(e.dataTransfer.files.length) manejarSeleccionMultiple(e.dataTransfer);
         });
     }
 });
@@ -204,11 +207,16 @@ function aplicarTraduccion() {
 
     const prompt = document.getElementById('dropZonePrompt');
     if (prompt) {
-        if (!archivoCargado) {
+        if (coleccionArchivos.length === 0) {
             prompt.innerText = t.dropPrompt;
         } else {
-            const tamanoMB = (archivoCargado.size / (1024 * 1024)).toFixed(2);
-            prompt.innerHTML = `<strong>${escaparHTML(t.dropSelected)}</strong> ${escaparHTML(archivoCargado.name)} (${tamanoMB} MB)`;
+            const tamañoTotalBytes = coleccionArchivos.reduce((acc, file) => acc + file.size, 0);
+            const tamanoMB = (tamañoTotalBytes / (1024 * 1024)).toFixed(2);
+            if(coleccionArchivos.length === 1) {
+                prompt.innerHTML = `<strong>${escaparHTML(t.dropSelected)}</strong> ${escaparHTML(coleccionArchivos[0].name)} (${tamanoMB} MB)`;
+            } else {
+                prompt.innerHTML = `<strong>${escaparHTML(t.dropSelected)}</strong> ${coleccionArchivos.length} archivos en cola (${tamanoMB} MB)`;
+            }
         }
     }
 }
@@ -233,30 +241,76 @@ window.onload = function() {
     verificarLinkCompartido();
 };
 
-function manejarSeleccionArchivo(inputOrData) {
-    const file = inputOrData.files[0];
+/**
+ * Nueva función de control de selección y cola para soporte multiarchivo
+ */
+function manejarSeleccionMultiple(inputOrData) {
     const errorMsg = document.getElementById('errorMsg');
-    const prompt = document.getElementById('dropZonePrompt');
+    const limiteContainer = document.getElementById('limiteContainer');
+    const barreLimite = document.getElementById('barreLimite');
+    const lblLimite = document.getElementById('lblLimite');
+    const listaArchivos = document.getElementById('listaArchivos');
     const t = i18n[currentLang];
     
-    if (file && file.size > MAX_SIZE_BYTES) {
-        if(document.getElementById('fileInput')) document.getElementById('fileInput').value = "";
+    const nuevosArchivos = Array.from(inputOrData.files);
+    coleccionArchivos = coleccionArchivos.concat(nuevosArchivos);
+    
+    if (coleccionArchivos.length === 0) {
+        if(limiteContainer) limiteContainer.style.display = "none";
         archivoCargado = null;
-        if (prompt) prompt.innerText = t.dropPrompt + " 🦒";
-        if (errorMsg) errorMsg.innerText = t.errNotAllowed;
+        aplicarTraduccion();
         return;
     }
-    if (errorMsg) errorMsg.innerText = "";
-    if(file) {
-        archivoCargado = file;
-        const tamanoMB = (file.size / (1024 * 1024)).toFixed(2);
-        if (prompt) prompt.innerHTML = `<strong>${escaparHTML(t.dropSelected)}</strong> ${escaparHTML(file.name)} (${tamanoMB} MB)`;
+
+    let tamañoTotalBytes = coleccionArchivos.reduce((acc, file) => acc + file.size, 0);
+    let porcentajeUso = (tamañoTotalBytes / MAX_SIZE_BYTES) * 100;
+    let tamanoTotalMB = (tamañoTotalBytes / (1024 * 1024)).toFixed(2);
+    let maxMB = (MAX_SIZE_BYTES / (1024 * 1024)).toFixed(0);
+
+    if(limiteContainer) limiteContainer.style.display = "block";
+    if(barreLimite) barreLimite.value = Math.min(porcentajeUso, 100);
+    if(lblLimite) lblLimite.innerHTML = `Espacio: <strong>${tamanoTotalMB} MB</strong> / ${maxMB} MB`;
+
+    if(listaArchivos) {
+        listaArchivos.innerHTML = "";
+        coleccionArchivos.forEach((file, index) => {
+            const li = document.createElement('li');
+            li.style.cssText = "margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;";
+            li.innerHTML = `<span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 80%;">${escaparHTML(file.name)} (${(file.size/(1024*1024)).toFixed(2)} MB)</span>
+                            <span onclick="quitarArchivoDeCola(${index}); event.stopPropagation();" style="color:red; cursor:pointer; font-weight:bold; padding: 0 5px;">✕</span>`;
+            listaArchivos.appendChild(li);
+        });
     }
+
+    if (tamañoTotalBytes > MAX_SIZE_BYTES) {
+        if(document.getElementById('fileInput')) document.getElementById('fileInput').value = "";
+        archivoCargado = null;
+        if (errorMsg) errorMsg.innerText = t.errNotAllowed;
+        if (barreLimite) barreLimite.style.setProperty("accent-color", "red");
+    } else {
+        if (errorMsg) errorMsg.innerText = "";
+        if (barreLimite) barreLimite.style.setProperty("accent-color", "var(--accent-color, #28a745)");
+        
+        // Sincronizar compatibilidad con el resto del script
+        archivoCargado = {
+            name: coleccionArchivos.length === 1 ? coleccionArchivos[0].name : `Giraffile_Package_${Date.now()}.zip`,
+            esMultiple: coleccionArchivos.length > 1,
+            size: tamañoTotalBytes,
+            type: coleccionArchivos.length === 1 ? coleccionArchivos[0].type : "application/zip"
+        };
+        aplicarTraduccion();
+    }
+}
+
+function quitarArchivoDeCola(index) {
+    coleccionArchivos.splice(index, 1);
+    // Forzamos actualización pasándole una estructura mock de archivos vacía
+    manejarSeleccionMultiple({ files: [] }); 
 }
 
 function generarLink() {
     const t = i18n[currentLang];
-    if (!archivoCargado) {
+    if (!archivoCargado || coleccionArchivos.length === 0) {
         if (document.getElementById('errorMsg')) document.getElementById('errorMsg').innerText = t.errNoFile;
         return;
     }
@@ -276,93 +330,114 @@ function generarLink() {
 
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
     const duracionSegundos = parseInt(document.getElementById('expiry').value); 
-    
-    let progreso = 0;
-    const incremento = archivoCargado.size > 100 * 1024 * 1024 ? 5 : 20;
 
-    const iteraProgreso = setInterval(() => {
-        progreso += incremento;
-        if (progreso > 90) {
-            clearInterval(iteraProgreso); 
-        } else {
-            if (prepBar) prepBar.value = progreso;
-            if (prepText) prepText.innerText = `${t.descifrando} (${progreso}%)`;
+    // Lanzar proceso asíncrono para empaquetado/procesamiento sin congelar UI
+    setTimeout(async () => {
+        let blobFinalParaGuardar;
+
+        try {
+            if (archivoCargado.esMultiple) {
+                if (prepText) prepText.innerText = `${t.descifrando} (Zip status...)`;
+                const zip = new JSZip();
+                coleccionArchivos.forEach(file => {
+                    zip.file(file.name, file);
+                });
+                blobFinalParaGuardar = await zip.generateAsync({ type: "blob" });
+            } else {
+                blobFinalParaGuardar = coleccionArchivos[0];
+            }
+        } catch (err) {
+            if (outputDiv) outputDiv.innerHTML = `<p class="error">Error local al comprimir el lote de archivos.</p>`;
+            return;
         }
-    }, 40);
 
-    const payload = {
-        id: idUnico,
-        t: Math.floor(Date.now() / 1000),
-        d: duracionSegundos,
-        name: archivoCargado.name,
-        type: archivoCargado.type,
-        size: archivoCargado.size,
-        blob: archivoCargado 
-    };
-    
-    abrirDB(function(db) {
-        const transaction = db.transaction([STORE_NAME], "readwrite");
-        transaction.objectStore(STORE_NAME).put(payload);
+        let progreso = 0;
+        const incremento = blobFinalParaGuardar.size > 100 * 1024 * 1024 ? 5 : 20;
+
+        const iteraProgreso = setInterval(() => {
+            progreso += incremento;
+            if (progreso > 90) {
+                clearInterval(iteraProgreso); 
+            } else {
+                if (prepBar) prepBar.value = progreso;
+                if (prepText) prepText.innerText = `${t.descifrando} (${progreso}%)`;
+            }
+        }, 40);
+
+        const payload = {
+            id: idUnico,
+            t: Math.floor(Date.now() / 1000),
+            d: duracionSegundos,
+            name: archivoCargado.name,
+            type: archivoCargado.esMultiple ? "application/zip" : blobFinalParaGuardar.type,
+            size: blobFinalParaGuardar.size,
+            blob: blobFinalParaGuardar 
+        };
         
-        transaction.oncomplete = function() {
-            clearInterval(iteraProgreso);
-            if (prepBar) prepBar.value = 100;
-            if (prepText) prepText.innerText = `${t.descifrando} (100%)`;
-
-            setTimeout(() => {
-                const origen = window.location.origin === "null" ? "file://" : window.location.origin;
-                const link = origen + window.location.pathname + "#" + idUnico;
-                
-                outputDiv.innerHTML = `
-                    <p style="color: green; font-weight: bold; margin-top: 10px;">${escaparHTML(t.successLink)}</p>
-                    <textarea id="copyTarget" readonly onclick="this.select()">${escaparHTML(link)}</textarea>
-                    <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${escaparHTML(t.btnCopy)}</button>
-                `;
-
-                if (typeof QRCode !== 'undefined') {
-                    const qrWrapper = document.createElement('div');
-                    qrWrapper.id = 'qrWrapper';
-                    qrWrapper.style.cssText = 'margin-top: 14px; text-align: center;';
-
-                    const qrCaption = document.createElement('p');
-                    qrCaption.style.cssText = 'margin-top: 6px; font-size: 0.8em; color: var(--footer-color);';
-                    qrCaption.innerText = t.qrLabel;
-
-                    outputDiv.appendChild(qrWrapper);
-                    const rootStyle = getComputedStyle(document.documentElement);
-                    new QRCode(qrWrapper, {
-                        text: link,
-                        width: 180,
-                        height: 180,
-                        colorDark: rootStyle.getPropertyValue('--text-color').trim(),
-                        colorLight: rootStyle.getPropertyValue('--bg-color').trim()
-                    });
-
-                    const qrCanvas = qrWrapper.querySelector('canvas');
-                    if (qrCanvas) qrCanvas.style.cssText = 'display: block; margin: 0 auto;';
-                    const qrImg = qrWrapper.querySelector('img');
-                    if (qrImg) qrImg.style.cssText = 'display: block; margin: 0 auto;';
-
-                    qrWrapper.appendChild(qrCaption);
-                }
-
-                inicializarTransmisionP2P(idUnico, payload);
+        abrirDB(function(db) {
+            const transaction = db.transaction([STORE_NAME], "readwrite");
+            transaction.objectStore(STORE_NAME).put(payload);
+            
+            transaction.oncomplete = function() {
+                clearInterval(iteraProgreso);
+                if (prepBar) prepBar.value = 100;
+                if (prepText) prepText.innerText = `${t.descifrando} (100%)`;
 
                 setTimeout(() => {
-                    eliminarArchivoDB(idUnico);
-                    if (peerInstance && peerInstance.id === idUnico) {
-                        peerInstance.destroy();
-                        peerInstance = null;
-                    }
-                }, duracionSegundos * 1000);
-            }, 200);
-        };
+                    const origen = window.location.origin === "null" ? "file://" : window.location.origin;
+                    const link = origen + window.location.pathname + "#" + idUnico;
+                    
+                    outputDiv.innerHTML = `
+                        <p style="color: green; font-weight: bold; margin-top: 10px;">${escaparHTML(t.successLink)}</p>
+                        <textarea id="copyTarget" readonly onclick="this.select()">${escaparHTML(link)}</textarea>
+                        <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${escaparHTML(t.btnCopy)}</button>
+                    `;
 
-        transaction.onerror = function() {
-            clearInterval(iteraProgreso);
-            outputDiv.innerHTML = `<p class="error">Error local al procesar el almacenamiento.</p>`;
-        };
-    });
+                    if (typeof QRCode !== 'undefined') {
+                        const qrWrapper = document.createElement('div');
+                        qrWrapper.id = 'qrWrapper';
+                        qrWrapper.style.cssText = 'margin-top: 14px; text-align: center;';
+
+                        const qrCaption = document.createElement('p');
+                        qrCaption.style.cssText = 'margin-top: 6px; font-size: 0.8em; color: var(--footer-color);';
+                        qrCaption.innerText = t.qrLabel;
+
+                        outputDiv.appendChild(qrWrapper);
+                        const rootStyle = getComputedStyle(document.documentElement);
+                        new QRCode(qrWrapper, {
+                            text: link,
+                            width: 180,
+                            height: 180,
+                            colorDark: rootStyle.getPropertyValue('--text-color').trim(),
+                            colorLight: rootStyle.getPropertyValue('--bg-color').trim()
+                        });
+
+                        const qrCanvas = qrWrapper.querySelector('canvas');
+                        if (qrCanvas) qrCanvas.style.cssText = 'display: block; margin: 0 auto;';
+                        const qrImg = qrWrapper.querySelector('img');
+                        if (qrImg) qrImg.style.cssText = 'display: block; margin: 0 auto;';
+
+                        qrWrapper.appendChild(qrCaption);
+                    }
+
+                    inicializarTransmisionP2P(idUnico, payload);
+
+                    setTimeout(() => {
+                        eliminarArchivoDB(idUnico);
+                        if (peerInstance && peerInstance.id === idUnico) {
+                            peerInstance.destroy();
+                            peerInstance = null;
+                        }
+                    }, duracionSegundos * 1000);
+                }, 200);
+            };
+
+            transaction.onerror = function() {
+                clearInterval(iteraProgreso);
+                outputDiv.innerHTML = `<p class="error">Error local al procesar el almacenamiento.</p>`;
+            };
+        });
+    }, 50);
 }
 
 function copiarAlPortapapeles() {
@@ -452,7 +527,6 @@ function inicializarTransmisionP2P(fileId, payload) {
                         return;
                     }
 
-                    // Tu bucle while original: Lee y envía secuencialmente de forma estricta
                     while (offset < totalSize && conn.bufferSize <= 512 * 1024) {
                         const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
                         offset += CHUNK_SIZE;
@@ -540,7 +614,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
                 }
 
-                // Cálculo dinámico de tiempo estimado (ETA) adaptado a tu flujo original
                 if (etaDisplay && metaDataBackup && tiempoInicio) {
                     const tiempoTranscurridoMS = performance.now() - tiempoInicio;
                     const bytesRecibidosHastaAhora = arraysDeFragmentos.length * CHUNK_SIZE;
@@ -570,7 +643,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
                 const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
-                arraysDeFragmentos = []; // Liberación inmediata de RAM
+                arraysDeFragmentos = []; 
 
                 const tiempoOriginal = data.t || (metaDataBackup ? metaDataBackup.t : Math.floor(Date.now() / 1000));
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
