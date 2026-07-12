@@ -725,7 +725,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
             if (data.eof) {
                 if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
-                if (etaDisplay) etaDisplay.innerText = t.etaCompletado;
+                if (etaDisplay) etaDisplay.innerText = `${t.etaCompletado} ${t.descifrando}`; // Avisa visualmente que está procesando
 
                 // Extraemos el flujo completo directo del disco de manera segura
                 abrirDB(function(db) {
@@ -736,34 +736,39 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                         const record = e.target.result;
                         const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
                         
-                        const blobReconstruido = new Blob(record ? record.chunks : [], { type: tipoMime });
-                        
-                        // Eliminar contenedor temporal inmediatamente para no dejar basura
-                        store.delete(tempStoreKey);
+                        // Uso de setTimeout para liberar el hilo principal y pintar la UI antes del empaquetado pesado en la RAM virtual
+                        setTimeout(() => {
+                            const blobReconstruido = new Blob(record ? record.chunks : [], { type: tipoMime });
+                            
+                            // Eliminar contenedor temporal inmediatamente para no dejar basura
+                            const txLimpieza = db.transaction([STORE_NAME], "readwrite");
+                            txLimpieza.objectStore(STORE_NAME).delete(tempStoreKey);
 
-                        const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
-                        const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                        const tamanoReal = blobReconstructed.size > 0 ? blobReconstructed.size : (metaDataBackup ? metaDataBackup.size : 0);
+                            const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
+                            const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
+                            const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
-                        const objetoPayload = {
-                            id: fileId,
-                            t: tiempoExactoDeDescargaCompleta, 
-                            d: duracionOriginal,
-                            name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
-                            type: tipoMime,
-                            size: tamanoReal,
-                            blob: blobReconstruido 
-                        };
+                            const objetoPayload = {
+                                id: fileId,
+                                t: tiempoExactoDeDescargaCompleta, 
+                                d: duracionOriginal,
+                                name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
+                                type: tipoMime,
+                                size: tamanoReal,
+                                blob: blobReconstruido 
+                            };
 
-                        store.put(objetoPayload);
+                            const txGuardar = db.transaction([STORE_NAME], "readwrite");
+                            txGuardar.objectStore(STORE_NAME).put(objetoPayload);
 
-                        txLectura.oncomplete = function() {
-                            renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
-                            if (peerInstance) {
-                                peerInstance.destroy();
-                                peerInstance = null;
-                            }
-                        };
+                            txGuardar.oncomplete = function() {
+                                renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
+                                if (peerInstance) {
+                                    peerInstance.destroy();
+                                    peerInstance = null;
+                                }
+                            };
+                        }, 50);
                     };
                 });
             }
