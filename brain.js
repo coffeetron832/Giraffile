@@ -529,6 +529,7 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance = new Peer(fileId);
 
     peerInstance.on('connection', (conn) => {
+        // Ajustamos un umbral alto pero seguro para evitar desbordes en archivos de GBs
         conn.bufferedAmountLowThreshold = 512 * 1024; 
 
         conn.on('data', async (data) => {
@@ -545,6 +546,7 @@ function inicializarTransmisionP2P(fileId, payload) {
                     enviando = true;
 
                     try {
+                        // Enviamos fragmentos de forma continua MIENTRAS el búfer de WebRTC esté desahogado
                         while (offset < totalSize && conn.dataChannel.bufferedAmount < 1024 * 1024) {
                             const { done, value } = await lectorStream.read();
                             if (done) break;
@@ -572,6 +574,7 @@ function inicializarTransmisionP2P(fileId, payload) {
                     enviando = false;
 
                     if (offset >= totalSize) {
+                        // Finalización exitosa de la lectura local
                         const tiempoFinTransferencia = Math.floor(Date.now() / 1000);
                         payload.t = tiempoFinTransferencia;
                         delete payload.enTransferencia;
@@ -598,12 +601,30 @@ function inicializarTransmisionP2P(fileId, payload) {
                         }, payload.d * 1000);
 
                     } else if (conn.dataChannel.bufferedAmount >= 1024 * 1024) {
+                        // SOLUCIÓN ROBUSTA: En vez de anular de por vida el evento, re-acoplamos de forma limpia
+                        // para que vuelva a disparar el flujo en cuanto el canal libere datos en tránsito.
                         conn.dataChannel.onbufferedamountlow = () => {
-                            conn.dataChannel.onbufferedamountlow = null; 
+                            if (conn.dataChannel) conn.dataChannel.onbufferedamountlow = null; 
                             enviarSiguienteFlujo(); 
                         };
                     }
                 }
+
+                // Vigilante reactivo por eventos: Si por micro-congelamientos el canal no dispara onbufferedamountlow,
+                // este interval de respaldo reanuda el bombeo si el búfer ya se vació.
+                const verificadorRespaldo = setInterval(() => {
+                    if (!conn || conn.open === false) {
+                        clearInterval(verificadorRespaldo);
+                        return;
+                    }
+                    if (offset >= totalSize) {
+                        clearInterval(verificadorRespaldo);
+                        return;
+                    }
+                    if (!enviando && conn.dataChannel.bufferedAmount < 512 * 1024) {
+                        enviarSiguienteFlujo();
+                    }
+                }, 250);
 
                 await enviarSiguienteFlujo();
             }
@@ -624,6 +645,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     peerInstance = new Peer(); 
 
     let arraysDeFragmentos = [];
+    let bytesRecibidosAcumulados = 0; // CONTADOR DE PRECISIÓN DINÁMICA: Registra el peso binario exacto procesado
     let metaDataBackup = null; 
     let tiempoInicio = null;
     let ultimoTiempoActualizacionUI = 0; 
@@ -647,6 +669,8 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             
             if (data.chunk) {
                 arraysDeFragmentos.push(data.chunk);
+                // Sumamos el peso exacto del buffer crudo transferido, solucionando desajustes de tamaño estático
+                bytesRecibidosAcumulados += data.chunk.byteLength;
                 
                 if (!metaDataBackup && data.size) {
                     metaDataBackup = { 
@@ -662,13 +686,13 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
                 }
 
+                // Algoritmo matemático adaptativo para cálculo de ETA lineal y exacto sin importar fluctuaciones
                 if (etaDisplay && metaDataBackup && tiempoInicio && (ahoraMS - ultimoTiempoActualizacionUI >= 1000)) {
                     const tiempoTranscurridoMS = ahoraMS - tiempoInicio;
-                    const bytesRecibidosHastaAhora = arraysDeFragmentos.length * CHUNK_SIZE;
                     
-                    if (tiempoTranscurridoMS > 500 && bytesRecibidosHastaAhora > 0) {
-                        const velocidadBytesPorSegundo = bytesRecibidosHastaAhora / (tiempoTranscurridoMS / 1000);
-                        const bytesRestantes = metaDataBackup.size - bytesRecibidosHastaAhora;
+                    if (tiempoTranscurridoMS > 500 && bytesRecibidosAcumulados > 0) {
+                        const velocidadBytesPorSegundo = bytesRecibidosAcumulados / (tiempoTranscurridoMS / 1000);
+                        const bytesRestantes = metaDataBackup.size - bytesRecibidosAcumulados;
                         
                         if (velocidadBytesPorSegundo > 0 && bytesRestantes > 0) {
                             const segundosRestantesTotales = bytesRestantes / velocidadBytesPorSegundo;
@@ -694,14 +718,14 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
                 arraysDeFragmentos = []; 
 
-                // CORRECCIÓN DE CARRERA: El receptor marca su propio tiempo de vida exacto
+                // CORRECCIÓN DE CONDICIÓN DE CARRERA: El receptor establece la vida inicial basándose en su reloj local
                 const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
                 const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
                 const objetoPayload = {
                     id: fileId,
-                    t: tiempoExactoDeDescargaCompleta, // Marca limpia local
+                    t: tiempoExactoDeDescargaCompleta, // Inmunidad completa a latencias e hilos asíncronos tardíos
                     d: duracionOriginal,
                     name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
                     type: tipoMime,
@@ -750,7 +774,7 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
 
     if (intervaloTemporizador) clearInterval(intervaloTemporizador);
     
-    // Con la marca 't' calculada localmente, el contador empezará con el tiempo completo exacto elegido
+    // Ejecuta el refresco de vida basándose de forma estricta en la marca temporal local corregida
     intervaloTemporizador = setInterval(function() {
         const ahora = Math.floor(Date.now() / 1000);
         const tiempoTranscurrido = ahora - data.t;
