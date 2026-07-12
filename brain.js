@@ -425,7 +425,7 @@ function verificarLinkCompartido() {
 }
 
 // ==================================================================================
-// MOTOR P2P OPTIMIZADO: ACUMULACIÓN RECEPTORA POR CONCATENACIÓN DE BLOBS
+// MOTOR P2P OPTIMIZADO: ENLACE Y RECONSTRUCCIÓN BINARIA FIEL
 // ==================================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -491,7 +491,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     let metaDataBackup = null; 
     let proxOffset = 0;
     let tiempoInicio = null;
-    let chunksRecibidos = []; // Array temporal para guardar los fragmentos reales
+    let chunksRecibidos = []; 
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId, { 
@@ -525,7 +525,12 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
             else if (data.type === 'CHUNK') {
                 if (data.chunk) {
-                    chunksRecibidos.push(data.chunk); // Guardar buffer binario real
+                    // SE CORRIGE EL ARCHIVO CORRUPTO: Forzamos la asignación a una vista tipadaUint8Array limpia
+                    const fragmentoBinario = data.chunk instanceof ArrayBuffer 
+                        ? new Uint8Array(data.chunk) 
+                        : new Uint8Array(data.chunk.buffer || data.chunk);
+                    
+                    chunksRecibidos.push(fragmentoBinario); 
                 }
                 
                 if (loader) {
@@ -563,9 +568,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
                 if (!metaDataBackup) return;
 
-                // Construimos el BLOB Real con todos los fragmentos recibidos en memoria
+                // Combinación perfecta de bloques binarios
                 const blobCompletoReal = new Blob(chunksRecibidos, { type: metaDataBackup.type || "application/octet-stream" });
-                chunksRecibidos = []; // Limpieza de memoria RAM
+                chunksRecibidos = []; // Vaciado inmediato de buffers intermedios para liberar memoria RAM
 
                 const objetoPayload = {
                     id: fileId,
@@ -574,7 +579,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     name: metaDataBackup.name,
                     type: metaDataBackup.type || "application/octet-stream",
                     size: metaDataBackup.size,
-                    blob: blobCompletoReal // Pasamos el archivo real completo reconstruido
+                    blob: blobCompletoReal 
                 };
 
                 abrirDB(function(db) {
@@ -684,7 +689,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         };
         lectorTexto.readAsText(fragmentoSeguro);
     } else {
-        // Renderiza el botón de descarga nativo perfecto para archivos grandes (ej: 1.6GB) sin depender de StreamSaver
         contentDiv.innerHTML = `
             <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 15px;">
                 <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${escaparHTML(t.noPreviewNotice)}</p>
