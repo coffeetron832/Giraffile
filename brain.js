@@ -385,7 +385,7 @@ function generarLink() {
             }
         }, 40);
 
-        // Se guarda el timestamp inicial provisional para evitar desajustes
+        // Creamos el payload base con un tiempo provisional para evitar desajustes
         const payload = {
             id: idUnico,
             t: Math.floor(Date.now() / 1000),
@@ -398,14 +398,16 @@ function generarLink() {
         
         abrirDB(function(db) {
             const transaction = db.transaction([STORE_NAME], "readwrite");
-            transaction.objectStore(STORE_NAME).put(payload);
+            const store = transaction.objectStore(STORE_NAME);
+            
+            store.put(payload);
             
             transaction.oncomplete = function() {
                 clearInterval(iteraProgreso);
                 if (prepBar) prepBar.value = 100;
                 if (prepText) prepText.innerText = `${t.descifrando} (100%)`;
 
-                // CORRECCIÓN CRÍTICA: Capturamos el tiempo exacto en el que el empaque se completó
+                // Sincronizamos el tiempo exacto en el que el empaque finaliza y el link se activa
                 payload.t = Math.floor(Date.now() / 1000);
                 
                 const txTiempo = db.transaction([STORE_NAME], "readwrite");
@@ -520,7 +522,7 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR P2P: FLUJO CONTROLADO Y AMORTIGUADO
+// MOTOR P2P: FLUJO CONTROLADO Y AMORTIGUADO (OPTIMIZADO CRONÓMETRO)
 // =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -558,24 +560,24 @@ function inicializarTransmisionP2P(fileId, payload) {
                             size: payload.size,
                             chunk: bufferCargado, 
                             progress: progresoReal,
-                            enProgresoP2P: true // Bandera que indica que la transferencia está activa
+                            enTransferencia: true // Evita que la UI del emisor descuente segundos durante el envío
                         });
                     }
 
                     if (offset >= totalSize) {
-                        // CORRECCIÓN CRÍTICA: Se reinicia el contador al segundo exacto de finalización del envío
-                        const tiempoFinDescarga = Math.floor(Date.now() / 1000);
-                        payload.t = tiempoFinDescarga;
+                        // Seteamos el tiempo definitivo de expiración a partir de este instante
+                        const tiempoFinTransferencia = Math.floor(Date.now() / 1000);
+                        payload.t = tiempoFinTransferencia;
+                        delete payload.enTransferencia;
 
-                        // Se actualiza el IndexedDB del emisor
+                        // Actualizamos la base de datos del emisor con el nuevo tiempo sincronizado
                         abrirDB(function(db) {
-                            const tx = db.transaction([STORE_NAME], "readwrite");
-                            tx.objectStore(STORE_NAME).put(payload);
+                            db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).put(payload);
                         });
 
                         conn.send({ 
                             eof: true,
-                            t: tiempoFinDescarga, // Pasamos el tiempo final limpio al receptor
+                            t: tiempoFinTransferencia,
                             d: payload.d,
                             name: payload.name,
                             type: payload.type,
@@ -647,9 +649,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     };
                 }
 
-                // Congelamos visualmente el render del tiempo enviando la bandera activa
-                renderizarVistaArchivo({ ...metaDataBackup, enProgresoP2P: true }, contentDiv, metaDiv, previewDiv);
-
                 if (loader) {
                     loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
                 }
@@ -686,13 +685,13 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
                 arraysDeFragmentos = []; 
 
-                // El receptor inicia su cuenta regresiva usando el 't' actualizado del emisor
+                const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                const tamanoReal = blobReconstructed.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
+                const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
                 const objetoPayload = {
                     id: fileId,
-                    t: data.t, // Tiempo exacto sincronizado
+                    t: tiempoExactoDeDescargaCompleta, 
                     d: duracionOriginal,
                     name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
                     type: tipoMime,
@@ -741,10 +740,10 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
 
     if (intervaloTemporizador) clearInterval(intervaloTemporizador);
     
-    // CORRECCIÓN CRÍTICA: Mientras se está transfiriendo, pausamos o fijamos la UI del contador
-    if (data.enProgresoP2P) {
+    // Condición agregada: Si el archivo está en medio de una transferencia, pausamos el cronómetro visual
+    if (data.enTransferencia) {
         if (lifeBar) lifeBar.value = 100;
-        if (timeString) timeString.innerText = "⏳ Descargando P2P...";
+        if (timeString) timeString.innerText = "⏳ Transfiriendo...";
     } else {
         intervaloTemporizador = setInterval(function() {
             const ahora = Math.floor(Date.now() / 1000);
@@ -770,9 +769,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
             if (timeString) timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
         }, 1000);
     }
-
-    // El renderizado gráfico del bloque condicional de previsualización no interfiere
-    if (data.enProgresoP2P) return;
 
     if (objetoUrlActivo) {
         URL.revokeObjectURL(objetoUrlActivo);
