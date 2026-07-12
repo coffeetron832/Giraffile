@@ -55,7 +55,7 @@ const i18n = {
         etaLabel: "Tiempo estimado restante:",
         etaCalculando: "Calculando...",
         etaCompletado: "¡Transferencia completada!",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v1.1.0 | © 2026 jahp. Todos los derechos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v1.0.1 | © 2026 jahp. Todos los derechos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
         disclaimerTitle: "Descargo de Responsabilidad (Disclaimer)",
         disclaimerBody: `
         <p><strong>Giraffile</strong> funciona como un canal de transporte privado P2P (Peer-to-Peer) directo entre dispositivos. Los archivos no se suben, analizan ni almacenan en ningún servidor externo.</p>
@@ -102,7 +102,7 @@ const i18n = {
         etaLabel: "Estimated time remaining:",
         etaCalculando: "Calculating...",
         etaCompletado: "Transfer completed!",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v1.1.0 | © 2026 jahp. All rights reserved. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Legal Disclaimer</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v1.0.1 | © 2026 jahp. All rights reserved. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Legal Disclaimer</a>',
         disclaimerTitle: "Legal Disclaimer",
         disclaimerBody: `
         <p><strong>Giraffile</strong> operates as a private, content-agnostic P2P (Peer-to-Peer) transport channel directly between devices. Files are never uploaded, scanned, or stored on external servers.</p>
@@ -522,7 +522,7 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR P2P: FLUJO CONTROLADO Y REACTIVO POR EVENTOS (CORREGIDO)
+// MOTOR P2P: FLUJO CONTROLADO Y REACTIVO POR EVENTOS (OPTIMIZADO CON FILE STREAM)
 // =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -531,7 +531,7 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance = new Peer(fileId);
 
     peerInstance.on('connection', (conn) => {
-        // Configuramos un umbral bajo para avisarle al navegador que limpie a tiempo
+        // Umbral bajo ideal para un procesamiento de baja latencia
         conn.bufferedAmountLowThreshold = 512 * 1024; 
 
         conn.on('data', async (data) => {
@@ -540,29 +540,43 @@ function inicializarTransmisionP2P(fileId, payload) {
                 const totalSize = payload.blob.size;
                 let enviando = false;
 
+                // MEJORA TÉCNICA CLAVE: Extraemos un Stream directo del archivo en disco de manera nativa.
+                // En vez de usar blob.slice() repetidamente que duplica espacio en memoria RAM virtual,
+                // leemos el archivo secuencialmente a través de su ReadableStream interno.
+                const streamArchivo = payload.blob.stream();
+                const lectorStream = streamArchivo.getReader();
+
                 async function enviarSiguienteFlujo() {
                     if (!conn || conn.open === false || enviando) return; 
                     enviando = true;
 
-                    // El bucle corre de forma segura mientras el buffer no esté saturado
-                    while (offset < totalSize && conn.dataChannel.bufferedAmount < 1024 * 1024) {
-                        const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
-                        offset += CHUNK_SIZE;
-                        const progresoReal = Math.min((offset / totalSize) * 100, 100);
+                    try {
+                        // El bucle corre de forma segura mientras el buffer de red WebRTC no esté saturado
+                        while (offset < totalSize && conn.dataChannel.bufferedAmount < 1024 * 1024) {
+                            const { done, value } = await lectorStream.read();
+                            
+                            if (done) break;
 
-                        const bufferCargado = await fragmentoBlob.arrayBuffer();
+                            // Si el fragmento devuelto por el flujo del navegador difiere de nuestro CHUNK_SIZE base,
+                            // lo enviamos directamente de forma dinámica optimizando la velocidad del hilo.
+                            const bufferCargado = value.buffer; 
+                            offset += value.byteLength;
+                            const progresoReal = Math.min((offset / totalSize) * 100, 100);
 
-                        conn.send({
-                            id: payload.id,
-                            t: payload.t,
-                            d: payload.d,
-                            name: payload.name,
-                            type: payload.type,
-                            size: payload.size,
-                            chunk: bufferCargado, 
-                            progress: progresoReal,
-                            enTransferencia: true // Evita que la UI del emisor descuente segundos durante el envío
-                        });
+                            conn.send({
+                                id: payload.id,
+                                t: payload.t,
+                                d: payload.d,
+                                name: payload.name,
+                                type: payload.type,
+                                size: payload.size,
+                                chunk: bufferCargado, 
+                                progress: progresoReal,
+                                enTransferencia: true 
+                            });
+                        }
+                    } catch (errStream) {
+                        console.error("Fallo durante la lectura del stream de datos p2p:", errStream);
                     }
 
                     enviando = false;
@@ -594,11 +608,10 @@ function inicializarTransmisionP2P(fileId, payload) {
                         }, payload.d * 1000);
 
                     } else if (conn.dataChannel.bufferedAmount >= 1024 * 1024) {
-                        // Si el buffer WebRTC se llenó, pausamos la iteración por completo.
-                        // Esperamos de forma pasiva a que el navegador vacíe la cola y despierte este evento.
+                        // Control reactivo pasivo: si el buffer se satura, pausamos y esperamos a que se vacíe.
                         conn.dataChannel.onbufferedamountlow = () => {
-                            conn.dataChannel.onbufferedamountlow = null; // Limpieza del listener
-                            enviarSiguienteFlujo(); // Reanudamos de forma fluida
+                            conn.dataChannel.onbufferedamountlow = null; 
+                            enviarSiguienteFlujo(); 
                         };
                     }
                 }
@@ -694,7 +707,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
                 const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
+                const tamanoReal = blobReconstructed.size > 0 ? blobReconstructed.size : (metaDataBackup ? metaDataBackup.size : 0);
 
                 const objetoPayload = {
                     id: fileId,
