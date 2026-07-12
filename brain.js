@@ -6,12 +6,6 @@ let currentLang = 'es';
 let peerInstance = null; 
 let objetoUrlActivo = null; // Variable global para el control de fugas de memoria RAM (Object URLs)
 
-// Configuración de endpoint e infraestructura necesaria para StreamSaver.js
-if (typeof streamSaver !== 'undefined') {
-    streamSaver.mitm = 'https://cdn.jsdelivr.net/npm/streamsaver@2.0.3/mitm.html';
-}
-let currentFileWriter = null;
-
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
@@ -44,7 +38,7 @@ const i18n = {
         btnCopied: "¡Enlace Copiado! ✓",
         btnDownload: "Descargar Completo 📥",
         textPreviewNotice: "📋 Mostrando una vista previa del archivo de texto. Para ver todo el contenido:",
-        noPreviewNotice: "📦 Este formato no admite vista previa en el navegador debido a su tamaño o extensión. Usa el botón de abajo para descargarlo de manera segura mediante transmisión directa:",
+        noPreviewNotice: "📦 Este formato no admite vista previa en el navegador debido a su tamaño o extensión. Usa el botón de abajo para guardarlo:",
         errNoFile: "Por favor, selecciona o arrastra un archivo primero.",
         errNotAllowed: "El archivo excede el tamaño máximo permitido (Máx 3.5GB).",
         successLink: "¡Enlace creado con éxito!",
@@ -91,7 +85,7 @@ const i18n = {
         btnCopied: "Link Copied! ✓",
         btnDownload: "Download Full File 📥",
         textPreviewNotice: "📋 Showing a preview of the text file. To see the full content:",
-        noPreviewNotice: "📦 Preview is not supported for this file type or size in the browser. Use the button below to download securely using direct stream:",
+        noPreviewNotice: "📦 Preview is not supported for this file type or size in the browser. Use the button below to download:",
         errNoFile: "Please select or drag a file first.",
         errNotAllowed: "The file exceeds the maximum size allowed (Max 3.5GB).",
         successLink: "Link created successfully!",
@@ -431,7 +425,7 @@ function verificarLinkCompartido() {
 }
 
 // ==================================================================================
-// MOTOR P2P OPTIMIZADO: ARQUITECTURA PULL (REQUEST-ACK) Y ZERO-COPY (TRANSFERABLES)
+// MOTOR P2P OPTIMIZADO: ACUMULACIÓN RECEPTORA POR CONCATENACIÓN DE BLOBS
 // ==================================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -497,6 +491,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     let metaDataBackup = null; 
     let proxOffset = 0;
     let tiempoInicio = null;
+    let chunksRecibidos = []; // Array temporal para guardar los fragmentos reales
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId, { 
@@ -522,28 +517,21 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     size: data.size 
                 };
                 
-                try {
-                    const fileStream = streamSaver.createWriteStream(data.name);
-                    currentFileWriter = fileStream.getWriter();
-                } catch (err) {
-                    console.error("StreamSaver falló al instanciarse nativamente:", err);
-                }
-
                 tiempoInicio = performance.now();
                 proxOffset = 0;
+                chunksRecibidos = [];
                 conn.send({ request: 'GET_CHUNK', offset: proxOffset });
             }
 
             else if (data.type === 'CHUNK') {
-                if (currentFileWriter && data.chunk) {
-                    await currentFileWriter.write(new Uint8Array(data.chunk));
+                if (data.chunk) {
+                    chunksRecibidos.push(data.chunk); // Guardar buffer binario real
                 }
                 
                 if (loader) {
                     loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
                 }
 
-                // --- CÁLCULO DE TIEMPO RESTANTE DINÁMICO (ETA) ---
                 if (etaDisplay && metaDataBackup && tiempoInicio) {
                     const tiempoTranscurridoMS = performance.now() - tiempoInicio;
                     
@@ -553,11 +541,11 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                         
                         if (velocidadBytesPorSegundo > 0) {
                             const segundosRestantesTotales = bytesRestantes / velocidadBytesPorSegundo;
-                            const minutos = Math.floor(segundosRestantesTotales / 60);
+                            const minutes = Math.floor(segundosRestantesTotales / 60);
                             const segundos = Math.floor(segundosRestantesTotales % 60);
                             
-                            if (minutos > 0) {
-                                etaDisplay.innerText = `${t.etaLabel} ~ ${minutos} min y ${segundos} seg`;
+                            if (minutes > 0) {
+                                etaDisplay.innerText = `${t.etaLabel} ~ ${minutes} min y ${segundos} seg`;
                             } else {
                                 etaDisplay.innerText = `${t.etaLabel} ~ ${segundos} seg`;
                             }
@@ -573,12 +561,11 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
                 if (etaDisplay) etaDisplay.innerText = t.etaCompletado;
 
-                if (currentFileWriter) {
-                    await currentFileWriter.close();
-                    currentFileWriter = null;
-                }
-
                 if (!metaDataBackup) return;
+
+                // Construimos el BLOB Real con todos los fragmentos recibidos en memoria
+                const blobCompletoReal = new Blob(chunksRecibidos, { type: metaDataBackup.type || "application/octet-stream" });
+                chunksRecibidos = []; // Limpieza de memoria RAM
 
                 const objetoPayload = {
                     id: fileId,
@@ -587,7 +574,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     name: metaDataBackup.name,
                     type: metaDataBackup.type || "application/octet-stream",
                     size: metaDataBackup.size,
-                    blob: new Blob(["Descargado exitosamente en cascada pura (Streaming P2P) mediante Giraffile Engine."], { type: "text/plain" })
+                    blob: blobCompletoReal // Pasamos el archivo real completo reconstruido
                 };
 
                 abrirDB(function(db) {
@@ -666,7 +653,10 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
     const LIMITE_PREVIEW_VIVO = 40 * 1024 * 1024; 
 
     if (data.type.startsWith("image/") && data.size <= LIMITE_PREVIEW_VIVO) {
-        contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px;">`;
+        contentDiv.innerHTML = `
+            <img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px; margin-bottom:10px;">
+            <a href="${urlObjeto}" download="${escaparHTML(data.name)}" class="btn btn-primary" style="text-decoration:none; text-align:center; display:block;">${escaparHTML(t.btnDownload)}</a>
+        `;
     } else if (data.type === "application/pdf" && data.size <= LIMITE_PREVIEW_VIVO) {
         contentDiv.innerHTML = `
             <embed src="${urlObjeto}" type="application/pdf" width="100%" height="450px" style="border-radius: 4px; margin-bottom:10px;">
@@ -694,7 +684,7 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         };
         lectorTexto.readAsText(fragmentoSeguro);
     } else {
-        // CORRECCIÓN SOLICITADA: Quitamos el texto de descarga en disco y renderizamos el botón de descarga nativo
+        // Renderiza el botón de descarga nativo perfecto para archivos grandes (ej: 1.6GB) sin depender de StreamSaver
         contentDiv.innerHTML = `
             <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 15px;">
                 <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${escaparHTML(t.noPreviewNotice)}</p>
