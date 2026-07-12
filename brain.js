@@ -529,7 +529,6 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance = new Peer(fileId);
 
     peerInstance.on('connection', (conn) => {
-        // Ajustamos un umbral alto pero seguro para evitar desbordes en archivos de GBs
         conn.bufferedAmountLowThreshold = 512 * 1024; 
 
         conn.on('data', async (data) => {
@@ -546,7 +545,6 @@ function inicializarTransmisionP2P(fileId, payload) {
                     enviando = true;
 
                     try {
-                        // Enviamos fragmentos de forma continua MIENTRAS el búfer de WebRTC esté desahogado
                         while (offset < totalSize && conn.dataChannel.bufferedAmount < 1024 * 1024) {
                             const { done, value } = await lectorStream.read();
                             if (done) break;
@@ -574,7 +572,6 @@ function inicializarTransmisionP2P(fileId, payload) {
                     enviando = false;
 
                     if (offset >= totalSize) {
-                        // Finalización exitosa de la lectura local
                         const tiempoFinTransferencia = Math.floor(Date.now() / 1000);
                         payload.t = tiempoFinTransferencia;
                         delete payload.enTransferencia;
@@ -601,8 +598,6 @@ function inicializarTransmisionP2P(fileId, payload) {
                         }, payload.d * 1000);
 
                     } else if (conn.dataChannel.bufferedAmount >= 1024 * 1024) {
-                        // SOLUCIÓN ROBUSTA: En vez de anular de por vida el evento, re-acoplamos de forma limpia
-                        // para que vuelva a disparar el flujo en cuanto el canal libere datos en tránsito.
                         conn.dataChannel.onbufferedamountlow = () => {
                             if (conn.dataChannel) conn.dataChannel.onbufferedamountlow = null; 
                             enviarSiguienteFlujo(); 
@@ -610,8 +605,6 @@ function inicializarTransmisionP2P(fileId, payload) {
                     }
                 }
 
-                // Vigilante reactivo por eventos: Si por micro-congelamientos el canal no dispara onbufferedamountlow,
-                // este interval de respaldo reanuda el bombeo si el búfer ya se vació.
                 const verificadorRespaldo = setInterval(() => {
                     if (!conn || conn.open === false) {
                         clearInterval(verificadorRespaldo);
@@ -644,11 +637,13 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     if (peerInstance) peerInstance.destroy();
     peerInstance = new Peer(); 
 
-    let arraysDeFragmentos = [];
-    let bytesRecibidosAcumulados = 0; // CONTADOR DE PRECISIÓN DINÁMICA: Registra el peso binario exacto procesado
+    let bytesRecibidosAcumulados = 0; 
     let metaDataBackup = null; 
     let tiempoInicio = null;
     let ultimoTiempoActualizacionUI = 0; 
+
+    // Clave exclusiva en IndexedDB para guardar de manera incremental en disco sin pisar RAM
+    const tempStoreKey = `temp_stream_${fileId}`;
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId, { 
@@ -657,9 +652,16 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         });
         
         conn.on('open', () => {
-            tiempoInicio = performance.now();
-            ultimoTiempoActualizacionUI = performance.now();
-            conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
+            // Inicializar un registro limpio en disco para los chunks
+            abrirDB(function(db) {
+                const tx = db.transaction([STORE_NAME], "readwrite");
+                tx.objectStore(STORE_NAME).put({ id: tempStoreKey, chunks: [] });
+                tx.oncomplete = () => {
+                    tiempoInicio = performance.now();
+                    ultimoTiempoActualizacionUI = performance.now();
+                    conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
+                };
+            });
         });
 
         conn.on('data', (data) => {
@@ -668,8 +670,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             const ahoraMS = performance.now();
             
             if (data.chunk) {
-                arraysDeFragmentos.push(data.chunk);
-                // Sumamos el peso exacto del buffer crudo transferido, solucionando desajustes de tamaño estático
                 bytesRecibidosAcumulados += data.chunk.byteLength;
                 
                 if (!metaDataBackup && data.size) {
@@ -686,7 +686,20 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
                 }
 
-                // Algoritmo matemático adaptativo para cálculo de ETA lineal y exacto sin importar fluctuaciones
+                // Guardar chunk directo en disco y mantener desocupada la RAM de la pestaña
+                abrirDB(function(db) {
+                    const tx = db.transaction([STORE_NAME], "readwrite");
+                    const store = tx.objectStore(STORE_NAME);
+                    store.get(tempStoreKey).onsuccess = function(e) {
+                        const record = e.target.result;
+                        if (record) {
+                            record.chunks.push(data.chunk);
+                            store.put(record);
+                        }
+                    };
+                });
+
+                // Cálculo adaptativo de ETA lineal
                 if (etaDisplay && metaDataBackup && tiempoInicio && (ahoraMS - ultimoTiempoActualizacionUI >= 1000)) {
                     const tiempoTranscurridoMS = ahoraMS - tiempoInicio;
                     
@@ -714,47 +727,62 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
                 if (etaDisplay) etaDisplay.innerText = t.etaCompletado;
 
-                const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
-                const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
-                arraysDeFragmentos = []; 
-
-                // CORRECCIÓN DE CONDICIÓN DE CARRERA: El receptor establece la vida inicial basándose en su reloj local
-                const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
-                const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
-
-                const objetoPayload = {
-                    id: fileId,
-                    t: tiempoExactoDeDescargaCompleta, // Inmunidad completa a latencias e hilos asíncronos tardíos
-                    d: duracionOriginal,
-                    name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
-                    type: tipoMime,
-                    size: tamanoReal,
-                    blob: blobReconstruido 
-                };
-
+                // Extraemos el flujo completo directo del disco de manera segura
                 abrirDB(function(db) {
-                    const tx = db.transaction([STORE_NAME], "readwrite");
-                    tx.objectStore(STORE_NAME).put(objetoPayload);
-                    tx.oncomplete = function() {
-                        renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
-                        if (peerInstance) {
-                            peerInstance.destroy();
-                            peerInstance = null;
-                        }
+                    const txLectura = db.transaction([STORE_NAME], "readwrite");
+                    const store = txLectura.objectStore(STORE_NAME);
+                    
+                    store.get(tempStoreKey).onsuccess = function(e) {
+                        const record = e.target.result;
+                        const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
+                        
+                        const blobReconstruido = new Blob(record ? record.chunks : [], { type: tipoMime });
+                        
+                        // Eliminar contenedor temporal inmediatamente para no dejar basura
+                        store.delete(tempStoreKey);
+
+                        const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
+                        const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
+                        const tamanoReal = blobReconstructed.size > 0 ? blobReconstructed.size : (metaDataBackup ? metaDataBackup.size : 0);
+
+                        const objetoPayload = {
+                            id: fileId,
+                            t: tiempoExactoDeDescargaCompleta, 
+                            d: duracionOriginal,
+                            name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
+                            type: tipoMime,
+                            size: tamanoReal,
+                            blob: blobReconstruido 
+                        };
+
+                        store.put(objetoPayload);
+
+                        txLectura.oncomplete = function() {
+                            renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
+                            if (peerInstance) {
+                                peerInstance.destroy();
+                                peerInstance = null;
+                            }
+                        };
                     };
                 });
             }
         });
 
         conn.on('close', () => {
-            if (arraysDeFragmentos.length === 0 && !metaDataBackup) {
+            abrirDB(function(db) {
+                db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(tempStoreKey);
+            });
+            if (bytesRecibidosAcumulados === 0 && !metaDataBackup) {
                 if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
             }
         });
     });
 
     peerInstance.on('error', () => {
+        abrirDB(function(db) {
+            db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(tempStoreKey);
+        });
         if (contentDiv) {
             contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
         }
@@ -774,7 +802,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
 
     if (intervaloTemporizador) clearInterval(intervaloTemporizador);
     
-    // Ejecuta el refresco de vida basándose de forma estricta en la marca temporal local corregida
     intervaloTemporizador = setInterval(function() {
         const ahora = Math.floor(Date.now() / 1000);
         const tiempoTranscurrido = ahora - data.t;
