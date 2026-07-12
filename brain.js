@@ -50,6 +50,8 @@ const i18n = {
         errExpired: "¡Este enlace ha caducado y el contenido fue destruido permanentemente!",
         errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
         p2pConnecting: "Cargando archivo...",
+        p2pEstimado: "Tiempo estimado restante:",
+        p2pCalculando: "calculando...",
         descifrando: "Preparando archivo ...",
         qrLabel: "Escanea para recibir el archivo",
         footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v1.0.1 | © 2026 jahp. Todos los derechos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
@@ -94,6 +96,8 @@ const i18n = {
         errExpired: "This link has expired and the content was permanently destroyed!",
         errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
         p2pConnecting: "Loading file...",
+        p2pEstimado: "Estimated time remaining:",
+        p2pCalculando: "calculating...",
         descifrando: "Preparing file...",
         qrLabel: "Scan to receive the file",
         footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v1.0.1 | © 2026 jahp. All rights reserved. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Legal Disclaimer</a>',
@@ -105,7 +109,6 @@ const i18n = {
     }
 };
 
-// FUNCIÓN AUXILIAR CRÍTICA: Sanitiza cadenas de texto para prevenir XSS
 function escaparHTML(cadena) {
     if (!cadena) return '';
     return cadena.toString()
@@ -116,7 +119,6 @@ function escaparHTML(cadena) {
         .replace(/'/g, "&#039;");
 }
 
-// RECOLECTOR DE BASURA (Garbage Collector): Limpia IndexedDB al cargar la app
 function ejecutarLimpiezaGarbageCollector() {
     abrirDB(function(db) {
         const ahora = Math.floor(Date.now() / 1000);
@@ -233,7 +235,7 @@ window.onload = function() {
     document.documentElement.setAttribute('data-theme', savedTheme);
     
     aplicarTraduccion();
-    ejecutarLimpiezaGarbageCollector(); // Arranca el recolector de basura de almacenamiento
+    ejecutarLimpiezaGarbageCollector();
     verificarLinkCompartido();
 };
 
@@ -245,9 +247,10 @@ function manejarSeleccionArchivo(inputOrData) {
     const listaArchivos = document.getElementById('listaArchivos');
     const t = i18n[currentLang];
     
-    // Convertir y apilar nuevos elementos en la cola
-    const nuevosArchivos = Array.from(inputOrData.files);
-    coleccionArchivos = coleccionArchivos.concat(nuevosArchivos);
+    const nuevosArchivos = Array.from(inputOrData.files || []);
+    if (nuevosArchivos.length > 0) {
+        coleccionArchivos = coleccionArchivos.concat(nuevosArchivos);
+    }
     
     if (coleccionArchivos.length === 0) {
         if (limiteContainer) limiteContainer.style.display = "none";
@@ -261,12 +264,10 @@ function manejarSeleccionArchivo(inputOrData) {
     let tamanoTotalMB = (tamañoTotalBytes / (1024 * 1024)).toFixed(2);
     let maxMB = (MAX_SIZE_BYTES / (1024 * 1024)).toFixed(0);
 
-    // Hacer visible el contenedor de la barra de límite de espacio ocupado
     if (limiteContainer) limiteContainer.style.display = "block";
     if (barreLimite) barreLimite.value = Math.min(porcentajeUso, 100);
     if (lblLimite) lblLimite.innerHTML = `Espacio: <strong>${tamanoTotalMB} MB</strong> / ${maxMB} MB`;
 
-    // Renderizar dinámicamente la lista visual de archivos en la interfaz
     if (listaArchivos) {
         listaArchivos.innerHTML = "";
         coleccionArchivos.forEach((file, index) => {
@@ -287,7 +288,6 @@ function manejarSeleccionArchivo(inputOrData) {
         if (errorMsg) errorMsg.innerText = "";
         if (barreLimite) barreLimite.style.setProperty("accent-color", "var(--accent-color, #28a745)");
         
-        // Si hay más de un archivo, se prepara para empaquetarse en un contenedor ZIP genérico externo
         archivoCargado = {
             name: coleccionArchivos.length === 1 ? coleccionArchivos[0].name : `Giraffile_Package_${Date.now()}.zip`,
             esMultiple: coleccionArchivos.length > 1,
@@ -313,7 +313,6 @@ function generarLink() {
     const outputDiv = document.getElementById('output');
     if (!outputDiv) return;
 
-    // 1. Inyectar dinámicamente la interfaz visual de la barra de progreso
     outputDiv.innerHTML = `
         <div id="localPrepContainer" style="margin-top: 15px; background: var(--timer-bg); padding: 15px; border-radius: 4px;">
             <p id="localPrepText" style="font-weight: bold; font-size: 0.9em; margin-bottom: 8px; color: var(--text-color);">${escaparHTML(t.descifrando)} (0%)</p>
@@ -327,17 +326,15 @@ function generarLink() {
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
     const duracionSegundos = parseInt(document.getElementById('expiry').value); 
     
-    // Usamos el primer archivo si es individual, o el objeto simulado si requiere empaquetado formal externo
     const blobFinalParaGuardar = archivoCargado.esMultiple ? new Blob([coleccionArchivos[0]], { type: "application/zip" }) : coleccionArchivos[0];
 
-    // 2. Fragmentación visual del hilo de renderizado para evitar bloqueos
     let progreso = 0;
     const incremento = blobFinalParaGuardar.size > 100 * 1024 * 1024 ? 5 : 20;
 
     const iteraProgreso = setInterval(() => {
         progreso += incremento;
         if (progreso > 90) {
-            clearInterval(iteraProgreso); // Mantiene en 90% hasta completar la confirmación real en disco
+            clearInterval(iteraProgreso); 
         } else {
             if (prepBar) prepBar.value = progreso;
             if (prepText) prepText.innerText = `${t.descifrando} (${progreso}%)`;
@@ -354,7 +351,6 @@ function generarLink() {
         blob: blobFinalParaGuardar 
     };
     
-    // 3. Persistencia asíncrona segura en IndexedDB
     abrirDB(function(db) {
         const transaction = db.transaction([STORE_NAME], "readwrite");
         transaction.objectStore(STORE_NAME).put(payload);
@@ -364,7 +360,6 @@ function generarLink() {
             if (prepBar) prepBar.value = 100;
             if (prepText) prepText.innerText = `${t.descifrando} (100%)`;
 
-            // Transición suave de pintado final
             setTimeout(() => {
                 const origen = window.location.origin === "null" ? "file://" : window.location.origin;
                 const link = origen + window.location.pathname + "#" + idUnico;
@@ -375,7 +370,6 @@ function generarLink() {
                     <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${escaparHTML(t.btnCopy)}</button>
                 `;
 
-                // QR CODE: render the shareable link as a scannable QR
                 if (typeof QRCode !== 'undefined') {
                     const qrWrapper = document.createElement('div');
                     qrWrapper.id = 'qrWrapper';
@@ -395,7 +389,6 @@ function generarLink() {
                         colorLight: rootStyle.getPropertyValue('--bg-color').trim()
                     });
 
-                    // qrcodejs injects its own canvas + img, center both
                     const qrCanvas = qrWrapper.querySelector('canvas');
                     if (qrCanvas) qrCanvas.style.cssText = 'display: block; margin: 0 auto;';
                     const qrImg = qrWrapper.querySelector('img');
@@ -406,7 +399,6 @@ function generarLink() {
 
                 inicializarTransmisionP2P(idUnico, payload);
 
-                // AUTODESTRUCCIÓN LOCAL
                 setTimeout(() => {
                     eliminarArchivoDB(idUnico);
                     if (peerInstance && peerInstance.id === idUnico) {
@@ -552,13 +544,21 @@ function inicializarTransmisionP2P(fileId, payload) {
 
 function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
-    if (contentDiv) contentDiv.innerHTML = `<p id="p2pLoader" style="color: var(--text-color); font-weight: bold;">${escaparHTML(t.p2pConnecting)} (0%)</p>`;
+    
+    // Inyectamos el loader inicial junto con un contenedor específico para el tiempo estimado
+    if (contentDiv) {
+        contentDiv.innerHTML = `
+            <p id="p2pLoader" style="color: var(--text-color); font-weight: bold; margin-bottom: 5px;">${escaparHTML(t.p2pConnecting)} (0%)</p>
+            <p id="p2pEstimadoCont" style="font-size: 0.85em; color: var(--footer-color); margin-top: 0;">${escaparHTML(t.p2pEstimado)} <span id="p2pTimeRemaining">${escaparHTML(t.p2pCalculando)}</span></p>
+        `;
+    }
     
     if (peerInstance) peerInstance.destroy();
     peerInstance = new Peer(); 
 
     let arraysDeFragmentos = [];
     let metaDataBackup = null; 
+    let tiempoInicio = Date.now(); // Marca de tiempo inicial para calcular velocidad
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId, { 
@@ -567,11 +567,13 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         });
         
         conn.on('open', () => {
+            tiempoInicio = Date.now(); // Reiniciar al conectar formalmente
             conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
         });
 
         conn.on('data', (data) => {
             const loader = document.getElementById("p2pLoader");
+            const tiempoEstimadoSpan = document.getElementById("p2pTimeRemaining");
             
             if (data.chunk) {
                 arraysDeFragmentos.push(data.chunk);
@@ -584,11 +586,32 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                         size: data.size 
                     };
                 }
+                
                 if (loader) loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
+                
+                // --- CÁLCULO DE TIEMPO ESTIMADO RESTANTE ---
+                if (tiempoEstimadoSpan && metaDataBackup) {
+                    const tiempoTranscurridoMs = Date.now() - tiempoInicio;
+                    const bytesDescargados = arraysDeFragmentos.length * CHUNK_SIZE;
+                    
+                    if (bytesDescargados > 0 && tiempoTranscurridoMs > 200) {
+                        const velocidadBytesPorMs = bytesDescargados / tiempoTranscurridoMs;
+                        const bytesRestantes = metaDataBackup.size - bytesDescargados;
+                        
+                        if (bytesRestantes > 0 && velocidadBytesPorMs > 0) {
+                            const tiempoRestanteSegundos = Math.ceil(bytesRestantes / (velocidadBytesPorMs * 1000));
+                            
+                            const minRestantes = Math.floor(tiempoRestanteSegundos / 60);
+                            const segRestantes = tiempoRestanteSegundos % 60;
+                            tiempoEstimadoSpan.innerText = `${minRestantes.toString().padStart(2, '0')}:${segRestantes.toString().padStart(2, '0')}`;
+                        }
+                    }
+                }
             }
 
             if (data.eof) {
                 if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
+                if (tiempoEstimadoSpan) tiempoEstimadoSpan.innerText = "00:00";
 
                 const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
