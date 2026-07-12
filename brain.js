@@ -326,81 +326,68 @@ function generarLink() {
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
     const duracionSegundos = parseInt(document.getElementById('expiry').value); 
 
-    // setTimeout inicial para liberar el hilo principal inmediatamente
     setTimeout(async () => {
         let blobFinalParaGuardar;
 
         try {
             if (archivoCargado.esMultiple) {
-                if (prepText) prepText.innerText = `${t.descifrando} (Preparando paquete...)`;
+                if (prepText) prepText.innerText = `${t.descifrando} (Estructurando metadatos...)`;
                 const zip = new JSZip();
                 
                 let archivosProcesados = 0;
                 for (const file of coleccionArchivos) {
                     if (prepText) {
-                        prepText.innerText = `${t.descifrando} (Procesando: ${archivosProcesados + 1}/${coleccionArchivos.length})`;
+                        prepText.innerText = `${t.descifrando} (Preparando: ${archivosProcesados + 1}/${coleccionArchivos.length})`;
                     }
                     
-                    const arrayBuffer = await file.arrayBuffer();
-                    zip.file(file.name, arrayBuffer, { binary: true });
+                    // SOLUCCIÓN RADICAL RAM: JSZip nativamente acepta objetos 'Blob' o 'File' directamente 
+                    // sin necesidad de pre-cargar un ArrayBuffer gigante en memoria.
+                    zip.file(file.name, file, { binary: true });
                     
                     archivosProcesados++;
-                    if (prepBar) prepBar.value = Math.min((archivosProcesados / coleccionArchivos.length) * 40, 40);
-                    // Pequeña tregua asíncrona para que no se congele la UI durante la inserción
-                    await new Promise(r => setTimeout(r, 1));
+                    if (prepBar) prepBar.value = Math.min((archivosProcesados / coleccionArchivos.length) * 30, 30);
+                    await new Promise(r => setTimeout(r, 5));
                 }
                 
-                if (prepText) prepText.innerText = `${t.descifrando} (Generando estructura binaria...)`;
-                await new Promise(r => setTimeout(r, 5));
+                if (prepText) prepText.innerText = `${t.descifrando} (Procesando empaquetado seguro...)`;
+                await new Promise(r => setTimeout(r, 10));
                 
-                const arrayDeBytesZip = await zip.generateAsync({ 
-                    type: "uint8array",
+                // Forzamos tipo de salida como BLOB nativo directo en lugar de Uint8Array. 
+                // JSZip internamente puede estructurar el blob por partes si no se activa compresión pesada (STORE).
+                blobFinalParaGuardar = await zip.generateAsync({ 
+                    type: "blob",
                     compression: "STORE"
+                }, function updateCallback(metadata) {
+                    if (prepBar) {
+                        let progresoInterno = 30 + Math.floor(metadata.percent * 0.4);
+                        prepBar.value = Math.min(progresoInterno, 70);
+                    }
+                    if (prepText) {
+                        prepText.innerText = `${t.descifrando} (Escribiendo contenedor: ${Math.floor(metadata.percent)}%)`;
+                    }
                 });
 
-                if (prepText) prepText.innerText = `${t.descifrando} (Procesando restricciones de tamaño...)`;
-                await new Promise(r => setTimeout(r, 5));
-
-                const tamañoFragmentoMax = 512 * 1024 * 1024; 
-                const fragmentosBlob = [];
-                let posicionActual = 0;
-
-                // BUCLE SEGMENTADO NO BLOQUEANTE: Trocea los datos asíncronamente dando "respiros" al navegador
-                while (posicionActual < arrayDeBytesZip.length) {
-                    const finDeFragmento = Math.min(posicionActual + tamañoFragmentoMax, arrayDeBytesZip.length);
-                    fragmentosBlob.push(arrayDeBytesZip.subarray(posicionActual, finDeFragmento));
-                    posicionActual = finDeFragmento;
-                    
-                    if (prepBar) {
-                        let progresoTroceo = 40 + Math.floor((posicionActual / arrayDeBytesZip.length) * 20);
-                        prepBar.value = Math.min(progresoTroceo, 60);
-                    }
-                    // Ceder el control al navegador para evitar el cuelgue (Crash) de la UI
-                    await new Promise(r => setTimeout(r, 0));
-                }
-
-                blobFinalParaGuardar = new Blob(fragmentosBlob, { type: "application/zip" });
             } else {
                 blobFinalParaGuardar = coleccionArchivos[0];
             }
         } catch (err) {
-            console.error("Error en JSZip:", err);
-            if (outputDiv) outputDiv.innerHTML = `<p class="error">Error local al comprimir el lote de archivos: ${escaparHTML(err.message)}</p>`;
+            console.error("Error crítico en el proceso de empaquetado:", err);
+            if (outputDiv) outputDiv.innerHTML = `<p class="error">Error local de memoria al empaquetar lote: ${escaparHTML(err.message)}</p>`;
             return;
         }
 
-        let progreso = 60; 
-        const incremento = blobFinalParaGuardar.size > 100 * 1024 * 1024 ? 4 : 10;
+        let progreso = 70; 
+        const incremento = 3;
 
         const iteraProgreso = setInterval(() => {
             progreso += incremento;
-            if (progreso > 96) {
+            if (progreso > 97) {
                 clearInterval(iteraProgreso); 
             } else {
                 if (prepBar) prepBar.value = progreso;
                 if (prepText) prepText.innerText = `${t.descifrando} (${progreso}%)`;
             }
-        }, 35);
+        }, 40);
 
         const payload = {
             id: idUnico,
