@@ -39,12 +39,14 @@
                 <h3 id="lblPrepare" style="margin-top: 0;">Prepara tu archivo para enviar</h3>
                 
                 <div class="control-group">
-                    <label id="lblDropZone">Arrastra tus archivos o haz clic abajo (Máx 3.5GB):</label><br><br>
+                    <label id="lblDropZone">Arrastra tus archivos o haz clic abajo (Máx 1.5GB):</label><br><br>
                     
                     <!-- Zona de arrastre con soporte para múltiples archivos -->
                     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
                         <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
-                        <input type="file" id="fileInput" style="display: none;" multiple onchange="manejarSeleccionMultiple(this)">
+                        
+                        <!-- CORRECCIÓN: onchange ahora apunta a la función unificada manejarSeleccionArchivo -->
+                        <input type="file" id="fileInput" style="display: none;" multiple onchange="manejarSeleccionArchivo(this)">
                         
                         <!-- Barra de Límite de Peso Dinámica y Lista de Archivos en Cola -->
                         <div id="limiteContainer" style="margin-top: 15px; display: none;" onclick="event.stopPropagation();">
