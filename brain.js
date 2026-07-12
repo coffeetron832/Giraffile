@@ -349,14 +349,28 @@ function generarLink() {
                 
                 if (prepText) prepText.innerText = `${t.descifrando} (Empaquetando lote...)`;
                 
-                // SOLUCIÓN AL BUG: Le pedimos a JSZip un "uint8array". Esto evita su función interna rota "newBlob".
+                // Obtenemos el mapa de bytes puro de JSZip en formato Uint8Array
                 const arrayDeBytesZip = await zip.generateAsync({ 
                     type: "uint8array",
                     compression: "STORE"
                 });
 
-                // Instanciamos el Blob de manera 100% nativa con la API del navegador moderno
-                blobFinalParaGuardar = new Blob([arrayDeBytesZip], { type: "application/zip" });
+                if (prepText) prepText.innerText = `${t.descifrando} (Procesando restricciones de tamaño...)`;
+
+                // SOLUCIÓN AL LÍMITE DE NAVEGADOR DE 2GB: Troceamos el Uint8Array en partes de 512MB
+                const tamañoFragmentoMax = 512 * 1024 * 1024; 
+                const fragmentosBlob = [];
+                let posicionActual = 0;
+
+                while (posicionActual < arrayDeBytesZip.length) {
+                    const finDeFragmento = Math.min(posicionActual + tamañoFragmentoMax, arrayDeBytesZip.length);
+                    // .subarray crea vistas veloces sin duplicar memoria RAM
+                    fragmentosBlob.push(arrayDeBytesZip.subarray(posicionActual, finDeFragmento));
+                    posicionActual = finDeFragmento;
+                }
+
+                // Al pasar un array ordenado de trozos, el constructor nativo procesa buffers masivos >2GB sin error
+                blobFinalParaGuardar = new Blob(fragmentosBlob, { type: "application/zip" });
             } else {
                 blobFinalParaGuardar = coleccionArchivos[0];
             }
