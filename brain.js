@@ -241,9 +241,6 @@ window.onload = function() {
     verificarLinkCompartido();
 };
 
-/**
- * Nueva función de control de selección y cola para soporte multiarchivo
- */
 function manejarSeleccionMultiple(inputOrData) {
     const errorMsg = document.getElementById('errorMsg');
     const limiteContainer = document.getElementById('limiteContainer');
@@ -291,7 +288,6 @@ function manejarSeleccionMultiple(inputOrData) {
         if (errorMsg) errorMsg.innerText = "";
         if (barreLimite) barreLimite.style.setProperty("accent-color", "var(--accent-color, #28a745)");
         
-        // Sincronizar compatibilidad con el resto del script
         archivoCargado = {
             name: coleccionArchivos.length === 1 ? coleccionArchivos[0].name : `Giraffile_Package_${Date.now()}.zip`,
             esMultiple: coleccionArchivos.length > 1,
@@ -304,7 +300,6 @@ function manejarSeleccionMultiple(inputOrData) {
 
 function quitarArchivoDeCola(index) {
     coleccionArchivos.splice(index, 1);
-    // Forzamos actualización pasándole una estructura mock de archivos vacía
     manejarSeleccionMultiple({ files: [] }); 
 }
 
@@ -331,7 +326,6 @@ function generarLink() {
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
     const duracionSegundos = parseInt(document.getElementById('expiry').value); 
 
-    // Lanzar proceso asíncrono para empaquetado/procesamiento sin congelar UI
     setTimeout(async () => {
         let blobFinalParaGuardar;
 
@@ -421,14 +415,9 @@ function generarLink() {
                     }
 
                     inicializarTransmisionP2P(idUnico, payload);
-
-                    setTimeout(() => {
-                        eliminarArchivoDB(idUnico);
-                        if (peerInstance && peerInstance.id === idUnico) {
-                            peerInstance.destroy();
-                            peerInstance = null;
-                        }
-                    }, duracionSegundos * 1000);
+                    
+                    // SOLUCIÓN AL TIEMPO: Se remueve el setTimeout de eliminación local automática aquí.
+                    // Ahora la cuenta regresiva e inyección/borrado en DB dependen estrictamente de cuando termine el receptor (data.eof).
                 }, 200);
             };
 
@@ -498,7 +487,7 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR P2P: FLUJO CONTROLADO ORIGINAL (GARANTIZA CERO CORRUPCIÓN)
+// MOTOR P2P: FLUJO CONTROLADO Y AMORTIGUADO
 // =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -555,6 +544,16 @@ function inicializarTransmisionP2P(fileId, payload) {
                             type: payload.type,
                             size: payload.size
                         });
+                        
+                        // Una vez que el receptor confirma la descarga completa de forma remota, 
+                        // el emisor agenda su destrucción local de memoria limpia en base a la duración real
+                        setTimeout(() => {
+                            eliminarArchivoDB(payload.id);
+                            if (peerInstance && peerInstance.id === payload.id) {
+                                peerInstance.destroy();
+                                peerInstance = null;
+                            }
+                        }, payload.d * 1000);
                     } else {
                         setTimeout(enviarSiguienteFlujo, 0);
                     }
@@ -581,6 +580,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     let arraysDeFragmentos = [];
     let metaDataBackup = null; 
     let tiempoInicio = null;
+    let ultimoTiempoActualizacionUI = 0; // Para el filtro de amortiguación (suavizado) del ETA
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId, { 
@@ -590,12 +590,14 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         
         conn.on('open', () => {
             tiempoInicio = performance.now();
+            ultimoTiempoActualizacionUI = performance.now();
             conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
         });
 
         conn.on('data', (data) => {
             const loader = document.getElementById("p2pLoader");
             const etaDisplay = document.getElementById("p2pEta");
+            const ahoraMS = performance.now();
             
             if (data.chunk) {
                 arraysDeFragmentos.push(data.chunk);
@@ -614,8 +616,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
                 }
 
-                if (etaDisplay && metaDataBackup && tiempoInicio) {
-                    const tiempoTranscurridoMS = performance.now() - tiempoInicio;
+                // SOLUCIÓN AL PARPADEO (ETA): Amortiguación ejecutada sólo si ha transcurrido 1 segundo (1000ms)
+                if (etaDisplay && metaDataBackup && tiempoInicio && (ahoraMS - ultimoTiempoActualizacionUI >= 1000)) {
+                    const tiempoTranscurridoMS = ahoraMS - tiempoInicio;
                     const bytesRecibidosHastaAhora = arraysDeFragmentos.length * CHUNK_SIZE;
                     
                     if (tiempoTranscurridoMS > 500 && bytesRecibidosHastaAhora > 0) {
@@ -632,6 +635,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                             } else {
                                 etaDisplay.innerText = `${t.etaLabel} ~ ${segundos} seg`;
                             }
+                            ultimoTiempoActualizacionUI = ahoraMS; // Reinicia el intervalo del filtro
                         }
                     }
                 }
@@ -645,13 +649,14 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
                 arraysDeFragmentos = []; 
 
-                const tiempoOriginal = data.t || (metaDataBackup ? metaDataBackup.t : Math.floor(Date.now() / 1000));
+                // SOLUCIÓN AL TIEMPO: Seteamos el tiempo 't' actual para que empiece desde cero ahora mismo
+                const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
                 const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
                 const objetoPayload = {
                     id: fileId,
-                    t: tiempoOriginal,
+                    t: tiempoExactoDeDescargaCompleta, // El temporizador inicia íntegro desde este instante
                     d: duracionOriginal,
                     name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
                     type: tipoMime,
