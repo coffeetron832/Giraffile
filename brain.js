@@ -545,7 +545,6 @@ function inicializarTransmisionP2P(fileId, payload) {
 function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
     
-    // Inyectamos el loader inicial junto con un contenedor específico para el tiempo estimado
     if (contentDiv) {
         contentDiv.innerHTML = `
             <p id="p2pLoader" style="color: var(--text-color); font-weight: bold; margin-bottom: 5px;">${escaparHTML(t.p2pConnecting)} (0%)</p>
@@ -558,7 +557,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
     let arraysDeFragmentos = [];
     let metaDataBackup = null; 
-    let tiempoInicio = Date.now(); // Marca de tiempo inicial para calcular velocidad
+    let tiempoInicio = Date.now(); 
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId, { 
@@ -567,7 +566,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         });
         
         conn.on('open', () => {
-            tiempoInicio = Date.now(); // Reiniciar al conectar formalmente
+            tiempoInicio = Date.now(); 
             conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
         });
 
@@ -589,7 +588,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 
                 if (loader) loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
                 
-                // --- CÁLCULO DE TIEMPO ESTIMADO RESTANTE ---
                 if (tiempoEstimadoSpan && metaDataBackup) {
                     const tiempoTranscurridoMs = Date.now() - tiempoInicio;
                     const bytesDescargados = arraysDeFragmentos.length * CHUNK_SIZE;
@@ -617,13 +615,15 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
                 arraysDeFragmentos = []; 
 
-                const tiempoOriginal = data.t || (metaDataBackup ? metaDataBackup.t : Math.floor(Date.now() / 1000));
+                // CORRECCIÓN DE SINCRONIZACIÓN:
+                // Usamos el segundo actual en el dispositivo receptor para que empiece limpio
+                const tiempoActualReceptor = Math.floor(Date.now() / 1000);
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
                 const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
                 const objetoPayload = {
                     id: fileId,
-                    t: tiempoOriginal,
+                    t: tiempoActualReceptor, // <-- Se guarda el tiempo exacto en que terminó la descarga
                     d: duracionOriginal,
                     name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
                     type: tipoMime,
