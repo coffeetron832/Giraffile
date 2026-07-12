@@ -326,6 +326,7 @@ function generarLink() {
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
     const duracionSegundos = parseInt(document.getElementById('expiry').value); 
 
+    // setTimeout inicial para liberar el hilo principal inmediatamente
     setTimeout(async () => {
         let blobFinalParaGuardar;
 
@@ -344,32 +345,40 @@ function generarLink() {
                     zip.file(file.name, arrayBuffer, { binary: true });
                     
                     archivosProcesados++;
-                    if (prepBar) prepBar.value = Math.min((archivosProcesados / coleccionArchivos.length) * 50, 50);
+                    if (prepBar) prepBar.value = Math.min((archivosProcesados / coleccionArchivos.length) * 40, 40);
+                    // Pequeña tregua asíncrona para que no se congele la UI durante la inserción
+                    await new Promise(r => setTimeout(r, 1));
                 }
                 
-                if (prepText) prepText.innerText = `${t.descifrando} (Empaquetando lote...)`;
+                if (prepText) prepText.innerText = `${t.descifrando} (Generando estructura binaria...)`;
+                await new Promise(r => setTimeout(r, 5));
                 
-                // Obtenemos el mapa de bytes puro de JSZip en formato Uint8Array
                 const arrayDeBytesZip = await zip.generateAsync({ 
                     type: "uint8array",
                     compression: "STORE"
                 });
 
                 if (prepText) prepText.innerText = `${t.descifrando} (Procesando restricciones de tamaño...)`;
+                await new Promise(r => setTimeout(r, 5));
 
-                // SOLUCIÓN AL LÍMITE DE NAVEGADOR DE 2GB: Troceamos el Uint8Array en partes de 512MB
                 const tamañoFragmentoMax = 512 * 1024 * 1024; 
                 const fragmentosBlob = [];
                 let posicionActual = 0;
 
+                // BUCLE SEGMENTADO NO BLOQUEANTE: Trocea los datos asíncronamente dando "respiros" al navegador
                 while (posicionActual < arrayDeBytesZip.length) {
                     const finDeFragmento = Math.min(posicionActual + tamañoFragmentoMax, arrayDeBytesZip.length);
-                    // .subarray crea vistas veloces sin duplicar memoria RAM
                     fragmentosBlob.push(arrayDeBytesZip.subarray(posicionActual, finDeFragmento));
                     posicionActual = finDeFragmento;
+                    
+                    if (prepBar) {
+                        let progresoTroceo = 40 + Math.floor((posicionActual / arrayDeBytesZip.length) * 20);
+                        prepBar.value = Math.min(progresoTroceo, 60);
+                    }
+                    // Ceder el control al navegador para evitar el cuelgue (Crash) de la UI
+                    await new Promise(r => setTimeout(r, 0));
                 }
 
-                // Al pasar un array ordenado de trozos, el constructor nativo procesa buffers masivos >2GB sin error
                 blobFinalParaGuardar = new Blob(fragmentosBlob, { type: "application/zip" });
             } else {
                 blobFinalParaGuardar = coleccionArchivos[0];
@@ -380,18 +389,18 @@ function generarLink() {
             return;
         }
 
-        let progreso = 50; 
-        const incremento = blobFinalParaGuardar.size > 100 * 1024 * 1024 ? 5 : 10;
+        let progreso = 60; 
+        const incremento = blobFinalParaGuardar.size > 100 * 1024 * 1024 ? 4 : 10;
 
         const iteraProgreso = setInterval(() => {
             progreso += incremento;
-            if (progreso > 95) {
+            if (progreso > 96) {
                 clearInterval(iteraProgreso); 
             } else {
                 if (prepBar) prepBar.value = progreso;
                 if (prepText) prepText.innerText = `${t.descifrando} (${progreso}%)`;
             }
-        }, 30);
+        }, 35);
 
         const payload = {
             id: idUnico,
@@ -458,7 +467,7 @@ function generarLink() {
                 outputDiv.innerHTML = `<p class="error">Error local al procesar el almacenamiento.</p>`;
             };
         });
-    }, 50);
+    }, 40);
 }
 
 function copiarAlPortapapeles() {
