@@ -694,15 +694,14 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
                 arraysDeFragmentos = []; 
 
+                // CORRECCIÓN DE CARRERA: El receptor marca su propio tiempo de vida exacto
                 const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                
-                // CORREGIDO: Ahora apunta correctamente a la variable en español 'blobReconstruido'
                 const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
                 const objetoPayload = {
                     id: fileId,
-                    t: tiempoExactoDeDescargaCompleta, 
+                    t: tiempoExactoDeDescargaCompleta, // Marca limpia local
                     d: duracionOriginal,
                     name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
                     type: tipoMime,
@@ -751,34 +750,30 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
 
     if (intervaloTemporizador) clearInterval(intervaloTemporizador);
     
-    if (data.enTransferencia) {
-        if (lifeBar) lifeBar.value = 100;
-        if (timeString) timeString.innerText = "⏳ Transfiriendo...";
-    } else {
-        intervaloTemporizador = setInterval(function() {
-            const ahora = Math.floor(Date.now() / 1000);
-            const tiempoTranscurrido = ahora - data.t;
-            const tiempoRestante = data.d - tiempoTranscurrido;
+    // Con la marca 't' calculada localmente, el contador empezará con el tiempo completo exacto elegido
+    intervaloTemporizador = setInterval(function() {
+        const ahora = Math.floor(Date.now() / 1000);
+        const tiempoTranscurrido = ahora - data.t;
+        const tiempoRestante = data.d - tiempoTranscurrido;
 
-            if (tiempoRestante <= 0) {
-                clearInterval(intervaloTemporizador);
-                eliminarArchivoDB(data.id);
-                if (objetoUrlActivo) {
-                    URL.revokeObjectURL(objetoUrlActivo);
-                    objetoUrlActivo = null;
-                }
-                if (timerGroup) timerGroup.style.display = "none";
-                if (metaDiv) metaDiv.style.display = "none";
-                if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errTimeOut)}</p>`;
-                return;
+        if (tiempoRestante <= 0) {
+            clearInterval(intervaloTemporizador);
+            eliminarArchivoDB(data.id);
+            if (objetoUrlActivo) {
+                URL.revokeObjectURL(objetoUrlActivo);
+                objetoUrlActivo = null;
             }
+            if (timerGroup) timerGroup.style.display = "none";
+            if (metaDiv) metaDiv.style.display = "none";
+            if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errTimeOut)}</p>`;
+            return;
+        }
 
-            if (lifeBar) lifeBar.value = (tiempoRestante / data.d) * 100;
-            const minutes = Math.floor(tiempoRestante / 60);
-            const segundos = tiempoRestante % 60;
-            if (timeString) timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
-        }, 1000);
-    }
+        if (lifeBar) lifeBar.value = (tiempoRestante / data.d) * 100;
+        const minutes = Math.floor(tiempoRestante / 60);
+        const segundos = tiempoRestante % 60;
+        if (timeString) timeString.innerText = `${minutes.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+    }, 1000);
 
     if (objetoUrlActivo) {
         URL.revokeObjectURL(objetoUrlActivo);
