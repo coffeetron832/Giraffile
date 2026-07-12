@@ -131,8 +131,14 @@ function ejecutarLimpiezaGarbageCollector() {
             const cursor = event.target.result;
             if (cursor) {
                 const registro = cursor.value;
-                if (ahora > (registro.t + registro.d)) {
-                    cursor.delete();
+                // Si es un chunk suelto residual o un archivo caducado, se limpia
+                if (typeof registro.id === "string" && (registro.id.startsWith("temp_stream_") || ahora > (registro.t + registro.d))) {
+                    if (registro.id.startsWith("temp_stream_") && !registro.t) {
+                        // Es un fragmento temporal huérfano
+                        cursor.delete();
+                    } else if (ahora > (registro.t + registro.d)) {
+                        cursor.delete();
+                    }
                 }
                 cursor.continue();
             }
@@ -641,9 +647,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     let metaDataBackup = null; 
     let tiempoInicio = null;
     let ultimoTiempoActualizacionUI = 0; 
+    let chunkCounter = 0;
 
-    // Clave exclusiva en IndexedDB para guardar de manera incremental en disco sin pisar RAM
-    const tempStoreKey = `temp_stream_${fileId}`;
+    const baseTempKey = `temp_stream_${fileId}`;
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId, { 
@@ -652,16 +658,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         });
         
         conn.on('open', () => {
-            // Inicializar un registro limpio en disco para los chunks
-            abrirDB(function(db) {
-                const tx = db.transaction([STORE_NAME], "readwrite");
-                tx.objectStore(STORE_NAME).put({ id: tempStoreKey, chunks: [] });
-                tx.oncomplete = () => {
-                    tiempoInicio = performance.now();
-                    ultimoTiempoActualizacionUI = performance.now();
-                    conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
-                };
-            });
+            tiempoInicio = performance.now();
+            ultimoTiempoActualizacionUI = performance.now();
+            conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
         });
 
         conn.on('data', (data) => {
@@ -682,21 +681,18 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     };
                 }
 
-                if (loader) {
+                if (loader && (ahoraMS - ultimoTiempoActualizacionUI >= 100 || data.progress >= 99)) {
                     loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
                 }
 
-                // Guardar chunk directo en disco y mantener desocupada la RAM de la pestaña
+                // OPTIMIZACIÓN CRÍTICA: Escritura incremental pura. Cero lecturas intermedias de arrays en disco.
+                const currentChunkIndex = chunkCounter++;
                 abrirDB(function(db) {
                     const tx = db.transaction([STORE_NAME], "readwrite");
-                    const store = tx.objectStore(STORE_NAME);
-                    store.get(tempStoreKey).onsuccess = function(e) {
-                        const record = e.target.result;
-                        if (record) {
-                            record.chunks.push(data.chunk);
-                            store.put(record);
-                        }
-                    };
+                    tx.objectStore(STORE_NAME).put({ 
+                        id: `${baseTempKey}_${currentChunkIndex}`, 
+                        chunk: data.chunk 
+                    });
                 });
 
                 // Cálculo adaptativo de ETA lineal
@@ -725,59 +721,68 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
             if (data.eof) {
                 if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
-                if (etaDisplay) etaDisplay.innerText = `${t.etaCompletado} ${t.descifrando}`; // Avisa visualmente que está procesando
+                if (etaDisplay) etaDisplay.innerText = `${t.etaCompletado} ${t.descifrando}`;
 
-                // Extraemos el flujo completo directo del disco de manera segura
+                // OPTIMIZACIÓN CRÍTICA: Ensamblado asíncrono secuencial mediante cursor para evitar cuelgues de RAM
                 abrirDB(function(db) {
-                    const txLectura = db.transaction([STORE_NAME], "readwrite");
+                    const chunksAssembled = [];
+                    const txLectura = db.transaction([STORE_NAME], "readonly");
                     const store = txLectura.objectStore(STORE_NAME);
                     
-                    store.get(tempStoreKey).onsuccess = function(e) {
-                        const record = e.target.result;
-                        const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
-                        
-                        // Uso de setTimeout para liberar el hilo principal y pintar la UI antes del empaquetado pesado en la RAM virtual
-                        setTimeout(() => {
-                            const blobReconstruido = new Blob(record ? record.chunks : [], { type: tipoMime });
-                            
-                            // Eliminar contenedor temporal inmediatamente para no dejar basura
-                            const txLimpieza = db.transaction([STORE_NAME], "readwrite");
-                            txLimpieza.objectStore(STORE_NAME).delete(tempStoreKey);
-
-                            const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
-                            const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                            const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
-
-                            const objetoPayload = {
-                                id: fileId,
-                                t: tiempoExactoDeDescargaCompleta, 
-                                d: duracionOriginal,
-                                name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
-                                type: tipoMime,
-                                size: tamanoReal,
-                                blob: blobReconstruido 
-                            };
-
-                            const txGuardar = db.transaction([STORE_NAME], "readwrite");
-                            txGuardar.objectStore(STORE_NAME).put(objetoPayload);
-
-                            txGuardar.oncomplete = function() {
-                                renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
-                                if (peerInstance) {
-                                    peerInstance.destroy();
-                                    peerInstance = null;
+                    // Buscamos secuencialmente los fragmentos usando un cursor optimizado por rango
+                    const rangoId = IDBKeyRange.bound(baseTempKey + "_", baseTempKey + "_\uffff");
+                    
+                    store.openCursor(rangoId).onsuccess = function(e) {
+                        const cursor = e.target.result;
+                        if (cursor) {
+                            chunksAssembled.push(cursor.value.chunk);
+                            cursor.continue();
+                        } else {
+                            // Hemos terminado de leer todos los fragmentos sin colapsar el hilo principal
+                            setTimeout(() => {
+                                const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
+                                const blobReconstruido = new Blob(chunksAssembled, { type: tipoMime });
+                                
+                                // Limpieza atómica en bloque de los fragmentos intermedios
+                                const txLimpieza = db.transaction([STORE_NAME], "readwrite");
+                                const storeLimpieza = txLimpieza.objectStore(STORE_NAME);
+                                for (let i = 0; i < chunkCounter; i++) {
+                                    storeLimpieza.delete(`${baseTempKey}_${i}`);
                                 }
-                            };
-                        }, 50);
+
+                                const tiempoExactoDeDescargaCompleta = Math.floor(Date.now() / 1000);
+                                const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
+                                const tamanoReal = blobReconstruido.size;
+
+                                const objetoPayload = {
+                                    id: fileId,
+                                    t: tiempoExactoDeDescargaCompleta, 
+                                    d: duracionOriginal,
+                                    name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
+                                    type: tipoMime,
+                                    size: tamanoReal,
+                                    blob: blobReconstruido 
+                                };
+
+                                const txGuardar = db.transaction([STORE_NAME], "readwrite");
+                                txGuardar.objectStore(STORE_NAME).put(objetoPayload);
+
+                                txGuardar.oncomplete = function() {
+                                    renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
+                                    if (peerInstance) {
+                                        peerInstance.destroy();
+                                        peerInstance = null;
+                                    }
+                                };
+                            }, 20);
+                        }
                     };
                 });
             }
         });
 
         conn.on('close', () => {
-            abrirDB(function(db) {
-                db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(tempStoreKey);
-            });
+            limpiarFragmentosHuérfanos(baseTempKey, chunkCounter);
             if (bytesRecibidosAcumulados === 0 && !metaDataBackup) {
                 if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
             }
@@ -785,11 +790,19 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     });
 
     peerInstance.on('error', () => {
-        abrirDB(function(db) {
-            db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(tempStoreKey);
-        });
+        limpiarFragmentosHuérfanos(baseTempKey, chunkCounter);
         if (contentDiv) {
             contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
+        }
+    });
+}
+
+function limpiarFragmentosHuérfanos(baseTempKey, total) {
+    abrirDB(function(db) {
+        const tx = db.transaction([STORE_NAME], "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        for (let i = 0; i < total; i++) {
+            store.delete(`${baseTempKey}_${i}`);
         }
     });
 }
