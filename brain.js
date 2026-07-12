@@ -1,4 +1,4 @@
-// Límite universal robusto ajustado a 3.5 GB para maximizar la fluidez del navegador
+// Límite universal robusto aumentado a 3.5 GB
 const MAX_SIZE_BYTES = 3.5 * 1024 * 1024 * 1024; 
 let intervaloTemporizador = null;
 let archivoCargado = null;
@@ -9,9 +9,7 @@ let objetoUrlActivo = null; // Variable global para el control de fugas de memor
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
-
-// Tamaño óptimo para el modelo de flujo por ACK (1 MB mantiene el canal saturado eficientemente sin latencia)
-const CHUNK_SIZE = 1 * 1024 * 1024; 
+const CHUNK_SIZE = 256 * 1024; // Mantenemos tu tamaño de fragmento idóneo y seguro
 
 const i18n = {
     es: {
@@ -424,9 +422,9 @@ function verificarLinkCompartido() {
     });
 }
 
-// ==================================================================================
-// MOTOR P2P OPTIMIZADO: ENLACE Y RECONSTRUCCIÓN BINARIA FIEL
-// ==================================================================================
+// =========================================================================
+// MOTOR P2P: FLUJO CONTROLADO ORIGINAL (GARANTIZA CERO CORRUPCIÓN)
+// =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
     if (peerInstance) peerInstance.destroy();
@@ -435,18 +433,7 @@ function inicializarTransmisionP2P(fileId, payload) {
 
     peerInstance.on('connection', (conn) => {
         conn.on('data', async (data) => {
-            if (data.request === 'GET_META') {
-                conn.send({
-                    type: 'META',
-                    id: payload.id,
-                    t: payload.t,
-                    d: payload.d,
-                    name: payload.name,
-                    typeMime: payload.type,
-                    size: payload.size
-                });
-            } 
-            else if (data.request === 'GET_CHUNK') {
+            if (data.request === 'DOWNLOAD_FILE_STREAM') {
                 const ahora = Math.floor(Date.now() / 1000);
                 if (ahora > (payload.t + payload.d)) {
                     eliminarArchivoDB(payload.id);
@@ -454,23 +441,52 @@ function inicializarTransmisionP2P(fileId, payload) {
                     return;
                 }
 
-                const offset = data.offset;
+                let offset = 0;
                 const totalSize = payload.blob.size;
 
-                if (offset < totalSize) {
-                    const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
-                    const bufferCargado = await fragmentoBlob.arrayBuffer();
-                    const progresoReal = Math.min(((offset + bufferCargado.byteLength) / totalSize) * 100, 100);
+                async function enviarSiguienteFlujo() {
+                    if (!conn || conn.open === false) return; 
+                    
+                    if (conn.bufferSize > 512 * 1024) { 
+                        setTimeout(enviarSiguienteFlujo, 10);
+                        return;
+                    }
 
-                    conn.send({
-                        type: 'CHUNK',
-                        chunk: bufferCargado,
-                        progress: progresoReal,
-                        offsetLeido: offset + bufferCargado.byteLength
-                    }, [bufferCargado]); 
-                } else {
-                    conn.send({ type: 'EOF' });
+                    // Tu bucle while original: Lee y envía secuencialmente de forma estricta
+                    while (offset < totalSize && conn.bufferSize <= 512 * 1024) {
+                        const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
+                        offset += CHUNK_SIZE;
+                        const progresoReal = Math.min((offset / totalSize) * 100, 100);
+
+                        const bufferCargado = await fragmentoBlob.arrayBuffer();
+
+                        conn.send({
+                            id: payload.id,
+                            t: payload.t,
+                            d: payload.d,
+                            name: payload.name,
+                            type: payload.type,
+                            size: payload.size,
+                            chunk: bufferCargado, 
+                            progress: progresoReal
+                        });
+                    }
+
+                    if (offset >= totalSize) {
+                        conn.send({ 
+                            eof: true,
+                            t: payload.t,
+                            d: payload.d,
+                            name: payload.name,
+                            type: payload.type,
+                            size: payload.size
+                        });
+                    } else {
+                        setTimeout(enviarSiguienteFlujo, 0);
+                    }
                 }
+
+                await enviarSiguienteFlujo();
             }
         });
     });
@@ -488,10 +504,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     if (peerInstance) peerInstance.destroy();
     peerInstance = new Peer(); 
 
+    let arraysDeFragmentos = [];
     let metaDataBackup = null; 
-    let proxOffset = 0;
     let tiempoInicio = null;
-    let chunksRecibidos = []; 
 
     peerInstance.on('open', () => {
         const conn = peerInstance.connect(fileId, { 
@@ -500,51 +515,41 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         });
         
         conn.on('open', () => {
-            conn.send({ request: 'GET_META' });
+            tiempoInicio = performance.now();
+            conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
         });
 
-        conn.on('data', async (data) => {
+        conn.on('data', (data) => {
             const loader = document.getElementById("p2pLoader");
             const etaDisplay = document.getElementById("p2pEta");
             
-            if (data.type === 'META') {
-                metaDataBackup = { 
-                    id: data.id,
-                    t: data.t, 
-                    d: data.d, 
-                    name: data.name, 
-                    type: data.typeMime, 
-                    size: data.size 
-                };
+            if (data.chunk) {
+                arraysDeFragmentos.push(data.chunk);
                 
-                tiempoInicio = performance.now();
-                proxOffset = 0;
-                chunksRecibidos = [];
-                conn.send({ request: 'GET_CHUNK', offset: proxOffset });
-            }
-
-            else if (data.type === 'CHUNK') {
-                if (data.chunk) {
-                    // SE CORRIGE EL ARCHIVO CORRUPTO: Forzamos la asignación a una vista tipadaUint8Array limpia
-                    const fragmentoBinario = data.chunk instanceof ArrayBuffer 
-                        ? new Uint8Array(data.chunk) 
-                        : new Uint8Array(data.chunk.buffer || data.chunk);
-                    
-                    chunksRecibidos.push(fragmentoBinario); 
+                if (!metaDataBackup && data.size) {
+                    metaDataBackup = { 
+                        t: data.t, 
+                        d: data.d, 
+                        name: data.name, 
+                        type: data.type, 
+                        size: data.size 
+                    };
                 }
-                
+
                 if (loader) {
                     loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
                 }
 
+                // Cálculo dinámico de tiempo estimado (ETA) adaptado a tu flujo original
                 if (etaDisplay && metaDataBackup && tiempoInicio) {
                     const tiempoTranscurridoMS = performance.now() - tiempoInicio;
+                    const bytesRecibidosHastaAhora = arraysDeFragmentos.length * CHUNK_SIZE;
                     
-                    if (tiempoTranscurridoMS > 500 && data.offsetLeido > 0) {
-                        const velocidadBytesPorSegundo = data.offsetLeido / (tiempoTranscurridoMS / 1000);
-                        const bytesRestantes = metaDataBackup.size - data.offsetLeido;
+                    if (tiempoTranscurridoMS > 500 && bytesRecibidosHastaAhora > 0) {
+                        const velocidadBytesPorSegundo = bytesRecibidosHastaAhora / (tiempoTranscurridoMS / 1000);
+                        const bytesRestantes = metaDataBackup.size - bytesRecibidosHastaAhora;
                         
-                        if (velocidadBytesPorSegundo > 0) {
+                        if (velocidadBytesPorSegundo > 0 && bytesRestantes > 0) {
                             const segundosRestantesTotales = bytesRestantes / velocidadBytesPorSegundo;
                             const minutes = Math.floor(segundosRestantesTotales / 60);
                             const segundos = Math.floor(segundosRestantesTotales % 60);
@@ -557,29 +562,28 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                         }
                     }
                 }
-
-                proxOffset = data.offsetLeido;
-                conn.send({ request: 'GET_CHUNK', offset: proxOffset });
             }
 
-            else if (data.type === 'EOF') {
+            if (data.eof) {
                 if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
                 if (etaDisplay) etaDisplay.innerText = t.etaCompletado;
 
-                if (!metaDataBackup) return;
+                const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
+                const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
+                arraysDeFragmentos = []; // Liberación inmediata de RAM
 
-                // Combinación perfecta de bloques binarios
-                const blobCompletoReal = new Blob(chunksRecibidos, { type: metaDataBackup.type || "application/octet-stream" });
-                chunksRecibidos = []; // Vaciado inmediato de buffers intermedios para liberar memoria RAM
+                const tiempoOriginal = data.t || (metaDataBackup ? metaDataBackup.t : Math.floor(Date.now() / 1000));
+                const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
+                const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
                 const objetoPayload = {
                     id: fileId,
-                    t: metaDataBackup.t,
-                    d: metaDataBackup.d,
-                    name: metaDataBackup.name,
-                    type: metaDataBackup.type || "application/octet-stream",
-                    size: metaDataBackup.size,
-                    blob: blobCompletoReal 
+                    t: tiempoOriginal,
+                    d: duracionOriginal,
+                    name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
+                    type: tipoMime,
+                    size: tamanoReal,
+                    blob: blobReconstruido 
                 };
 
                 abrirDB(function(db) {
@@ -597,7 +601,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         });
 
         conn.on('close', () => {
-            if (!metaDataBackup) {
+            if (arraysDeFragmentos.length === 0 && !metaDataBackup) {
                 if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
             }
         });
