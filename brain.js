@@ -335,13 +335,11 @@ function generarLink() {
                 const zip = new JSZip();
                 
                 let archivosProcesados = 0;
-                // Procesamos secuencialmente convirtiendo cada File en ArrayBuffer para evitar el bug de construcción de Blob
                 for (const file of coleccionArchivos) {
                     if (prepText) {
                         prepText.innerText = `${t.descifrando} (Procesando: ${archivosProcesados + 1}/${coleccionArchivos.length})`;
                     }
                     
-                    // Conversión explícita a ArrayBuffer para máxima compatibilidad con JSZip
                     const arrayBuffer = await file.arrayBuffer();
                     zip.file(file.name, arrayBuffer, { binary: true });
                     
@@ -351,12 +349,14 @@ function generarLink() {
                 
                 if (prepText) prepText.innerText = `${t.descifrando} (Empaquetando lote...)`;
                 
-                // Forzamos la generación del Blob asegurando que JSZip use datos limpios y binarios
-                blobFinalParaGuardar = await zip.generateAsync({ 
-                    type: "blob",
-                    compression: "STORE",
-                    mimeType: "application/zip"
+                // SOLUCIÓN AL BUG: Le pedimos a JSZip un "uint8array". Esto evita su función interna rota "newBlob".
+                const arrayDeBytesZip = await zip.generateAsync({ 
+                    type: "uint8array",
+                    compression: "STORE"
                 });
+
+                // Instanciamos el Blob de manera 100% nativa con la API del navegador moderno
+                blobFinalParaGuardar = new Blob([arrayDeBytesZip], { type: "application/zip" });
             } else {
                 blobFinalParaGuardar = coleccionArchivos[0];
             }
@@ -366,7 +366,7 @@ function generarLink() {
             return;
         }
 
-        let progreso = 50; // Empezamos en 50 si fue múltiple, o salta rápido si es uno solo
+        let progreso = 50; 
         const incremento = blobFinalParaGuardar.size > 100 * 1024 * 1024 ? 5 : 10;
 
         const iteraProgreso = setInterval(() => {
