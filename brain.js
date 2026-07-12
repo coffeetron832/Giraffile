@@ -522,7 +522,7 @@ function verificarLinkCompartido() {
 }
 
 // =========================================================================
-// MOTOR P2P: FLUJO CONTROLADO Y AMORTIGUADO (OPTIMIZADO CRONÓMETRO)
+// MOTOR P2P: FLUJO CONTROLADO Y REACTIVO POR EVENTOS (CORREGIDO)
 // =========================================================================
 
 function inicializarTransmisionP2P(fileId, payload) {
@@ -531,20 +531,21 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance = new Peer(fileId);
 
     peerInstance.on('connection', (conn) => {
+        // Configuramos un umbral bajo para avisarle al navegador que limpie a tiempo
+        conn.bufferedAmountLowThreshold = 512 * 1024; 
+
         conn.on('data', async (data) => {
             if (data.request === 'DOWNLOAD_FILE_STREAM') {
                 let offset = 0;
                 const totalSize = payload.blob.size;
+                let enviando = false;
 
                 async function enviarSiguienteFlujo() {
-                    if (!conn || conn.open === false) return; 
-                    
-                    if (conn.bufferSize > 512 * 1024) { 
-                        setTimeout(enviarSiguienteFlujo, 10);
-                        return;
-                    }
+                    if (!conn || conn.open === false || enviando) return; 
+                    enviando = true;
 
-                    while (offset < totalSize && conn.bufferSize <= 512 * 1024) {
+                    // El bucle corre de forma segura mientras el buffer no esté saturado
+                    while (offset < totalSize && conn.dataChannel.bufferedAmount < 1024 * 1024) {
                         const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
                         offset += CHUNK_SIZE;
                         const progresoReal = Math.min((offset / totalSize) * 100, 100);
@@ -564,13 +565,13 @@ function inicializarTransmisionP2P(fileId, payload) {
                         });
                     }
 
+                    enviando = false;
+
                     if (offset >= totalSize) {
-                        // Seteamos el tiempo definitivo de expiración a partir de este instante
                         const tiempoFinTransferencia = Math.floor(Date.now() / 1000);
                         payload.t = tiempoFinTransferencia;
                         delete payload.enTransferencia;
 
-                        // Actualizamos la base de datos del emisor con el nuevo tiempo sincronizado
                         abrirDB(function(db) {
                             db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).put(payload);
                         });
@@ -591,8 +592,14 @@ function inicializarTransmisionP2P(fileId, payload) {
                                 peerInstance = null;
                             }
                         }, payload.d * 1000);
-                    } else {
-                        setTimeout(enviarSiguienteFlujo, 0);
+
+                    } else if (conn.dataChannel.bufferedAmount >= 1024 * 1024) {
+                        // Si el buffer WebRTC se llenó, pausamos la iteración por completo.
+                        // Esperamos de forma pasiva a que el navegador vacíe la cola y despierte este evento.
+                        conn.dataChannel.onbufferedamountlow = () => {
+                            conn.dataChannel.onbufferedamountlow = null; // Limpieza del listener
+                            enviarSiguienteFlujo(); // Reanudamos de forma fluida
+                        };
                     }
                 }
 
@@ -740,7 +747,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
 
     if (intervaloTemporizador) clearInterval(intervaloTemporizador);
     
-    // Condición agregada: Si el archivo está en medio de una transferencia, pausamos el cronómetro visual
     if (data.enTransferencia) {
         if (lifeBar) lifeBar.value = 100;
         if (timeString) timeString.innerText = "⏳ Transfiriendo...";
