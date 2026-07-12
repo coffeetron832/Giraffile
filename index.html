@@ -6,12 +6,15 @@
     <title>Giraffile - La jirafa que cuida tu privacidad</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="spots.css">
+    
+    <!-- Librerías de soporte P2P, QR y Compresión local múltiple -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script 
-  src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" 
-  integrity="sha256-xUHvBjJ4hahBW8qN9gceFBibSFUzbe9PNttUvehITzY=" 
-  crossorigin="anonymous">
-</script>
+        src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" 
+        integrity="sha256-xUHvBjJ4hahBW8qN9gceFBibSFUzbe9PNttUvehITzY=" 
+        crossorigin="anonymous">
+    </script>
 </head>
 <body>
 
@@ -26,20 +29,31 @@
         
         <div class="layout-columns" style="display: flex; gap: 40px; justify-content: center; align-items: flex-start; flex-wrap: wrap;">
             
+            <!-- Columna Izquierda: Información de marca e instrucciones dinámicas -->
             <div class="column-left" style="flex: 1; min-width: 300px;">
                 <div class="info-box" id="infoBoxContainer"></div>
             </div>
 
+            <!-- Columna Derecha: Panel de Carga y Configuración -->
             <div class="column-right" style="flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 15px;">
                 <h3 id="lblPrepare" style="margin-top: 0;">Prepara tu archivo para enviar</h3>
                 
                 <div class="control-group">
-                    <label id="lblDropZone">Arrastra tu archivo o haz clic abajo (Máx 1.5GB):</label><br><br>
+                    <label id="lblDropZone">Arrastra tus archivos o haz clic abajo (Máx 3.5GB):</label><br><br>
+                    
+                    <!-- Zona de arrastre con soporte para múltiples archivos -->
                     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
                         <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
-                        <input type="file" id="fileInput" style="display: none;" onchange="manejarSeleccionArchivo(this)">
+                        <input type="file" id="fileInput" style="display: none;" multiple onchange="manejarSeleccionMultiple(this)">
+                        
+                        <!-- Barra de Límite de Peso Dinámica y Lista de Archivos en Cola -->
+                        <div id="limiteContainer" style="margin-top: 15px; display: none;" onclick="event.stopPropagation();">
+                            <label id="lblLimite" style="font-size: 0.85em; font-weight: bold; display: block; margin-bottom: 5px; text-align: left; color: var(--text-color);"></label>
+                            <progress id="barreLimite" value="0" max="100" style="width: 100%; height: 12px; transition: all 0.3s ease;"></progress>
+                            <ul id="listaArchivos" style="text-align: left; max-height: 120px; overflow-y: auto; font-size: 0.85em; margin-top: 10px; padding-left: 20px; color: var(--text-color); list-style-type: square;"></ul>
+                        </div>
                     </div>
-                    <p id="errorMsg" class="error"></p>
+                    <p id="errorMsg" class="error" style="color: red; font-weight: bold; margin-top: 5px;"></p>
                 </div>
 
                 <div class="control-group">
@@ -57,6 +71,7 @@
 
         </div>
 
+        <!-- Panel de Vista Previa y Estado de la descarga P2P para el receptor -->
         <div id="preview" style="display: none; width: 100%; margin-top: 20px;">
             <h4 id="lblPreviewTitle">Visualizador de Archivo Seguro</h4>
             <div id="fileMeta" class="file-meta"></div>
@@ -78,12 +93,13 @@
         Giraffile v1.0.1 | © 2026 jahp. Todos los derechos reservados.
     </footer>
 
+    <!-- Ventana Modal de Aviso Legal (Disclaimer) -->
     <div id="modalDisclaimer" class="modal-disclaimer" style="display: none;">
-    <div class="modal-content">
-        <span class="close-disclaimer" onclick="cerrarDisclaimer()">&times;</span>
-        <div id="disclaimerContenido"></div>
+        <div class="modal-content">
+            <span class="close-disclaimer" onclick="cerrarDisclaimer()">&times;</span>
+            <div id="disclaimerContenido"></div>
+        </div>
     </div>
-</div>
     
     <script src="brain.js"></script>
 </body>
