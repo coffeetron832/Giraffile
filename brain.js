@@ -331,18 +331,31 @@ function generarLink() {
 
         try {
             if (archivoCargado.esMultiple) {
-                if (prepText) prepText.innerText = `${t.descifrando} (Preparando Zip...)`;
+                if (prepText) prepText.innerText = `${t.descifrando} (Preparando paquete...)`;
                 const zip = new JSZip();
                 
-                // Procesamos secuencialmente para asegurar la integridad de los blobs en memoria
+                let archivosProcesados = 0;
+                // Procesamos secuencialmente convirtiendo cada File en ArrayBuffer para evitar el bug de construcción de Blob
                 for (const file of coleccionArchivos) {
-                    zip.file(file.name, file);
+                    if (prepText) {
+                        prepText.innerText = `${t.descifrando} (Procesando: ${archivosProcesados + 1}/${coleccionArchivos.length})`;
+                    }
+                    
+                    // Conversión explícita a ArrayBuffer para máxima compatibilidad con JSZip
+                    const arrayBuffer = await file.arrayBuffer();
+                    zip.file(file.name, arrayBuffer, { binary: true });
+                    
+                    archivosProcesados++;
+                    if (prepBar) prepBar.value = Math.min((archivosProcesados / coleccionArchivos.length) * 50, 50);
                 }
                 
-                // Usamos STORE para agrupar rápidamente sin re-comprimir archivos ya comprimidos (.zip)
+                if (prepText) prepText.innerText = `${t.descifrando} (Empaquetando lote...)`;
+                
+                // Forzamos la generación del Blob asegurando que JSZip use datos limpios y binarios
                 blobFinalParaGuardar = await zip.generateAsync({ 
                     type: "blob",
-                    compression: "STORE" 
+                    compression: "STORE",
+                    mimeType: "application/zip"
                 });
             } else {
                 blobFinalParaGuardar = coleccionArchivos[0];
@@ -353,18 +366,18 @@ function generarLink() {
             return;
         }
 
-        let progreso = 0;
-        const incremento = blobFinalParaGuardar.size > 100 * 1024 * 1024 ? 5 : 20;
+        let progreso = 50; // Empezamos en 50 si fue múltiple, o salta rápido si es uno solo
+        const incremento = blobFinalParaGuardar.size > 100 * 1024 * 1024 ? 5 : 10;
 
         const iteraProgreso = setInterval(() => {
             progreso += incremento;
-            if (progreso > 90) {
+            if (progreso > 95) {
                 clearInterval(iteraProgreso); 
             } else {
                 if (prepBar) prepBar.value = progreso;
                 if (prepText) prepText.innerText = `${t.descifrando} (${progreso}%)`;
             }
-        }, 40);
+        }, 30);
 
         const payload = {
             id: idUnico,
