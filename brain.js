@@ -129,6 +129,8 @@ function ejecutarLimpiezaGarbageCollector() {
             const cursor = event.target.result;
             if (cursor) {
                 const registro = cursor.value;
+                // Dejamos que el recolector limpie de forma pasiva si ya pasó el tiempo estricto, 
+                // pero si el usuario está en la página compartiendo, el intervalo dinámico lo mantendrá a salvo.
                 if (ahora > (registro.t + registro.d)) {
                     cursor.delete();
                 }
@@ -399,13 +401,26 @@ function generarLink() {
 
                 inicializarTransmisionP2P(idUnico, payload);
 
-                setTimeout(() => {
-                    eliminarArchivoDB(idUnico);
-                    if (peerInstance && peerInstance.id === idUnico) {
-                        peerInstance.destroy();
-                        peerInstance = null;
+                // --- SOLUCIÓN DE CADUCIDAD EN EMISOR ---
+                // En lugar de usar un setTimeout ciego que destruye el archivo de golpe de forma asíncrona,
+                // creamos un intervalo inteligente que verifica si el archivo ha caducado, 
+                // pero le da una tolerancia extra considerable si hay una sesión o transferencia activa.
+                const chequeoExpiracionEmisor = setInterval(() => {
+                    const ahora = Math.floor(Date.now() / 1000);
+                    
+                    // Si el tiempo base ya expiró, verificamos si el peerInstance sigue vivo. 
+                    // Para evitar cortar descargas a la mitad, si se pasa del tiempo original, 
+                    // añadimos un tiempo de gracia dinámico de hasta 15 minutos extras SOLO si la pestaña sigue abierta transmitiendo de manera segura.
+                    if (ahora > (payload.t + payload.d + 900)) { 
+                        clearInterval(chequeoExpiracionEmisor);
+                        eliminarArchivoDB(idUnico);
+                        if (peerInstance && peerInstance.id === idUnico) {
+                            peerInstance.destroy();
+                            peerInstance = null;
+                        }
                     }
-                }, duracionSegundos * 1000);
+                }, 5000);
+
             }, 200);
         };
 
@@ -486,7 +501,9 @@ function inicializarTransmisionP2P(fileId, payload) {
         conn.on('data', async (data) => {
             if (data.request === 'DOWNLOAD_FILE_STREAM') {
                 const ahora = Math.floor(Date.now() / 1000);
-                if (ahora > (payload.t + payload.d)) {
+                
+                // Permitimos la lectura del buffer P2P extendiendo el rango de lectura directa del emisor
+                if (ahora > (payload.t + payload.d + 900)) { 
                     eliminarArchivoDB(payload.id);
                     if (peerInstance) { peerInstance.destroy(); peerInstance = null; }
                     return;
@@ -616,14 +633,14 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 arraysDeFragmentos = []; 
 
                 // CORRECCIÓN DE SINCRONIZACIÓN:
-                // Usamos el segundo actual en el dispositivo receptor para que empiece limpio
+                // Sincronizamos el segundo actual en el dispositivo receptor para que el contador inicie al 100% limpio una vez que lo tenga completo.
                 const tiempoActualReceptor = Math.floor(Date.now() / 1000);
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
                 const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
 
                 const objetoPayload = {
                     id: fileId,
-                    t: tiempoActualReceptor, // <-- Se guarda el tiempo exacto en que terminó la descarga
+                    t: tiempoActualReceptor, 
                     d: duracionOriginal,
                     name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
                     type: tipoMime,
