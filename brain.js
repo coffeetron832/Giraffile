@@ -2,7 +2,7 @@
 const MAX_SIZE_BYTES = 1500 * 1024 * 1024; 
 let intervaloTemporizador = null;
 let archivoCargado = null;
-let currentLang = 'es';
+let currentLang = 'en'; // Se define inglés como idioma por defecto al iniciar
 let peerInstance = null; 
 let objetoUrlActivo = null; // Variable global para el control de fugas de memoria RAM (Object URLs)
 
@@ -59,7 +59,13 @@ const i18n = {
         disclaimerBody: `
         <p><strong>Giraffile</strong> funciona como un canal de transporte privado P2P (Peer-to-Peer) directo entre dispositivos. Los archivos no se suben, analizan ni almacenan en ningún servidor externo.</p>
         <p>⚠️ <strong>Aviso sobre malware:</strong> Al ser una transferencia directa y cifrada, la plataforma no escanea ni verifica la seguridad del contenido. <strong>Giraffile no se hace responsable</strong> por software malicioso, virus o archivos infectados transmitidos a través de los enlaces. Es responsabilidad exclusiva del receptor verificar la procedencia del archivo y contar con un antivirus activo antes de realizar la descarga.</p>
-        `
+        `,
+        // Nuevas traducciones añadidas
+        spaceLabel: "Espacio:",
+        filesInQueue: "archivos en cola",
+        errLocalDB: "Error local al procesar el almacenamiento.",
+        textTruncated: "[... Archivo truncado por rendimiento para evitar colgar el navegador ...]",
+        defaultFileName: "archivo_descargado"
     },
     en: {
         themeDark: "Dark Mode",
@@ -105,7 +111,13 @@ const i18n = {
         disclaimerBody: `
         <p><strong>Giraffile</strong> operates as a private, content-agnostic P2P (Peer-to-Peer) transport channel directly between devices. Files are never uploaded, scanned, or stored on external servers.</p>
         <p>⚠️ <strong>Malware Notice:</strong> Since transfers are direct and encrypted, the platform does not scan or verify file security. <strong>Giraffile is not responsible</strong> for any malware, viruses, or infected files transmitted through shared links. It is the sole responsibility of the recipient to verify the sender's trustworthiness and run appropriate antivirus software before downloading.</p>
-        `
+        `,
+        // Nuevas traducciones añadidas
+        spaceLabel: "Space:",
+        filesInQueue: "files in queue",
+        errLocalDB: "Local error processing storage.",
+        textTruncated: "[... File truncated for performance to prevent browser lag ...]",
+        defaultFileName: "downloaded_file"
     }
 };
 
@@ -129,8 +141,6 @@ function ejecutarLimpiezaGarbageCollector() {
             const cursor = event.target.result;
             if (cursor) {
                 const registro = cursor.value;
-                // Dejamos que el recolector limpie de forma pasiva si ya pasó el tiempo estricto, 
-                // pero si el usuario está en la página compartiendo, el intervalo dinámico lo mantendrá a salvo.
                 if (ahora > (registro.t + registro.d)) {
                     cursor.delete();
                 }
@@ -215,7 +225,7 @@ function aplicarTraduccion() {
             if (coleccionArchivos.length === 1) {
                 prompt.innerHTML = `<strong>${escaparHTML(t.dropSelected)}</strong> ${escaparHTML(coleccionArchivos[0].name)} (${tamanoMB} MB)`;
             } else {
-                prompt.innerHTML = `<strong>${escaparHTML(t.dropSelected)}</strong> ${coleccionArchivos.length} archivos en cola (${tamanoMB} MB)`;
+                prompt.innerHTML = `<strong>${escaparHTML(t.dropSelected)}</strong> ${coleccionArchivos.length} ${escaparHTML(t.filesInQueue)} (${tamanoMB} MB)`;
             }
         }
     }
@@ -231,7 +241,8 @@ function abrirDB(callback) {
 }
 
 window.onload = function() {
-    currentLang = localStorage.getItem('girafile-lang') || 'es';
+    // Al iniciar, toma el idioma del localStorage o usa 'en' (Inglés) por defecto de forma estricta.
+    currentLang = localStorage.getItem('girafile-lang') || 'en';
     document.documentElement.lang = currentLang;
     const savedTheme = localStorage.getItem('girafile-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -268,7 +279,7 @@ function manejarSeleccionArchivo(inputOrData) {
 
     if (limiteContainer) limiteContainer.style.display = "block";
     if (barreLimite) barreLimite.value = Math.min(porcentajeUso, 100);
-    if (lblLimite) lblLimite.innerHTML = `Espacio: <strong>${tamanoTotalMB} MB</strong> / ${maxMB} MB`;
+    if (lblLimite) lblLimite.innerHTML = `${escaparHTML(t.spaceLabel)} <strong>${tamanoTotalMB} MB</strong> / ${maxMB} MB`;
 
     if (listaArchivos) {
         listaArchivos.innerHTML = "";
@@ -401,16 +412,8 @@ function generarLink() {
 
                 inicializarTransmisionP2P(idUnico, payload);
 
-                // --- SOLUCIÓN DE CADUCIDAD EN EMISOR ---
-                // En lugar de usar un setTimeout ciego que destruye el archivo de golpe de forma asíncrona,
-                // creamos un intervalo inteligente que verifica si el archivo ha caducado, 
-                // pero le da una tolerancia extra considerable si hay una sesión o transferencia activa.
                 const chequeoExpiracionEmisor = setInterval(() => {
                     const ahora = Math.floor(Date.now() / 1000);
-                    
-                    // Si el tiempo base ya expiró, verificamos si el peerInstance sigue vivo. 
-                    // Para evitar cortar descargas a la mitad, si se pasa del tiempo original, 
-                    // añadimos un tiempo de gracia dinámico de hasta 15 minutos extras SOLO si la pestaña sigue abierta transmitiendo de manera segura.
                     if (ahora > (payload.t + payload.d + 900)) { 
                         clearInterval(chequeoExpiracionEmisor);
                         eliminarArchivoDB(idUnico);
@@ -426,7 +429,7 @@ function generarLink() {
 
         transaction.onerror = function() {
             clearInterval(iteraProgreso);
-            outputDiv.innerHTML = `<p class="error">Error local al procesar el almacenamiento.</p>`;
+            outputDiv.innerHTML = `<p class="error">${escaparHTML(t.errLocalDB)}</p>`;
         };
     });
 }
@@ -502,7 +505,6 @@ function inicializarTransmisionP2P(fileId, payload) {
             if (data.request === 'DOWNLOAD_FILE_STREAM') {
                 const ahora = Math.floor(Date.now() / 1000);
                 
-                // Permitimos la lectura del buffer P2P extendiendo el rango de lectura directa del emisor
                 if (ahora > (payload.t + payload.d + 900)) { 
                     eliminarArchivoDB(payload.id);
                     if (peerInstance) { peerInstance.destroy(); peerInstance = null; }
@@ -632,8 +634,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
                 arraysDeFragmentos = []; 
 
-                // CORRECCIÓN DE SINCRONIZACIÓN:
-                // Sincronizamos el segundo actual en el dispositivo receptor para que el contador inicie al 100% limpio una vez que lo tenga completo.
                 const tiempoActualReceptor = Math.floor(Date.now() / 1000);
                 const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
                 const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
@@ -642,7 +642,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     id: fileId,
                     t: tiempoActualReceptor, 
                     d: duracionOriginal,
-                    name: data.name || (metaDataBackup ? metaDataBackup.name : "archivo_descargado"),
+                    name: data.name || (metaDataBackup ? metaDataBackup.name : t.defaultFileName),
                     type: tipoMime,
                     size: tamanoReal,
                     blob: blobReconstruido 
@@ -738,7 +738,7 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
             let descargaAdicional = '';
             
             if (data.size > bytesVistaPrevia) {
-                textoFormateado += "\n\n[... Archivo truncado por rendimiento ...]";
+                textoFormateado += `\n\n${t.textTruncated}`;
                 descargaAdicional = `<p style="font-size:0.9em; margin: 15px 0 5px 0; color:var(--footer-color); text-align:center;">${escaparHTML(t.textPreviewNotice)}</p>`;
             }
             
