@@ -316,7 +316,7 @@ function quitarArchivoDeCola(index) {
     manejarSeleccionArchivo({ files: [] }); 
 }
 
-function generarLink() {
+async function generarLink() {
     const t = i18n[currentLang];
     if (!archivoCargado || coleccionArchivos.length === 0) {
         if (document.getElementById('errorMsg')) document.getElementById('errorMsg').innerText = t.errNoFile;
@@ -339,99 +339,129 @@ function generarLink() {
     const idUnico = "file_" + Math.random().toString(36).substring(2, 11);
     const duracionSegundos = parseInt(document.getElementById('expiry').value); 
     
-    const blobFinalParaGuardar = archivoCargado.esMultiple ? new Blob([coleccionArchivos[0]], { type: "application/zip" }) : coleccionArchivos[0];
+    let blobFinalParaGuardar = null;
 
-    let progreso = 0;
-    const incremento = blobFinalParaGuardar.size > 100 * 1024 * 1024 ? 5 : 20;
+    try {
+        if (archivoCargado.esMultiple) {
+            // Inicializar JSZip para empaquetar los archivos de verdad[cite: 6]
+            const zip = new JSZip();
+            
+            // Añadir individualmente cada archivo real de la cola
+            coleccionArchivos.forEach(archivo => {
+                zip.file(archivo.name, archivo);
+            });
 
-    const iteraProgreso = setInterval(() => {
-        progreso += incremento;
-        if (progreso > 90) {
-            clearInterval(iteraProgreso); 
+            // Generar el empaquetado ZIP asíncronamente reportando el progreso[cite: 6]
+            blobFinalParaGuardar = await zip.generateAsync({ type: "blob" }, (metadata) => {
+                const porcentajeCompresion = Math.floor(metadata.percent);
+                if (prepBar) prepBar.value = porcentajeCompresion;
+                if (prepText) prepText.innerText = `${t.descifrando} (${porcentajeCompresion}%)`;
+            });
         } else {
-            if (prepBar) prepBar.value = progreso;
-            if (prepText) prepText.innerText = `${t.descifrando} (${progreso}%)`;
-        }
-    }, 40);
+            // Animación de barra de progreso segura para carga unitaria
+            let progreso = 0;
+            const incremento = coleccionArchivos[0].size > 100 * 1024 * 1024 ? 5 : 20;
 
-    const payload = {
-        id: idUnico,
-        t: Math.floor(Date.now() / 1000),
-        d: duracionSegundos,
-        name: archivoCargado.name,
-        type: archivoCargado.type,
-        size: blobFinalParaGuardar.size,
-        blob: blobFinalParaGuardar 
-    };
-    
-    abrirDB(function(db) {
-        const transaction = db.transaction([STORE_NAME], "readwrite");
-        transaction.objectStore(STORE_NAME).put(payload);
-        
-        transaction.oncomplete = function() {
-            clearInterval(iteraProgreso);
-            if (prepBar) prepBar.value = 100;
-            if (prepText) prepText.innerText = `${t.descifrando} (100%)`;
-
-            setTimeout(() => {
-                const origen = window.location.origin === "null" ? "file://" : window.location.origin;
-                const link = origen + window.location.pathname + "#" + idUnico;
-                
-                outputDiv.innerHTML = `
-                    <p style="color: green; font-weight: bold; margin-top: 10px;">${escaparHTML(t.successLink)}</p>
-                    <textarea id="copyTarget" readonly onclick="this.select()">${escaparHTML(link)}</textarea>
-                    <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${escaparHTML(t.btnCopy)}</button>
-                `;
-
-                if (typeof QRCode !== 'undefined') {
-                    const qrWrapper = document.createElement('div');
-                    qrWrapper.id = 'qrWrapper';
-                    qrWrapper.style.cssText = 'margin-top: 14px; text-align: center;';
-
-                    const qrCaption = document.createElement('p');
-                    qrCaption.style.cssText = 'margin-top: 6px; font-size: 0.8em; color: var(--footer-color);';
-                    qrCaption.innerText = t.qrLabel;
-
-                    outputDiv.appendChild(qrWrapper);
-                    const rootStyle = getComputedStyle(document.documentElement);
-                    new QRCode(qrWrapper, {
-                        text: link,
-                        width: 180,
-                        height: 180,
-                        colorDark: rootStyle.getPropertyValue('--text-color').trim(),
-                        colorLight: rootStyle.getPropertyValue('--bg-color').trim()
-                    });
-
-                    const qrCanvas = qrWrapper.querySelector('canvas');
-                    if (qrCanvas) qrCanvas.style.cssText = 'display: block; margin: 0 auto;';
-                    const qrImg = qrWrapper.querySelector('img');
-                    if (qrImg) qrImg.style.cssText = 'display: block; margin: 0 auto;';
-
-                    qrWrapper.appendChild(qrCaption);
+            const iteraProgreso = setInterval(() => {
+                progreso += incremento;
+                if (progreso > 95) {
+                    clearInterval(iteraProgreso);
+                } else {
+                    if (prepBar) prepBar.value = progreso;
+                    if (prepText) prepText.innerText = `${t.descifrando} (${progreso}%)`;
                 }
+            }, 40);
 
-                inicializarTransmisionP2P(idUnico, payload);
-
-                const chequeoExpiracionEmisor = setInterval(() => {
-                    const ahora = Math.floor(Date.now() / 1000);
-                    if (ahora > (payload.t + payload.d + 900)) { 
-                        clearInterval(chequeoExpiracionEmisor);
-                        eliminarArchivoDB(idUnico);
-                        if (peerInstance && peerInstance.id === idUnico) {
-                            peerInstance.destroy();
-                            peerInstance = null;
-                        }
-                    }
-                }, 5000);
-
-            }, 200);
-        };
-
-        transaction.onerror = function() {
+            blobFinalParaGuardar = coleccionArchivos[0];
+            
+            await new Promise(resolve => setTimeout(resolve, 300));
             clearInterval(iteraProgreso);
-            outputDiv.innerHTML = `<p class="error">${escaparHTML(t.errLocalDB)}</p>`;
+        }
+
+        // Registrar el peso final calculado (crucial para transferencias P2P eficientes)
+        archivoCargado.size = blobFinalParaGuardar.size;
+
+        const payload = {
+            id: idUnico,
+            t: Math.floor(Date.now() / 1000),
+            d: duracionSegundos,
+            name: archivoCargado.name,
+            type: archivoCargado.type,
+            size: blobFinalParaGuardar.size,
+            blob: blobFinalParaGuardar 
         };
-    });
+        
+        abrirDB(function(db) {
+            const transaction = db.transaction([STORE_NAME], "readwrite");
+            transaction.objectStore(STORE_NAME).put(payload);
+            
+            transaction.oncomplete = function() {
+                if (prepBar) prepBar.value = 100;
+                if (prepText) prepText.innerText = `${t.descifrando} (100%)`;
+
+                setTimeout(() => {
+                    const origen = window.location.origin === "null" ? "file://" : window.location.origin;
+                    const link = origen + window.location.pathname + "#" + idUnico;
+                    
+                    outputDiv.innerHTML = `
+                        <p style="color: green; font-weight: bold; margin-top: 10px;">${escaparHTML(t.successLink)}</p>
+                        <textarea id="copyTarget" readonly onclick="this.select()">${escaparHTML(link)}</textarea>
+                        <button class="btn" id="btnCopiar" onclick="copiarAlPortapapeles()">${escaparHTML(t.btnCopy)}</button>
+                    `;
+
+                    if (typeof QRCode !== 'undefined') {
+                        const qrWrapper = document.createElement('div');
+                        qrWrapper.id = 'qrWrapper';
+                        qrWrapper.style.cssText = 'margin-top: 14px; text-align: center;';
+
+                        const qrCaption = document.createElement('p');
+                        qrCaption.style.cssText = 'margin-top: 6px; font-size: 0.8em; color: var(--footer-color);';
+                        qrCaption.innerText = t.qrLabel;
+
+                        outputDiv.appendChild(qrWrapper);
+                        const rootStyle = getComputedStyle(document.documentElement);
+                        new QRCode(qrWrapper, {
+                            text: link,
+                            width: 180,
+                            height: 180,
+                            colorDark: rootStyle.getPropertyValue('--text-color').trim(),
+                            colorLight: rootStyle.getPropertyValue('--bg-color').trim()
+                        });
+
+                        const qrCanvas = qrWrapper.querySelector('canvas');
+                        if (qrCanvas) qrCanvas.style.cssText = 'display: block; margin: 0 auto;';
+                        const qrImg = qrWrapper.querySelector('img');
+                        if (qrImg) qrImg.style.cssText = 'display: block; margin: 0 auto;';
+
+                        qrWrapper.appendChild(qrCaption);
+                    }
+
+                    inicializarTransmisionP2P(idUnico, payload);
+
+                    const chequeoExpiracionEmisor = setInterval(() => {
+                        const ahora = Math.floor(Date.now() / 1000);
+                        if (ahora > (payload.t + payload.d + 900)) { 
+                            clearInterval(chequeoExpiracionEmisor);
+                            eliminarArchivoDB(idUnico);
+                            if (peerInstance && peerInstance.id === idUnico) {
+                                peerInstance.destroy();
+                                peerInstance = null;
+                            }
+                        }
+                    }, 5000);
+
+                }, 200);
+            };
+
+            transaction.onerror = function() {
+                outputDiv.innerHTML = `<p class="error">${escaparHTML(t.errLocalDB)}</p>`;
+            };
+        });
+
+    } catch (err) {
+        console.error(err);
+        outputDiv.innerHTML = `<p class="error">Error al comprimir los archivos: ${escaparHTML(err.message)}</p>`;
+    }
 }
 
 function copiarAlPortapapeles() {
