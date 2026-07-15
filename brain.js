@@ -346,9 +346,21 @@ async function generarLink() {
             // Inicializar JSZip para empaquetar los archivos de verdad[cite: 6]
             const zip = new JSZip();
             
-            // Añadir individualmente cada archivo real de la cola
+            // Añadir individualmente cada archivo real de la cola.
+            // Si dos archivos tienen el mismo nombre se pisarían dentro del zip
+            // (JSZip sobrescribe la entrada), así que desambiguamos: foto.png -> foto (1).png
+            const conteoNombres = {};
             coleccionArchivos.forEach(archivo => {
-                zip.file(archivo.name, archivo);
+                let nombre = archivo.name;
+                if (conteoNombres[nombre] === undefined) {
+                    conteoNombres[nombre] = 0;
+                } else {
+                    const punto = nombre.lastIndexOf('.');
+                    const base = punto > 0 ? nombre.slice(0, punto) : nombre;
+                    const ext = punto > 0 ? nombre.slice(punto) : '';
+                    nombre = `${base} (${++conteoNombres[archivo.name]})${ext}`;
+                }
+                zip.file(nombre, archivo);
             });
 
             // Generar el empaquetado ZIP asíncronamente reportando el progreso[cite: 6]
