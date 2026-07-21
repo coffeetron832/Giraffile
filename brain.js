@@ -12,7 +12,13 @@ let coleccionArchivos = [];
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
-const CHUNK_SIZE = 256 * 1024; 
+const CHUNK_SIZE = 256 * 1024;
+// Margen de espera de la ficha del archivo antes de caer al flujo clásico en memoria
+const ESPERA_METADATA_MS = 4000;
+// Techo de memoria del receptor cuando escribe a disco: si la cola de escritura
+// pasa este tamaño se frena al emisor, y se lo reanuda al bajar del segundo umbral
+const PAUSAR_FLUJO_BYTES = 8 * 1024 * 1024;
+const REANUDAR_FLUJO_BYTES = 2 * 1024 * 1024;
 
 const i18n = {
     es: {
@@ -65,7 +71,18 @@ const i18n = {
         filesInQueue: "archivos en cola",
         errLocalDB: "Error local al procesar el almacenamiento.",
         textTruncated: "[... Archivo truncado por rendimiento para evitar colgar el navegador ...]",
-        defaultFileName: "archivo_descargado"
+        defaultFileName: "archivo_descargado",
+        // Recepción por streaming a disco
+        chooseTitle: "¿Cómo quieres recibir este archivo?",
+        btnSaveToDisk: "Guardar en disco 💾",
+        btnViewInBrowser: "Ver en el navegador ⏳",
+        saveToDiskNotice: "Se escribe directamente en tu equipo mientras se recibe, sin llenar la memoria del navegador. <strong>No caduca:</strong> el archivo queda guardado y eres tú quien decide cuándo borrarlo.",
+        viewInBrowserNotice: "Se carga en la memoria del navegador, con vista previa y temporizador. <strong>Se destruye al caducar.</strong> Recomendado para archivos pequeños.",
+        savingToDisk: "Guardando en tu disco...",
+        savedToDiskTitle: "✅ Archivo guardado en tu equipo",
+        savedToDiskNotice: "Este archivo ya no depende de Giraffile ni caduca: vive en tu equipo. Bórralo tú cuando no lo necesites.",
+        errSaveCancelled: "Guardado cancelado. Elige cómo quieres recibir el archivo.",
+        errSaveFailed: "No se pudo escribir el archivo en el disco. Vuelve a intentarlo o recíbelo en el navegador."
     },
     en: {
         themeDark: "Dark Mode",
@@ -117,7 +134,18 @@ const i18n = {
         filesInQueue: "files in queue",
         errLocalDB: "Local error processing storage.",
         textTruncated: "[... File truncated for performance to prevent browser lag ...]",
-        defaultFileName: "downloaded_file"
+        defaultFileName: "downloaded_file",
+        // Streaming reception straight to disk
+        chooseTitle: "How do you want to receive this file?",
+        btnSaveToDisk: "Save to disk 💾",
+        btnViewInBrowser: "View in browser ⏳",
+        saveToDiskNotice: "Written straight to your device as it arrives, without filling up browser memory. <strong>It does not expire:</strong> the file stays on your device and you decide when to delete it.",
+        viewInBrowserNotice: "Loaded into browser memory, with preview and countdown. <strong>Destroyed when it expires.</strong> Recommended for small files.",
+        savingToDisk: "Saving to your disk...",
+        savedToDiskTitle: "✅ File saved to your device",
+        savedToDiskNotice: "This file no longer depends on Giraffile and does not expire: it lives on your device. Delete it yourself when you no longer need it.",
+        errSaveCancelled: "Save cancelled. Choose how you want to receive the file.",
+        errSaveFailed: "The file could not be written to disk. Try again or receive it in the browser."
     }
 };
 
@@ -543,11 +571,38 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance = new Peer(fileId);
 
     peerInstance.on('connection', (conn) => {
+        // El receptor pide pausa cuando su disco no da abasto: sin esto el emisor
+        // sigue empujando y la cola de escritura crece hasta volver a ser O(archivo).
+        let flujoPausado = false;
+
         conn.on('data', async (data) => {
+            if (data.request === 'FLOW_PAUSE') { flujoPausado = true; return; }
+            if (data.request === 'FLOW_RESUME') { flujoPausado = false; return; }
+
+            // El receptor pide la ficha del archivo ANTES de recibir un solo byte:
+            // sin nombre y tamaño no puede ofrecer el guardado directo a disco.
+            if (data.request === 'REQUEST_METADATA') {
+                const ahora = Math.floor(Date.now() / 1000);
+
+                // Un archivo caducado tampoco filtra su nombre ni su tamaño.
+                if (ahora > (payload.t + payload.d + 900)) return;
+
+                conn.send({
+                    meta: true,
+                    id: payload.id,
+                    t: payload.t,
+                    d: payload.d,
+                    name: payload.name,
+                    type: payload.type,
+                    size: payload.size
+                });
+                return;
+            }
+
             if (data.request === 'DOWNLOAD_FILE_STREAM') {
                 const ahora = Math.floor(Date.now() / 1000);
-                
-                if (ahora > (payload.t + payload.d + 900)) { 
+
+                if (ahora > (payload.t + payload.d + 900)) {
                     eliminarArchivoDB(payload.id);
                     if (peerInstance) { peerInstance.destroy(); peerInstance = null; }
                     return;
@@ -557,14 +612,14 @@ function inicializarTransmisionP2P(fileId, payload) {
                 const totalSize = payload.blob.size;
 
                 async function enviarSiguienteFlujo() {
-                    if (!conn || conn.open === false) return; 
-                    
-                    if (conn.bufferSize > 512 * 1024) { 
+                    if (!conn || conn.open === false) return;
+
+                    if (flujoPausado || conn.bufferSize > 512 * 1024) {
                         setTimeout(enviarSiguienteFlujo, 10);
                         return;
                     }
 
-                    while (offset < totalSize && conn.bufferSize <= 512 * 1024) {
+                    while (offset < totalSize && !flujoPausado && conn.bufferSize <= 512 * 1024) {
                         const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
                         offset += CHUNK_SIZE;
                         const progresoReal = Math.min((offset / totalSize) * 100, 100);
@@ -603,108 +658,341 @@ function inicializarTransmisionP2P(fileId, payload) {
     });
 }
 
+function soportaGuardadoEnDisco() {
+    // La escritura directa a disco depende de la File System Access API,
+    // disponible hoy en Chromium (Chrome/Edge/Opera) y no en Firefox ni Safari.
+    return typeof window.showSaveFilePicker === 'function' && window.isSecureContext;
+}
+
 function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
-    
-    if (contentDiv) {
+
+    if (peerInstance) peerInstance.destroy();
+    peerInstance = new Peer();
+
+    let conexion = null;
+    let arraysDeFragmentos = [];
+    let metaDataBackup = null;
+    let tiempoInicio = Date.now();
+    let bytesRecibidos = 0;
+    let modoRecepcion = null;
+    let escritorDisco = null;
+    let colaEscritura = Promise.resolve();
+    let bytesEnCola = 0;
+    let flujoPausado = false;
+    let eligiendoDestino = false;
+    let temporizadorMeta = null;
+    let eofRecibido = false;
+    let recepcionCompletada = false;
+
+    mostrarProgreso(t.p2pConnecting);
+
+    function mostrarProgreso(etiqueta) {
+        if (!contentDiv) return;
         contentDiv.innerHTML = `
-            <p id="p2pLoader" style="color: var(--text-color); font-weight: bold; margin-bottom: 5px;">${escaparHTML(t.p2pConnecting)} (0%)</p>
+            <p id="p2pLoader" style="color: var(--text-color); font-weight: bold; margin-bottom: 5px;">${escaparHTML(etiqueta)} (0%)</p>
             <p id="p2pEstimadoCont" style="font-size: 0.85em; color: var(--footer-color); margin-top: 0;">${escaparHTML(t.p2pEstimado)} <span id="p2pTimeRemaining">${escaparHTML(t.p2pCalculando)}</span></p>
         `;
     }
-    
-    if (peerInstance) peerInstance.destroy();
-    peerInstance = new Peer(); 
 
-    let arraysDeFragmentos = [];
-    let metaDataBackup = null; 
-    let tiempoInicio = Date.now(); 
+    function mostrarEleccion(mensajeError) {
+        // Una vez arrancada la transferencia no se vuelve a ofrecer la elección:
+        // botones vivos sobre una recepción en curso podrían abrir un segundo
+        // destino a mitad de camino y guardar un archivo incompleto.
+        if (!contentDiv || modoRecepcion) return;
+
+        const tamanoMB = (metaDataBackup.size / (1024 * 1024)).toFixed(2);
+        const aviso = mensajeError
+            ? `<p class='error' style="margin-bottom: 15px;">${escaparHTML(mensajeError)}</p>`
+            : '';
+
+        contentDiv.innerHTML = `
+            ${aviso}
+            <div style="background: var(--timer-bg); padding: 20px; border-radius: 4px; text-align: center; margin-bottom: 15px;">
+                <p style="font-size: 0.95em; color: var(--text-color); margin: 0 0 10px 0;">${escaparHTML(t.chooseTitle)}</p>
+                <strong style="word-break: break-all; font-size: 1.1em; display: block; color: var(--text-color);">${escaparHTML(metaDataBackup.name)}</strong>
+                <span style="font-size: 0.9em; color: var(--footer-color);">${tamanoMB} MB</span>
+            </div>
+            <button id="btnGuardarDisco" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">${escaparHTML(t.btnSaveToDisk)}</button>
+            <p style="font-size: 0.85em; color: var(--footer-color); text-align: left; margin: 0 0 20px 0; line-height: 1.4;">${t.saveToDiskNotice}</p>
+            <button id="btnVerNavegador" class="btn" style="width: 100%; margin-bottom: 8px;">${escaparHTML(t.btnViewInBrowser)}</button>
+            <p style="font-size: 0.85em; color: var(--footer-color); text-align: left; margin: 0; line-height: 1.4;">${t.viewInBrowserNotice}</p>
+        `;
+
+        document.getElementById('btnGuardarDisco').addEventListener('click', iniciarRecepcionEnDisco);
+        document.getElementById('btnVerNavegador').addEventListener('click', () => iniciarRecepcion('memoria'));
+    }
+
+    function iniciarRecepcion(modo) {
+        if (modoRecepcion) return;
+
+        // El emisor puede haberse ido mientras el receptor elegía destino.
+        if (!conexion || conexion.open === false) {
+            if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
+            return;
+        }
+
+        modoRecepcion = modo;
+        if (temporizadorMeta) {
+            clearTimeout(temporizadorMeta);
+            temporizadorMeta = null;
+        }
+        mostrarProgreso(modo === 'disco' ? t.savingToDisk : t.p2pConnecting);
+        tiempoInicio = Date.now();
+        conexion.send({ request: 'DOWNLOAD_FILE_STREAM' });
+    }
+
+    async function iniciarRecepcionEnDisco() {
+        // Sin este cerrojo, un segundo click mientras el diálogo está abierto
+        // termina abriendo otro destino y partiendo el archivo entre dos ficheros.
+        if (eligiendoDestino || modoRecepcion) return;
+        eligiendoDestino = true;
+
+        // showSaveFilePicker exige activación transitoria del usuario: solo puede
+        // llamarse dentro del click, nunca al cargar la página.
+        let manejadorArchivo;
+        try {
+            manejadorArchivo = await window.showSaveFilePicker({
+                suggestedName: metaDataBackup.name
+            });
+        } catch (error) {
+            eligiendoDestino = false;
+            mostrarEleccion(t.errSaveCancelled);
+            return;
+        }
+
+        try {
+            const flujoEscritura = await manejadorArchivo.createWritable();
+            escritorDisco = flujoEscritura.getWriter();
+        } catch (error) {
+            eligiendoDestino = false;
+            mostrarEleccion(t.errSaveFailed);
+            return;
+        }
+
+        iniciarRecepcion('disco');
+    }
+
+    function fallarEscrituraEnDisco() {
+        if (recepcionCompletada) return;
+        recepcionCompletada = true;
+        if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errSaveFailed)}</p>`;
+        if (escritorDisco) {
+            escritorDisco.abort().catch(() => {});
+            escritorDisco = null;
+        }
+        if (peerInstance) {
+            peerInstance.destroy();
+            peerInstance = null;
+        }
+    }
+
+    function actualizarProgreso(porcentaje) {
+        const loader = document.getElementById("p2pLoader");
+        const tiempoEstimadoSpan = document.getElementById("p2pTimeRemaining");
+        const etiqueta = modoRecepcion === 'disco' ? t.savingToDisk : t.p2pConnecting;
+
+        if (loader) loader.innerText = `${etiqueta} (${Math.floor(porcentaje)}%)`;
+        if (!tiempoEstimadoSpan || !metaDataBackup) return;
+
+        const tiempoTranscurridoMs = Date.now() - tiempoInicio;
+        const bytesRestantes = metaDataBackup.size - bytesRecibidos;
+
+        if (bytesRestantes <= 0) {
+            tiempoEstimadoSpan.innerText = "00:00";
+            return;
+        }
+
+        if (bytesRecibidos <= 0 || tiempoTranscurridoMs <= 200) return;
+
+        const velocidadBytesPorMs = bytesRecibidos / tiempoTranscurridoMs;
+        if (velocidadBytesPorMs <= 0) return;
+
+        const tiempoRestanteSegundos = Math.ceil(bytesRestantes / (velocidadBytesPorMs * 1000));
+        const minRestantes = Math.floor(tiempoRestanteSegundos / 60);
+        const segRestantes = tiempoRestanteSegundos % 60;
+        tiempoEstimadoSpan.innerText = `${minRestantes.toString().padStart(2, '0')}:${segRestantes.toString().padStart(2, '0')}`;
+    }
+
+    function procesarFragmento(data) {
+        if (!metaDataBackup && data.size) {
+            metaDataBackup = {
+                t: data.t,
+                d: data.d,
+                name: data.name,
+                type: data.type,
+                size: data.size
+            };
+        }
+
+        const fragmento = data.chunk instanceof ArrayBuffer ? new Uint8Array(data.chunk) : data.chunk;
+        bytesRecibidos += fragmento.byteLength;
+
+        if (modoRecepcion === 'disco') {
+            // Las escrituras se encadenan porque este manejador es sincrónico y no
+            // puede esperar al disco: encolarlas conserva el orden de los fragmentos.
+            bytesEnCola += fragmento.byteLength;
+            colaEscritura = colaEscritura
+                .then(() => escritorDisco.write(fragmento))
+                .then(() => {
+                    bytesEnCola -= fragmento.byteLength;
+                    if (flujoPausado && bytesEnCola <= REANUDAR_FLUJO_BYTES) {
+                        flujoPausado = false;
+                        if (conexion && conexion.open) conexion.send({ request: 'FLOW_RESUME' });
+                    }
+                })
+                .catch(fallarEscrituraEnDisco);
+
+            // Si el disco va más lento que la red, se frena al emisor: sin esto la
+            // cola crecería hasta tener el archivo entero en memoria otra vez.
+            if (!flujoPausado && bytesEnCola >= PAUSAR_FLUJO_BYTES) {
+                flujoPausado = true;
+                if (conexion && conexion.open) conexion.send({ request: 'FLOW_PAUSE' });
+            }
+        } else {
+            arraysDeFragmentos.push(data.chunk);
+        }
+
+        actualizarProgreso(data.progress);
+    }
+
+    async function finalizarEnDisco(data) {
+        actualizarProgreso(100);
+        try {
+            await colaEscritura;
+            await escritorDisco.close();
+        } catch (error) {
+            fallarEscrituraEnDisco();
+            return;
+        }
+
+        recepcionCompletada = true;
+        escritorDisco = null;
+
+        const nombre = data.name || (metaDataBackup ? metaDataBackup.name : t.defaultFileName);
+        const tamano = metaDataBackup ? metaDataBackup.size : bytesRecibidos;
+
+        // El archivo vive en el equipo del receptor: sin blob en memoria no hay
+        // vista previa ni temporizador, y ningún recolector puede borrarlo.
+        if (metaDiv) metaDiv.innerHTML = `<strong>${escaparHTML(t.fileLabel)}</strong> ${escaparHTML(nombre)} (${(tamano / (1024 * 1024)).toFixed(2)} MB)`;
+        if (contentDiv) {
+            contentDiv.innerHTML = `
+                <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center;">
+                    <p style="font-size: 1.05em; color: var(--text-color); margin: 0 0 10px 0;"><strong>${escaparHTML(t.savedToDiskTitle)}</strong></p>
+                    <strong style="word-break: break-all; display: block; color: var(--text-color); margin-bottom: 15px;">${escaparHTML(nombre)}</strong>
+                    <p style="font-size: 0.9em; color: var(--footer-color); margin: 0; line-height: 1.4;">${escaparHTML(t.savedToDiskNotice)}</p>
+                </div>
+            `;
+        }
+
+        if (peerInstance) {
+            peerInstance.destroy();
+            peerInstance = null;
+        }
+    }
+
+    function finalizarEnMemoria(data) {
+        actualizarProgreso(100);
+
+        const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
+        const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
+        arraysDeFragmentos = [];
+        recepcionCompletada = true;
+
+        const tiempoActualReceptor = Math.floor(Date.now() / 1000);
+        const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
+        const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
+
+        const objetoPayload = {
+            id: fileId,
+            t: tiempoActualReceptor,
+            d: duracionOriginal,
+            name: data.name || (metaDataBackup ? metaDataBackup.name : t.defaultFileName),
+            type: tipoMime,
+            size: tamanoReal,
+            blob: blobReconstruido
+        };
+
+        abrirDB(function(db) {
+            const tx = db.transaction([STORE_NAME], "readwrite");
+            tx.objectStore(STORE_NAME).put(objetoPayload);
+            tx.oncomplete = function() {
+                renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
+                if (peerInstance) {
+                    peerInstance.destroy();
+                    peerInstance = null;
+                }
+            };
+        });
+    }
 
     peerInstance.on('open', () => {
-        const conn = peerInstance.connect(fileId, { 
+        conexion = peerInstance.connect(fileId, {
             reliable: true,
-            ordered: true 
-        });
-        
-        conn.on('open', () => {
-            tiempoInicio = Date.now(); 
-            conn.send({ request: 'DOWNLOAD_FILE_STREAM' });
+            ordered: true
         });
 
-        conn.on('data', (data) => {
-            const loader = document.getElementById("p2pLoader");
-            const tiempoEstimadoSpan = document.getElementById("p2pTimeRemaining");
-            
-            if (data.chunk) {
-                arraysDeFragmentos.push(data.chunk);
-                if (!metaDataBackup && data.size) {
-                    metaDataBackup = { 
-                        t: data.t, 
-                        d: data.d, 
-                        name: data.name, 
-                        type: data.type, 
-                        size: data.size 
-                    };
+        conexion.on('open', () => {
+            tiempoInicio = Date.now();
+            conexion.send({ request: 'REQUEST_METADATA' });
+
+            // Un emisor con una pestaña vieja abierta no conoce REQUEST_METADATA y
+            // nunca contestaría: si la ficha no llega, se cae al flujo en memoria de
+            // siempre en vez de dejar al receptor esperando para siempre.
+            temporizadorMeta = setTimeout(() => {
+                if (!modoRecepcion) iniciarRecepcion('memoria');
+            }, ESPERA_METADATA_MS);
+        });
+
+        conexion.on('data', (data) => {
+            if (data.meta) {
+                if (modoRecepcion) return;
+                if (temporizadorMeta) {
+                    clearTimeout(temporizadorMeta);
+                    temporizadorMeta = null;
                 }
-                
-                if (loader) loader.innerText = `${t.p2pConnecting} (${Math.floor(data.progress)}%)`;
-                
-                if (tiempoEstimadoSpan && metaDataBackup) {
-                    const tiempoTranscurridoMs = Date.now() - tiempoInicio;
-                    const bytesDescargados = arraysDeFragmentos.length * CHUNK_SIZE;
-                    
-                    if (bytesDescargados > 0 && tiempoTranscurridoMs > 200) {
-                        const velocidadBytesPorMs = bytesDescargados / tiempoTranscurridoMs;
-                        const bytesRestantes = metaDataBackup.size - bytesDescargados;
-                        
-                        if (bytesRestantes > 0 && velocidadBytesPorMs > 0) {
-                            const tiempoRestanteSegundos = Math.ceil(bytesRestantes / (velocidadBytesPorMs * 1000));
-                            
-                            const minRestantes = Math.floor(tiempoRestanteSegundos / 60);
-                            const segRestantes = tiempoRestanteSegundos % 60;
-                            tiempoEstimadoSpan.innerText = `${minRestantes.toString().padStart(2, '0')}:${segRestantes.toString().padStart(2, '0')}`;
-                        }
-                    }
-                }
+                metaDataBackup = {
+                    t: data.t,
+                    d: data.d,
+                    name: data.name,
+                    type: data.type,
+                    size: data.size
+                };
+                // Sin soporte de escritura a disco no hay decisión que ofrecer:
+                // el receptor sigue con el mismo flujo de hoy, sin clicks extra.
+                if (soportaGuardadoEnDisco()) mostrarEleccion();
+                else iniciarRecepcion('memoria');
+                return;
             }
+
+            if (data.chunk) procesarFragmento(data);
 
             if (data.eof) {
-                if (loader) loader.innerText = `${t.p2pConnecting} (100%)`;
-                if (tiempoEstimadoSpan) tiempoEstimadoSpan.innerText = "00:00";
-
-                const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
-                const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
-                arraysDeFragmentos = []; 
-
-                const tiempoActualReceptor = Math.floor(Date.now() / 1000);
-                const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-                const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
-
-                const objetoPayload = {
-                    id: fileId,
-                    t: tiempoActualReceptor, 
-                    d: duracionOriginal,
-                    name: data.name || (metaDataBackup ? metaDataBackup.name : t.defaultFileName),
-                    type: tipoMime,
-                    size: tamanoReal,
-                    blob: blobReconstruido 
-                };
-
-                abrirDB(function(db) {
-                    const tx = db.transaction([STORE_NAME], "readwrite");
-                    tx.objectStore(STORE_NAME).put(objetoPayload);
-                    tx.oncomplete = function() {
-                        renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
-                        if (peerInstance) {
-                            peerInstance.destroy();
-                            peerInstance = null;
-                        }
-                    };
-                });
+                // Se marca antes de vaciar la cola: a partir de acá el archivo ya
+                // llegó entero y cerrar la conexión no puede abortar la escritura.
+                eofRecibido = true;
+                if (modoRecepcion === 'disco') finalizarEnDisco(data);
+                else finalizarEnMemoria(data);
             }
         });
 
-        conn.on('close', () => {
+        conexion.on('close', () => {
+            // Con el EOF ya recibido el cierre es normal: el archivo está completo
+            // y solo falta que el disco termine de vaciar la cola.
+            if (recepcionCompletada || eofRecibido) return;
+
+            if (modoRecepcion === 'disco' && escritorDisco) {
+                fallarEscrituraEnDisco();
+                return;
+            }
+
+            // El emisor se fue antes de que el receptor eligiera cómo recibirlo:
+            // sin esto la pantalla de elección quedaba viva contra un emisor muerto.
+            if (!modoRecepcion) {
+                if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
+                return;
+            }
+
             if (arraysDeFragmentos.length > 0 && !metaDataBackup) {
                 if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
             }
@@ -712,6 +1000,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     });
 
     peerInstance.on('error', () => {
+        if (recepcionCompletada || eofRecibido) return;
         if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
     });
 }
