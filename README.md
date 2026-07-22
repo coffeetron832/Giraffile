@@ -13,7 +13,7 @@
 
 ![GitHub stars](https://img.shields.io/github/stars/coffeetron832/Giraffile?style=social)
 ![Privacy](https://img.shields.io/badge/Privacy-Zero_Server-brightgreen)
-![Version](https://img.shields.io/badge/version-1.1.2-blue)
+![Version](https://img.shields.io/badge/version-1.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 ![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
 
@@ -41,7 +41,7 @@ By using your browser’s native storage capabilities (**IndexedDB**), files tra
 
 ---
 
-### 🦒 Try Giraffile v1.1.2
+### 🦒 Try Giraffile v1.2.0
 
 Need to share files privately and securely? Don't trust the cloud with your data.
 
