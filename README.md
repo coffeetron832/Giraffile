@@ -62,8 +62,9 @@ We are deeply grateful to the creators and maintainers of the key libraries that
 ### Project Contributors
 A very special thank you to the developers who dedicated their time and talent to improving the platform through their *pull requests*:
 
+*   **[@Daniel Angel](https://github.com/danansa86):** Thanks to his significant contribution to the file transfer process and the tool’s architecture, he has played a key role in its development.
 *   **[@RamVignesh B](https://github.com/ramvignesh-b):** For their valuable contribution to implementing the QR code to improve the tool's usability.
-*   **[@Daniel Angel](https://github.com/danansa86):** For their key contribution to the file transfer workflow. 
+
 
 Thank you for helping the giraffe continue to protect everyone's privacy! 🦒
 
