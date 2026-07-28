@@ -219,7 +219,7 @@ function aplicarTraduccion() {
     if (infoBox) {
         infoBox.innerHTML = `
             <div class="brand-container">
-                <img src="giraffe.png" alt="Mascota" class="mascot-img">
+                <img src="giraffe.svg" alt="Mascota" class="mascot-img">
             </div>
             <p class="highlight-yellow"><strong>${t.hook}</strong></p>
             <p>${t.desc2}</p>
