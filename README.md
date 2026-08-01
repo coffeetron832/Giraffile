@@ -19,6 +19,8 @@
 
 </div>
 
+## Thank you for choosing Giraffile. We're happy to have reached 100 stars! (August 1, 2026)
+
 Giraffile is a **local privacy** tool designed to share files quickly and securely without relying on cloud servers. 
 
 ### Why Giraffile?
