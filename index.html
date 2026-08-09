@@ -20,84 +20,89 @@
 </head>
 <body>
 
-    <div class="top-controls" style="display: flex; gap: 10px; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; margin-bottom: 20px;">
-        <div>
-            <button class="lang-toggle" onclick="toggleLanguage()" id="langBtn">English</button>
-            <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Modo Oscuro</button>
+    <!-- Header / Hero Banner con fondo spots.jpg -->
+    <header class="hero-banner" id="hero-header">
+        <div class="top-controls">
+            <div>
+                <button class="lang-toggle" onclick="toggleLanguage()" id="langBtn">English</button>
+                <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Modo Oscuro</button>
+            </div>
         </div>
-    </div>
 
-    <div id="main-wrapper" style="display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 1000px; margin: 0 auto;">
-        
-        <div class="layout-columns" style="display: flex; gap: 40px; justify-content: center; align-items: flex-start; flex-wrap: wrap;">
-            
-            <!-- Columna Izquierda: Información de marca e instrucciones dinámicas -->
-            <div class="column-left" style="flex: 1; min-width: 300px;">
+        <div class="hero-content">
+            <!-- VISTA 1: Banner / Información de marca -->
+            <div id="viewBanner" class="view-section fade-in-down">
                 <div class="info-box" id="infoBoxContainer"></div>
+                <button onclick="mostrarCarga()" class="scroll-btn scroll-down-btn" aria-label="Ir al panel de carga">↓</button>
             </div>
 
-            <!-- Columna Derecha: Panel de Carga y Configuración -->
-            <div class="column-right" style="flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 15px;">
-                <h3 id="lblPrepare" style="margin-top: 0;">Prepara tu archivo para enviar</h3>
-                
-                <div class="control-group">
-                    <label id="lblDropZone">Arrastra tus archivos o haz clic abajo (Máx 1.5GB):</label><br><br>
-                    
-                    <!-- Zona de arrastre con soporte para múltiples archivos -->
-                    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-                        <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
+            <!-- VISTA 2: Panel de Carga y Configuración -->
+            <div id="viewUpload" class="view-section hidden-view">
+                <div style="margin-bottom: 15px;">
+                    <button onclick="mostrarBanner()" class="scroll-btn" aria-label="Volver arriba">↑</button>
+                </div>
+
+                <div id="main-wrapper">
+                    <div id="upload-section" class="upload-card">
+                        <h3 id="lblPrepare" style="margin-top: 0;">Prepara tu archivo para enviar</h3>
                         
-                        <!-- CORRECCIÓN: onchange ahora apunta a la función unificada manejarSeleccionArchivo -->
-                        <input type="file" id="fileInput" style="display: none;" multiple onchange="manejarSeleccionArchivo(this)">
-                        
-                        <!-- Barra de Límite de Peso Dinámica y Lista de Archivos en Cola -->
-                        <div id="limiteContainer" style="margin-top: 15px; display: none;" onclick="event.stopPropagation();">
-                            <label id="lblLimite" style="font-size: 0.85em; font-weight: bold; display: block; margin-bottom: 5px; text-align: left; color: var(--text-color);"></label>
-                            <progress id="barreLimite" value="0" max="100" style="width: 100%; height: 12px; transition: all 0.3s ease;"></progress>
-                            <ul id="listaArchivos" style="text-align: left; max-height: 120px; overflow-y: auto; font-size: 0.85em; margin-top: 10px; padding-left: 20px; color: var(--text-color); list-style-type: square;"></ul>
+                        <div class="control-group">
+                            <label id="lblDropZone">Arrastra tus archivos o haz clic abajo (Máx 1.5GB):</label><br><br>
+                            
+                            <!-- Zona de arrastre P2P -->
+                            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                                <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
+                                
+                                <input type="file" id="fileInput" style="display: none;" multiple onchange="manejarSeleccionArchivo(this)">
+                                
+                                <div id="limiteContainer" style="margin-top: 15px; display: none;" onclick="event.stopPropagation();">
+                                    <label id="lblLimite" style="font-size: 0.85em; font-weight: bold; display: block; margin-bottom: 5px; text-align: left; color: var(--text-color);"></label>
+                                    <progress id="barreLimite" value="0" max="100" style="width: 100%; height: 12px; transition: all 0.3s ease;"></progress>
+                                    <ul id="listaArchivos" style="text-align: left; max-height: 120px; overflow-y: auto; font-size: 0.85em; margin-top: 10px; padding-left: 20px; color: var(--text-color); list-style-type: square;"></ul>
+                                </div>
+                            </div>
+                            <p id="errorMsg" class="error" style="color: red; font-weight: bold; margin-top: 5px;"></p>
                         </div>
+
+                        <div class="control-group">
+                            <label id="lblExpiry">Tiempo de Caducidad:</label><br>
+                            <select id="expiry" style="background: var(--box-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 6px; border-radius: 4px; margin-top: 5px; width: 100%;">
+                                <option value="120" id="opt2m">2 Minutos</option>
+                                <option value="300" id="opt5m">5 Minutos</option>
+                                <option value="600" id="opt10m">10 Minutos</option> 
+                            </select>
+                        </div>
+                        
+                        <button class="btn btn-primary" id="btnGenerar" onclick="generarLink()" style="width: 100%;">Generar enlace seguro</button>
+                        <div id="output"></div>
                     </div>
-                    <p id="errorMsg" class="error" style="color: red; font-weight: bold; margin-top: 5px;"></p>
-                </div>
 
-                <div class="control-group">
-                    <label id="lblExpiry">Tiempo de Caducidad:</label><br>
-                    <select id="expiry" style="background: var(--box-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 6px; border-radius: 4px; margin-top: 5px; width: 100%;">
-                        <option value="120" id="opt2m">2 Minutos</option>
-                        <option value="300" id="opt5m">5 Minutos</option>
-                        <option value="600" id="opt10m">10 Minutos</option> 
-                    </select>
+                    <!-- Panel de Vista Previa para Receptor -->
+                    <div id="preview">
+                        <h4 id="lblPreviewTitle">Visualizador de Archivo Seguro</h4>
+                        <div id="fileMeta" class="file-meta"></div>
+                        
+                        <div id="timerGroup" class="timer-container" style="display: none;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span id="lblTimeRemaining">Tiempo restante de visualización:</span>
+                                <strong id="timeString">--:--</strong>
+                            </div>
+                            <progress id="lifeBar" value="100" max="100" style="width: 100%;"></progress>
+                        </div>
+
+                        <div id="fileContent" style="margin-top: 15px;"></div>
+                    </div>
                 </div>
-                
-                <button class="btn btn-primary" id="btnGenerar" onclick="generarLink()" style="width: 100%;">Generar enlace seguro</button>
-                <div id="output"></div>
             </div>
-
         </div>
+    </header>
 
-        <!-- Panel de Vista Previa y Estado de la descarga P2P para el receptor -->
-        <div id="preview" style="display: none; width: 100%; margin-top: 20px;">
-            <h4 id="lblPreviewTitle">Visualizador de Archivo Seguro</h4>
-            <div id="fileMeta" class="file-meta"></div>
-            
-            <div id="timerGroup" class="timer-container" style="display: none;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span id="lblTimeRemaining">Tiempo restante de visualización:</span>
-                    <strong id="timeString">--:--</strong>
-                </div>
-                <progress id="lifeBar" value="100" max="100" style="width: 100%;"></progress>
-            </div>
-
-            <div id="fileContent" style="margin-top: 15px;"></div>
-        </div>
-
-    </div>
-
-    <footer id="footerText" style="margin-top: 40px; text-align: center; width: 100%;">
+    <!-- Pie de página con efecto Glassmorphism -->
+    <footer id="footerText">
         Giraffile v1.1.0 | © 2026 jahp. Todos los derechos reservados.
     </footer>
 
-    <!-- Ventana Modal de Aviso Legal (Disclaimer) -->
+    <!-- Ventana Modal de Aviso Legal -->
     <div id="modalDisclaimer" class="modal-disclaimer" style="display: none;">
         <div class="modal-content">
             <span class="close-disclaimer" onclick="cerrarDisclaimer()">&times;</span>
@@ -105,6 +110,27 @@
         </div>
     </div>
     
+    <!-- Script de navegación de vistas -->
+    <script>
+        function mostrarCarga() {
+            const vBanner = document.getElementById('viewBanner');
+            const vUpload = document.getElementById('viewUpload');
+            
+            vBanner.classList.add('hidden-view');
+            vUpload.classList.remove('hidden-view', 'fade-in-down');
+            vUpload.classList.add('fade-in-up');
+        }
+
+        function mostrarBanner() {
+            const vBanner = document.getElementById('viewBanner');
+            const vUpload = document.getElementById('viewUpload');
+            
+            vUpload.classList.add('hidden-view');
+            vBanner.classList.remove('hidden-view', 'fade-in-up');
+            vBanner.classList.add('fade-in-down');
+        }
+    </script>
+
     <script src="brain.js"></script>
 </body>
 </html>
