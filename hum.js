@@ -139,7 +139,6 @@ function aplicarTraduccion() {
     document.title = t.pageTitle; 
     document.getElementById('langBtn').innerText = t.langBtn;
     const currentTheme = document.documentElement.getAttribute('data-theme');
-    document.getElementById('themeBtn').innerText = currentTheme === 'dark' ? t.themeLight : t.themeDark;
 
     const infoBox = document.getElementById('infoBoxContainer');
     if (infoBox) {
