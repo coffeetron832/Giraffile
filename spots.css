@@ -182,17 +182,9 @@ body {
     z-index: 1;
 }
 
-/* Tarjeta contenedora de carga en Glassmorphism */
 .upload-card {
     width: 100%;
     box-sizing: border-box;
-    background-color: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .layout-columns {
@@ -262,45 +254,44 @@ body {
     font-size: 0.85rem;
 }
 
-/* Zona de arrastre de archivos en Glassmorphism */
+/* Zona de arrastre con Glassmorphism */
 .drop-zone { 
     border: 2px dashed var(--glass-border); 
     padding: 20px 15px; 
     text-align: center; 
     border-radius: 8px; 
     background-color: var(--glass-bg); 
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    color: var(--text-color);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     cursor: pointer; 
     transition: border-color 0.2s, background-color 0.2s; 
     word-break: break-word;
     font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .drop-zone--over { 
     border-color: var(--accent-color); 
-    background-color: rgba(240, 165, 0, 0.15); 
+    background-color: var(--glass-bg); 
 }
 
 .drop-zone input { 
     display: none; 
 }
 
-/* Selector de Expiración / Tiempo en Glassmorphism */
+/* Selector de caducidad/tiempo con Glassmorphism */
 select#expiry {
-    background-color: var(--glass-bg) !important;
-    color: var(--text-color) !important;
-    border: 1px solid var(--glass-border) !important;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background-color: var(--glass-bg);
+    color: var(--text-color);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     padding: 8px;
     border-radius: 6px;
     margin-top: 5px;
     width: 100%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     outline: none;
-    font-size: 0.88rem;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 select#expiry option {
@@ -427,6 +418,7 @@ progress::-webkit-progress-value {
     word-break: break-all; 
 }
 
+/* Eliminado el resalte amarillo según la instrucción anterior */
 .highlight-yellow {
     background-color: transparent; 
     padding: 0;
@@ -459,7 +451,7 @@ footer {
     z-index: 100;
 }
 
-/* MODAL DISCLAIMER EN GLASSMORPHISM */
+/* MODAL DISCLAIMER CON GLASSMORPHISM */
 .modal-disclaimer {
     position: fixed;
     z-index: 10000;
@@ -467,9 +459,9 @@ footer {
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -478,31 +470,32 @@ footer {
 .modal-content {
     background-color: var(--glass-bg);
     border: 1px solid var(--glass-border);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    color: var(--text-color);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     padding: 25px;
-    border-radius: 12px;
+    border-radius: 8px;
     width: 90%;
     max-width: 500px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
     position: relative;
+    color: var(--text-color);
 }
 
 .close-disclaimer {
     position: absolute;
     top: 10px;
     right: 16px;
-    color: var(--footer-color, #888);
+    color: var(--footer-color);
     font-size: 26px;
     font-weight: bold;
     cursor: pointer;
 }
 
 .close-disclaimer:hover {
-    color: var(--text-color, #000);
+    color: var(--text-color);
 }
 
+/* Ajuste vista banner limpia */
 #viewBanner .info-box {
     background: transparent !important;
     border: none !important;
