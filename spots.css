@@ -395,18 +395,18 @@ progress::-webkit-progress-value {
 }
 
 .highlight-yellow {
-    background-color: #fff9c4; 
-    padding: 8px;
-    border-radius: 4px;
-    border-left: 3px solid #f0a500; 
-    color: #333; 
+    background-color: transparent; 
+    padding: 0;
+    border-radius: 0;
+    border-left: none; 
+    color: inherit; 
     font-size: 0.9rem;
 }
 
 [data-theme="dark"] .highlight-yellow {
-    background-color: #4a452a; 
-    border-left-color: #ffc04d;
-    color: #e0e0e0;
+    background-color: transparent; 
+    border-left-color: transparent;
+    color: inherit;
 }
 
 /* FOOTER TRASLÚCIDO (GLASSMORPHISM) */
