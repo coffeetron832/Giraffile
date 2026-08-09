@@ -2,9 +2,8 @@
 const MAX_SIZE_BYTES = 1500 * 1024 * 1024; 
 let intervaloTemporizador = null;
 let archivoCargado = null;
-let currentLang = 'en'; // Se define inglés como idioma por defecto al iniciar
 let peerInstance = null; 
-let objetoUrlActivo = null; // Variable global para el control de fugas de memoria RAM (Object URLs)
+let objetoUrlActivo = null; // Control de RAM
 
 // Colección global para persistir la cola de múltiples archivos seleccionados
 let coleccionArchivos = [];
@@ -13,137 +12,9 @@ const DB_NAME = "GirafileDB";
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
 const CHUNK_SIZE = 256 * 1024;
-// Margen de espera de la ficha del archivo antes de caer al flujo clásico en memoria
 const ESPERA_METADATA_MS = 4000;
-// Techo de memoria del receptor cuando escribe a disco: si la cola de escritura
-// pasa este tamaño se frena al emisor, y se lo reanuda al bajar del segundo umbral
 const PAUSAR_FLUJO_BYTES = 8 * 1024 * 1024;
 const REANUDAR_FLUJO_BYTES = 2 * 1024 * 1024;
-
-const i18n = {
-    es: {
-        themeDark: "Modo Oscuro",
-        themeLight: "Modo Claro",
-        langBtn: "English",
-        pageTitle: "Giraffile - La jirafa que protege tus archivos",
-        hook: "¿Te preocupa dejar tus archivos rondando por internet?",
-        desc2: "Esta herramienta te permite compartir cualquier tipo de archivo de manera privada mediante un enlace corto sin subirlos a internet. Todo el contenido se almacena de forma temporal en tu propio dispositivo de manera 100% segura.",
-        useTitle: "¿Para qué puedes usar Giraffile?",
-        use1: "<strong>Información sensible:</strong> Credenciales, datos financieros, contratos o documentos personales.",
-        use2: "<strong>Cualquier Formato:</strong> Envía imágenes, PDFs, archivos comprimidos (ZIP/RAR), audios o videos.",
-        use3: "<strong>Privacidad total:</strong> Envío seguro de archivos sin dejar rastro en servidores externos.",
-        prepare: "Prepara tu archivo para enviar",
-        dropLabel: "Arrastra cualquier archivo o haz clic abajo (Máx 1.5GB):",
-        dropPrompt: "Arrastra un archivo aquí o haz clic para buscar",
-        dropSelected: "Archivo seleccionado:",
-        expiryLabel: "Tiempo de Caducidad:",
-        opt2: "2 Minutos (Para archivos pequeños)",
-        opt5: "5 Minutos",
-        opt10: "10 Minutos",
-        btnGenerate: "Generar enlace seguro",
-        btnCopy: "Copiar Enlace 📋",
-        btnCopied: "¡Enlace Copiado! ✓",
-        btnDownload: "Descargar Completo 📥",
-        textPreviewNotice: "📋 Mostrando una vista previa del archivo de texto. Para ver todo el contenido:",
-        noPreviewNotice: "📦 Este formato no admite vista previa en el navegador o supera el tamaño de renderizado directo. Usa el botón de abajo para descargarlo de manera segura:",
-        errNoFile: "Por favor, selecciona o arrastra un archivo primero.",
-        errNotAllowed: "El archivo excede el tamaño máximo permitido (Máx 1.5GB).",
-        successLink: "¡Enlace creado con éxito!",
-        previewTitle: "Echa un vistazo a tu archivo",
-        timeRemaining: "Tiempo restante de visualización:",
-        fileLabel: "Archivo:",
-        errNoExist: "El archivo no existe o ya ha sido eliminado por seguridad.",
-        errExpired: "¡Este enlace ha caducado y el contenido fue destruido permanentemente!",
-        errTimeOut: "¡El tiempo se ha agotado! El archivo ha sido completamente borrado de la memoria de forma segura.",
-        p2pConnecting: "Cargando archivo...",
-        p2pEstimado: "Tiempo estimado restante:",
-        p2pCalculando: "calculando...",
-        descifrando: "Preparando archivo ...",
-        qrLabel: "Escanea para recibir el archivo",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.2.0 | © 2026 jahp. Todos los derechos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
-        disclaimerTitle: "Descargo de Responsabilidad (Disclaimer)",
-        disclaimerBody: `
-        <p><strong>Giraffile</strong> funciona como un canal de transporte privado P2P (Peer-to-Peer) directo entre dispositivos. Los archivos no se suben, analizan ni almacenan en ningún servidor externo.</p>
-        <p>⚠️ <strong>Aviso sobre malware:</strong> Al ser una transferencia directa y cifrada, la plataforma no escanea ni verifica la seguridad del contenido. <strong>Giraffile no se hace responsable</strong> por software malicioso, virus o archivos infectados transmitidos a través de los enlaces. Es responsabilidad exclusiva del receptor verificar la procedencia del archivo y contar con un antivirus activo antes de realizar la descarga.</p>
-        `,
-        spaceLabel: "Espacio:",
-        filesInQueue: "archivos en cola",
-        errLocalDB: "Error local al procesar el almacenamiento.",
-        textTruncated: "[... Archivo truncado por rendimiento para evitar colgar el navegador ...]",
-        defaultFileName: "archivo_descargado",
-        chooseTitle: "¿Cómo quieres recibir este archivo?",
-        btnSaveToDisk: "Guardar en disco 💾",
-        btnViewInBrowser: "Ver en el navegador ⏳",
-        saveToDiskNotice: "Se escribe directamente en tu equipo mientras se recibe, sin llenar la memoria del navegador. <strong>No caduca:</strong> el archivo queda guardado y eres tú quien decide cuándo borrarlo.",
-        viewInBrowserNotice: "Se carga en la memoria del navegador, con vista previa y temporizador. <strong>Se destruye al caducar.</strong> Recomendado para archivos pequeños.",
-        savingToDisk: "Guardando en tu disco...",
-        savedToDiskTitle: "✅ Archivo guardado en tu equipo",
-        savedToDiskNotice: "Este archivo ya no depende de Giraffile ni caduca: vive en tu equipo. Bórralo tú cuando no lo necesites.",
-        errSaveCancelled: "Guardado cancelado. Elige cómo quieres recibir el archivo.",
-        errSaveFailed: "No se pudo escribir el archivo en el disco. Vuelve a intentarlo o recíbelo en el navegador."
-    },
-    en: {
-        themeDark: "Dark Mode",
-        themeLight: "Light Mode",
-        langBtn: "Español",
-        pageTitle: "Giraffile - The giraffe that protects your files",
-        hook: "Worried about leaving your files floating around the internet?",
-        desc2: "This tool allows you to share any file type privately using a short link without uploading them to the internet. All content is temporarily stored on your own device in a 100% secure way.",
-        useTitle: "What can you use Giraffile for?",
-        use1: "<strong>Sensitive Information:</strong> Credentials, financial data, contracts, or personal documents.",
-        use2: "<strong>Any Format:</strong> Send images, PDFs, compressed archives (ZIP/RAR), audios, or videos.",
-        use3: "<strong>Total Privacy:</strong> Send files without leaving a trace on external servers.",
-        prepare: "Prepare your file to send",
-        dropLabel: "Drag any file or click below (Max 1.5GB):",
-        dropPrompt: "Drag a file here or click to browse",
-        dropSelected: "Selected file:",
-        expiryLabel: "Expiration Time:",
-        opt2: "2 Minutes (For small files)",
-        opt5: "5 Minutes",
-        opt10: "10 Minutes",
-        btnGenerate: "Generate secure link",
-        btnCopy: "Copy Link 📋",
-        btnCopied: "Link Copied! ✓",
-        btnDownload: "Download Full File 📥",
-        textPreviewNotice: "📋 Showing a preview of the text file. To see the full content:",
-        noPreviewNotice: "📦 Preview is not supported for this file type or size in the browser. Use the button below to download securely:",
-        errNoFile: "Please select or drag a file first.",
-        errNotAllowed: "The file exceeds the maximum size allowed (Max 1.5GB).",
-        successLink: "Link created successfully!",
-        previewTitle: "Take a look at your file",
-        timeRemaining: "Remaining viewing time:",
-        fileLabel: "File:",
-        errNoExist: "The file does not exist or has already been deleted for security.",
-        errExpired: "This link has expired and the content was permanently destroyed!",
-        errTimeOut: "Time's up! The file has been completely and securely erased from memory.",
-        p2pConnecting: "Loading file...",
-        p2pEstimado: "Estimated time remaining:",
-        p2pCalculando: "calculating...",
-        descifrando: "Preparing file...",
-        qrLabel: "Scan to receive the file",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.2.0 | © 2026 jahp. All rights reserved. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Legal Disclaimer</a>',
-        disclaimerTitle: "Legal Disclaimer",
-        disclaimerBody: `
-        <p><strong>Giraffile</strong> operates as a private, content-agnostic P2P (Peer-to-Peer) transport channel directly between devices. Files are never uploaded, scanned, or stored on external servers.</p>
-        <p>⚠️ <strong>Malware Notice:</strong> Since transfers are direct and encrypted, the platform does not scan or verify file security. <strong>Giraffile is not responsible</strong> for any malware, viruses, or infected files transmitted through shared links. It is the sole responsibility of the recipient to verify the sender's trustworthiness and run appropriate antivirus software before downloading.</p>
-        `,
-        spaceLabel: "Space:",
-        filesInQueue: "files in queue",
-        errLocalDB: "Local error processing storage.",
-        textTruncated: "[... File truncated for performance to prevent browser lag ...]",
-        defaultFileName: "downloaded_file",
-        chooseTitle: "How do you want to receive this file?",
-        btnSaveToDisk: "Save to disk 💾",
-        btnViewInBrowser: "View in browser ⏳",
-        saveToDiskNotice: "Written straight to your device as it arrives, without filling up browser memory. <strong>It does not expire:</strong> the file stays on your device and you decide when to delete it.",
-        viewInBrowserNotice: "Loaded into browser memory, with preview and countdown. <strong>Destroyed when it expires.</strong> Recommended for small files.",
-        savingToDisk: "Saving to your disk...",
-        savedToDiskTitle: "✅ File saved to your device",
-        savedToDiskNotice: "This file no longer depends on Giraffile and does not expire: it lives on your device. Delete it yourself when you no longer need it.",
-        errSaveCancelled: "Save cancelled. Choose how you want to receive the file.",
-        errSaveFailed: "The file could not be written to disk. Try again or receive it in the browser."
-    }
-};
 
 function escaparHTML(cadena) {
     if (!cadena) return '';
@@ -195,64 +66,6 @@ function toggleTheme() {
     document.documentElement.setAttribute('data-theme', targetTheme);
     localStorage.setItem('girafile-theme', targetTheme);
     document.getElementById('themeBtn').innerText = targetTheme === 'dark' ? i18n[currentLang].themeLight : i18n[currentLang].themeDark;
-}
-
-function toggleLanguage() {
-    currentLang = currentLang === 'es' ? 'en' : 'es';
-    localStorage.setItem('girafile-lang', currentLang);
-    document.documentElement.lang = currentLang;
-    aplicarTraduccion();
-}
-
-function aplicarTraduccion() {
-    const t = i18n[currentLang];
-    document.title = t.pageTitle; 
-    document.getElementById('langBtn').innerText = t.langBtn;
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    document.getElementById('themeBtn').innerText = currentTheme === 'dark' ? t.themeLight : t.themeDark;
-
-    const infoBox = document.getElementById('infoBoxContainer');
-    if (infoBox) {
-        infoBox.innerHTML = `
-            <div class="brand-container">
-                <img src="giraffe.svg" alt="Mascota" class="mascot-img">
-            </div>
-            <p class="highlight-yellow"><strong>${t.hook}</strong></p>
-            <p>${t.desc2}</p>
-            <p><strong>${t.useTitle}</strong></p>
-            <ul style="padding-left: 20px;">
-                <li>${t.use1}</li>
-                <li>${t.use2}</li>
-                <li>${t.use3}</li>
-            </ul>
-        `;
-    }
-
-    if (document.getElementById('lblPrepare')) document.getElementById('lblPrepare').innerText = t.prepare;
-    if (document.getElementById('lblDropZone')) document.getElementById('lblDropZone').innerText = t.dropLabel;
-    if (document.getElementById('lblExpiry')) document.getElementById('lblExpiry').innerText = t.expiryLabel;
-    if (document.getElementById('opt2m')) document.getElementById('opt2m').innerText = t.opt2;
-    if (document.getElementById('opt5m')) document.getElementById('opt5m').innerText = t.opt5;
-    if (document.getElementById('opt10m')) document.getElementById('opt10m').innerText = t.opt10;
-    if (document.getElementById('btnGenerar')) document.getElementById('btnGenerar').innerText = t.btnGenerate;
-    if (document.getElementById('lblPreviewTitle')) document.getElementById('lblPreviewTitle').innerText = t.previewTitle;
-    if (document.getElementById('lblTimeRemaining')) document.getElementById('lblTimeRemaining').innerText = t.timeRemaining;
-    if (document.getElementById('footerText')) document.getElementById('footerText').innerHTML = t.footer;
-
-    const prompt = document.getElementById('dropZonePrompt');
-    if (prompt) {
-        if (coleccionArchivos.length === 0) {
-            prompt.innerText = t.dropPrompt;
-        } else {
-            const tamañoTotalBytes = coleccionArchivos.reduce((acc, file) => acc + file.size, 0);
-            const tamanoMB = (tamañoTotalBytes / (1024 * 1024)).toFixed(2);
-            if (coleccionArchivos.length === 1) {
-                prompt.innerHTML = `<strong>${escaparHTML(t.dropSelected)}</strong> ${escaparHTML(coleccionArchivos[0].name)} (${tamanoMB} MB)`;
-            } else {
-                prompt.innerHTML = `<strong>${escaparHTML(t.dropSelected)}</strong> ${coleccionArchivos.length} ${escaparHTML(t.filesInQueue)} (${tamanoMB} MB)`;
-            }
-        }
-    }
 }
 
 function abrirDB(callback) {
@@ -508,7 +321,6 @@ function copiarAlPortapapeles() {
     }, 2000);
 }
 
-// Función para conmutar la vista al panel de carga/visualizador (vista inferior)
 function activarVistaInferior() {
     if (typeof mostrarCarga === 'function') {
         mostrarCarga();
@@ -533,17 +345,14 @@ function verificarLinkCompartido() {
     const metaDiv = document.getElementById('fileMeta');
     const t = i18n[currentLang];
 
-    // 1. Activa la vista 2 en el HTML (simula el click del botón circular ↓)
     activarVistaInferior();
 
-    // 2. Coloca la vista previa en la parte superior dentro del main-wrapper
     if (mainWrapper && previewDiv) {
         mainWrapper.prepend(previewDiv);
     }
 
     if (previewDiv) previewDiv.style.display = "block";
 
-    // 3. Desplazamiento suave para centrar la vista previa
     setTimeout(() => {
         if (previewDiv) previewDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 150);
@@ -572,10 +381,7 @@ function verificarLinkCompartido() {
     });
 }
 
-// =========================================================================
-// MOTOR P2P MÁXIMA OPTIMIZACIÓN Y CONTROL DE EXCEPCIONES
-// =========================================================================
-
+// MOTOR P2P
 function inicializarTransmisionP2P(fileId, payload) {
     if (peerInstance) peerInstance.destroy();
     
@@ -986,7 +792,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
 
-    // Garantizar que la sección inferior esté activa y visible al renderizar
     activarVistaInferior();
     if (previewDiv) previewDiv.style.display = "block";
     
@@ -1046,7 +851,7 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         const lectorTexto = new FileReader();
         
         lectorTexto.onload = function(evt) {
-            let textoFormateado = escaparHTML(evt.target.result);
+            let textoFormateado = escapingHTML ? escaparHTML(evt.target.result) : evt.target.result;
             let descargaAdicional = '';
             
             if (data.size > bytesVistaPrevia) {
