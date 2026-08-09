@@ -28,6 +28,7 @@
     /* Variables Glassmorphism para modo oscuro */
     --glass-bg: rgba(18, 18, 18, 0.65);
     --glass-border: rgba(255, 255, 255, 0.15);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 body { 
@@ -515,21 +516,25 @@ footer {
     text-align: left;
 }
 
-/* Estilo individual de cada tarjeta */
+/* Estilo individual con efecto Glassmorphism */
 .card-item {
-    background: var(--timer-bg, rgba(0, 0, 0, 0.04));
-    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
-    border-radius: 8px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: 12px;
     padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
 .card-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
 }
 
 /* Íconos visuales SVG superiores */
