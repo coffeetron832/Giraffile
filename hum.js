@@ -138,7 +138,6 @@ function aplicarTraduccion() {
     const t = i18n[currentLang];
     document.title = t.pageTitle; 
     document.getElementById('langBtn').innerText = t.langBtn;
-    const currentTheme = document.documentElement.getAttribute('data-theme');
 
     const infoBox = document.getElementById('infoBoxContainer');
     if (infoBox) {
@@ -146,9 +145,14 @@ function aplicarTraduccion() {
             <div class="brand-container">
                 <img src="giraffe.svg" alt="Mascota" class="mascot-img">
             </div>
-            <p class="highlight-yellow"><strong>${t.hook}</strong></p>
-            <p>${t.desc2}</p>
-            <p style="margin-top: 20px; margin-bottom: 12px; font-weight: bold;">${t.useTitle}</p>
+            
+            <div class="hero-intro">
+                <h2 class="hero-hook">${t.hook}</h2>
+                <p class="hero-desc">${t.desc2}</p>
+            </div>
+
+            <p style="margin-top: 25px; margin-bottom: 12px; font-weight: bold; text-align: center;">${t.useTitle}</p>
+            
             <div class="cards-container">
                 <div class="card-item">
                     <div class="card-icon">
