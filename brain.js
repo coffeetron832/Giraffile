@@ -66,13 +66,11 @@ const i18n = {
         <p><strong>Giraffile</strong> funciona como un canal de transporte privado P2P (Peer-to-Peer) directo entre dispositivos. Los archivos no se suben, analizan ni almacenan en ningún servidor externo.</p>
         <p>⚠️ <strong>Aviso sobre malware:</strong> Al ser una transferencia directa y cifrada, la plataforma no escanea ni verifica la seguridad del contenido. <strong>Giraffile no se hace responsable</strong> por software malicioso, virus o archivos infectados transmitidos a través de los enlaces. Es responsabilidad exclusiva del receptor verificar la procedencia del archivo y contar con un antivirus activo antes de realizar la descarga.</p>
         `,
-        // Nuevas traducciones añadidas
         spaceLabel: "Espacio:",
         filesInQueue: "archivos en cola",
         errLocalDB: "Error local al procesar el almacenamiento.",
         textTruncated: "[... Archivo truncado por rendimiento para evitar colgar el navegador ...]",
         defaultFileName: "archivo_descargado",
-        // Recepción por streaming a disco
         chooseTitle: "¿Cómo quieres recibir este archivo?",
         btnSaveToDisk: "Guardar en disco 💾",
         btnViewInBrowser: "Ver en el navegador ⏳",
@@ -129,13 +127,11 @@ const i18n = {
         <p><strong>Giraffile</strong> operates as a private, content-agnostic P2P (Peer-to-Peer) transport channel directly between devices. Files are never uploaded, scanned, or stored on external servers.</p>
         <p>⚠️ <strong>Malware Notice:</strong> Since transfers are direct and encrypted, the platform does not scan or verify file security. <strong>Giraffile is not responsible</strong> for any malware, viruses, or infected files transmitted through shared links. It is the sole responsibility of the recipient to verify the sender's trustworthiness and run appropriate antivirus software before downloading.</p>
         `,
-        // Nuevas traducciones añadidas
         spaceLabel: "Space:",
         filesInQueue: "files in queue",
         errLocalDB: "Local error processing storage.",
         textTruncated: "[... File truncated for performance to prevent browser lag ...]",
         defaultFileName: "downloaded_file",
-        // Streaming reception straight to disk
         chooseTitle: "How do you want to receive this file?",
         btnSaveToDisk: "Save to disk 💾",
         btnViewInBrowser: "View in browser ⏳",
@@ -269,7 +265,6 @@ function abrirDB(callback) {
 }
 
 window.onload = function() {
-    // Al iniciar, toma el idioma del localStorage o usa 'en' (Inglés) por defecto de forma estricta.
     currentLang = localStorage.getItem('girafile-lang') || 'en';
     document.documentElement.lang = currentLang;
     const savedTheme = localStorage.getItem('girafile-theme') || 'light';
@@ -371,12 +366,7 @@ async function generarLink() {
 
     try {
         if (archivoCargado.esMultiple) {
-            // Inicializar JSZip para empaquetar los archivos de verdad[cite: 6]
             const zip = new JSZip();
-            
-            // Añadir individualmente cada archivo real de la cola.
-            // Si dos archivos tienen el mismo nombre se pisarían dentro del zip
-            // (JSZip sobrescribe la entrada), así que desambiguamos: foto.png -> foto (1).png
             const conteoNombres = {};
             coleccionArchivos.forEach(archivo => {
                 let nombre = archivo.name;
@@ -391,14 +381,12 @@ async function generarLink() {
                 zip.file(nombre, archivo);
             });
 
-            // Generar el empaquetado ZIP asíncronamente reportando el progreso[cite: 6]
             blobFinalParaGuardar = await zip.generateAsync({ type: "blob" }, (metadata) => {
                 const porcentajeCompresion = Math.floor(metadata.percent);
                 if (prepBar) prepBar.value = porcentajeCompresion;
                 if (prepText) prepText.innerText = `${t.descifrando} (${porcentajeCompresion}%)`;
             });
         } else {
-            // Animación de barra de progreso segura para carga unitaria
             let progreso = 0;
             const incremento = coleccionArchivos[0].size > 100 * 1024 * 1024 ? 5 : 20;
 
@@ -418,7 +406,6 @@ async function generarLink() {
             clearInterval(iteraProgreso);
         }
 
-        // Registrar el peso final calculado (crucial para transferencias P2P eficientes)
         archivoCargado.size = blobFinalParaGuardar.size;
 
         const payload = {
@@ -521,6 +508,21 @@ function copiarAlPortapapeles() {
     }, 2000);
 }
 
+// Función para conmutar la vista al panel de carga/visualizador (vista inferior)
+function activarVistaInferior() {
+    if (typeof mostrarCarga === 'function') {
+        mostrarCarga();
+    } else {
+        const vBanner = document.getElementById('viewBanner');
+        const vUpload = document.getElementById('viewUpload');
+        if (vBanner && vUpload) {
+            vBanner.classList.add('hidden-view');
+            vUpload.classList.remove('hidden-view', 'fade-in-down');
+            vUpload.classList.add('fade-in-up');
+        }
+    }
+}
+
 function verificarLinkCompartido() {
     const hash = window.location.hash.substring(1);
     if (!hash || !hash.startsWith("file_")) return;
@@ -531,9 +533,20 @@ function verificarLinkCompartido() {
     const metaDiv = document.getElementById('fileMeta');
     const t = i18n[currentLang];
 
+    // 1. Activa la vista 2 en el HTML (simula el click del botón circular ↓)
+    activarVistaInferior();
+
+    // 2. Coloca la vista previa en la parte superior dentro del main-wrapper
     if (mainWrapper && previewDiv) {
         mainWrapper.prepend(previewDiv);
     }
+
+    if (previewDiv) previewDiv.style.display = "block";
+
+    // 3. Desplazamiento suave para centrar la vista previa
+    setTimeout(() => {
+        if (previewDiv) previewDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
 
     abrirDB(function(db) {
         const transaction = db.transaction([STORE_NAME], "readonly");
@@ -543,7 +556,6 @@ function verificarLinkCompartido() {
             const data = e.target.result;
 
             if (!data) {
-                if (previewDiv) previewDiv.style.display = "block";
                 conectarYDescargarP2P(hash, contentDiv, metaDiv, previewDiv);
                 return;
             }
@@ -551,7 +563,6 @@ function verificarLinkCompartido() {
             const ahoraInicial = Math.floor(Date.now() / 1000);
             if (ahoraInicial > (data.t + data.d)) {
                 eliminarArchivoDB(hash);
-                if (previewDiv) previewDiv.style.display = "block";
                 if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errExpired)}</p>`;
                 return;
             }
@@ -571,20 +582,14 @@ function inicializarTransmisionP2P(fileId, payload) {
     peerInstance = new Peer(fileId);
 
     peerInstance.on('connection', (conn) => {
-        // El receptor pide pausa cuando su disco no da abasto: sin esto el emisor
-        // sigue empujando y la cola de escritura crece hasta volver a ser O(archivo).
         let flujoPausado = false;
 
         conn.on('data', async (data) => {
             if (data.request === 'FLOW_PAUSE') { flujoPausado = true; return; }
             if (data.request === 'FLOW_RESUME') { flujoPausado = false; return; }
 
-            // El receptor pide la ficha del archivo ANTES de recibir un solo byte:
-            // sin nombre y tamaño no puede ofrecer el guardado directo a disco.
             if (data.request === 'REQUEST_METADATA') {
                 const ahora = Math.floor(Date.now() / 1000);
-
-                // Un archivo caducado tampoco filtra su nombre ni su tamaño.
                 if (ahora > (payload.t + payload.d + 900)) return;
 
                 conn.send({
@@ -659,8 +664,6 @@ function inicializarTransmisionP2P(fileId, payload) {
 }
 
 function soportaGuardadoEnDisco() {
-    // La escritura directa a disco depende de la File System Access API,
-    // disponible hoy en Chromium (Chrome/Edge/Opera) y no en Firefox ni Safari.
     return typeof window.showSaveFilePicker === 'function' && window.isSecureContext;
 }
 
@@ -696,9 +699,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     }
 
     function mostrarEleccion(mensajeError) {
-        // Una vez arrancada la transferencia no se vuelve a ofrecer la elección:
-        // botones vivos sobre una recepción en curso podrían abrir un segundo
-        // destino a mitad de camino y guardar un archivo incompleto.
         if (!contentDiv || modoRecepcion) return;
 
         const tamanoMB = (metaDataBackup.size / (1024 * 1024)).toFixed(2);
@@ -726,7 +726,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     function iniciarRecepcion(modo) {
         if (modoRecepcion) return;
 
-        // El emisor puede haberse ido mientras el receptor elegía destino.
         if (!conexion || conexion.open === false) {
             if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
             return;
@@ -743,13 +742,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     }
 
     async function iniciarRecepcionEnDisco() {
-        // Sin este cerrojo, un segundo click mientras el diálogo está abierto
-        // termina abriendo otro destino y partiendo el archivo entre dos ficheros.
         if (eligiendoDestino || modoRecepcion) return;
         eligiendoDestino = true;
 
-        // showSaveFilePicker exige activación transitoria del usuario: solo puede
-        // llamarse dentro del click, nunca al cargar la página.
         let manejadorArchivo;
         try {
             manejadorArchivo = await window.showSaveFilePicker({
@@ -829,8 +824,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         bytesRecibidos += fragmento.byteLength;
 
         if (modoRecepcion === 'disco') {
-            // Las escrituras se encadenan porque este manejador es sincrónico y no
-            // puede esperar al disco: encolarlas conserva el orden de los fragmentos.
             bytesEnCola += fragmento.byteLength;
             colaEscritura = colaEscritura
                 .then(() => escritorDisco.write(fragmento))
@@ -843,8 +836,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 })
                 .catch(fallarEscrituraEnDisco);
 
-            // Si el disco va más lento que la red, se frena al emisor: sin esto la
-            // cola crecería hasta tener el archivo entero en memoria otra vez.
             if (!flujoPausado && bytesEnCola >= PAUSAR_FLUJO_BYTES) {
                 flujoPausado = true;
                 if (conexion && conexion.open) conexion.send({ request: 'FLOW_PAUSE' });
@@ -872,8 +863,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         const nombre = data.name || (metaDataBackup ? metaDataBackup.name : t.defaultFileName);
         const tamano = metaDataBackup ? metaDataBackup.size : bytesRecibidos;
 
-        // El archivo vive en el equipo del receptor: sin blob en memoria no hay
-        // vista previa ni temporizador, y ningún recolector puede borrarlo.
         if (metaDiv) metaDiv.innerHTML = `<strong>${escaparHTML(t.fileLabel)}</strong> ${escaparHTML(nombre)} (${(tamano / (1024 * 1024)).toFixed(2)} MB)`;
         if (contentDiv) {
             contentDiv.innerHTML = `
@@ -936,9 +925,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             tiempoInicio = Date.now();
             conexion.send({ request: 'REQUEST_METADATA' });
 
-            // Un emisor con una pestaña vieja abierta no conoce REQUEST_METADATA y
-            // nunca contestaría: si la ficha no llega, se cae al flujo en memoria de
-            // siempre en vez de dejar al receptor esperando para siempre.
             temporizadorMeta = setTimeout(() => {
                 if (!modoRecepcion) iniciarRecepcion('memoria');
             }, ESPERA_METADATA_MS);
@@ -958,8 +944,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                     type: data.type,
                     size: data.size
                 };
-                // Sin soporte de escritura a disco no hay decisión que ofrecer:
-                // el receptor sigue con el mismo flujo de hoy, sin clicks extra.
                 if (soportaGuardadoEnDisco()) mostrarEleccion();
                 else iniciarRecepcion('memoria');
                 return;
@@ -968,8 +952,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             if (data.chunk) procesarFragmento(data);
 
             if (data.eof) {
-                // Se marca antes de vaciar la cola: a partir de acá el archivo ya
-                // llegó entero y cerrar la conexión no puede abortar la escritura.
                 eofRecibido = true;
                 if (modoRecepcion === 'disco') finalizarEnDisco(data);
                 else finalizarEnMemoria(data);
@@ -977,8 +959,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
         });
 
         conexion.on('close', () => {
-            // Con el EOF ya recibido el cierre es normal: el archivo está completo
-            // y solo falta que el disco termine de vaciar la cola.
             if (recepcionCompletada || eofRecibido) return;
 
             if (modoRecepcion === 'disco' && escritorDisco) {
@@ -986,8 +966,6 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
                 return;
             }
 
-            // El emisor se fue antes de que el receptor eligiera cómo recibirlo:
-            // sin esto la pantalla de elección quedaba viva contra un emisor muerto.
             if (!modoRecepcion) {
                 if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
                 return;
@@ -1007,6 +985,9 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
 
 function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
+
+    // Garantizar que la sección inferior esté activa y visible al renderizar
+    activarVistaInferior();
     if (previewDiv) previewDiv.style.display = "block";
     
     if (metaDiv) metaDiv.innerHTML = `<strong>${escaparHTML(t.fileLabel)}</strong> ${escaparHTML(data.name)} (${(data.size / (1024*1024)).toFixed(2)} MB)`;
