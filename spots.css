@@ -612,6 +612,83 @@ footer {
 
 
 /* ==========================================
+   TOOLTIPS EN DROP ZONE ICONS
+   ========================================== */
+
+.drop-zone-icons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.icon-tooltip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.icon-tooltip svg {
+    transition: transform 0.2s ease, fill 0.2s ease, stroke 0.2s ease;
+}
+
+.icon-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background-color: var(--glass-bg);
+    color: var(--text-color);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 5px 9px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: bold;
+    white-space: nowrap;
+    box-shadow: var(--glass-shadow);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 20;
+}
+
+.icon-tooltip::before {
+    content: "";
+    position: absolute;
+    bottom: 108%;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    border-width: 5px;
+    border-style: solid;
+    border-color: var(--glass-border) transparent transparent transparent;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 20;
+}
+
+.icon-tooltip:hover::after,
+.icon-tooltip:hover::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.icon-tooltip:hover svg {
+    transform: translateY(-2px);
+    fill: var(--accent-color);
+    stroke: var(--accent-color);
+}
+
+/* ==========================================
    MEDIA QUERIES (RESPONSIVE)
    ========================================== */
 
