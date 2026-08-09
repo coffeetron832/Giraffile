@@ -586,6 +586,31 @@ footer {
     margin-bottom: 4px;
 }
 
+/* Bloque de texto principal centrado */
+.hero-intro {
+    text-align: center;
+    max-width: 650px;
+    margin: 0 auto 20px auto;
+}
+
+.hero-hook {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    margin-top: 10px;
+    margin-bottom: 12px;
+    line-height: 1.3;
+}
+
+.hero-desc {
+    font-size: 0.95rem;
+    color: var(--text-color);
+    opacity: 0.9;
+    line-height: 1.6;
+    margin: 0;
+}
+
+
 /* ==========================================
    MEDIA QUERIES (RESPONSIVE)
    ========================================== */
