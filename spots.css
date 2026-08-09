@@ -239,7 +239,7 @@ body {
     max-width: 345px;
     height: auto; 
     display: block; 
-    margin: 0 auto 10px auto;
+    margin: 0 auto 20px auto;
     transition: filter 0.3s ease;
     filter: invert(1) brightness(0.9);
 }
