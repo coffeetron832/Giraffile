@@ -507,7 +507,7 @@ footer {
 
 
 /* Contenedor Grid para las 3 tarjetas */
-.features-grid {
+.cards-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 15px;
@@ -516,7 +516,7 @@ footer {
 }
 
 /* Estilo individual de cada tarjeta */
-.feature-card {
+.card-item {
     background: var(--timer-bg, rgba(0, 0, 0, 0.04));
     border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
     border-radius: 8px;
@@ -527,18 +527,24 @@ footer {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.feature-card:hover {
+.card-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-/* Íconos visuales superiores */
-.feature-icon {
-    font-size: 1.5em;
+/* Íconos visuales SVG superiores */
+.card-icon {
+    display: flex;
+    align-items: center;
     margin-bottom: 4px;
 }
 
-.feature-card strong {
+.card-icon svg {
+    stroke: var(--text-color, currentColor);
+    display: block;
+}
+
+.card-item strong {
     display: block;
     color: var(--text-color);
     margin-bottom: 4px;
