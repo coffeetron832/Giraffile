@@ -505,6 +505,45 @@ footer {
     padding: 0 !important;
 }
 
+
+/* Contenedor Grid para las 3 tarjetas */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+    text-align: left;
+}
+
+/* Estilo individual de cada tarjeta */
+.feature-card {
+    background: var(--timer-bg, rgba(0, 0, 0, 0.04));
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Íconos visuales superiores */
+.feature-icon {
+    font-size: 1.5em;
+    margin-bottom: 4px;
+}
+
+.feature-card strong {
+    display: block;
+    color: var(--text-color);
+    margin-bottom: 4px;
+}
+
 /* ==========================================
    MEDIA QUERIES (RESPONSIVE)
    ========================================== */
