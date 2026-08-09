@@ -466,6 +466,15 @@ footer {
     color: var(--text-color, #000);
 }
 
+#viewBanner .info-box {
+    background: transparent !important;
+    border: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
 /* ==========================================
    MEDIA QUERIES (RESPONSIVE)
    ========================================== */
