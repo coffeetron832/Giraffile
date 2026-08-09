@@ -137,6 +137,25 @@ body {
     }
 }
 
+/* Animación de salto sutil de 3 segundos */
+@keyframes subtleBounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    10% {
+        transform: translateY(-8px);
+    }
+    18% {
+        transform: translateY(0);
+    }
+    24% {
+        transform: translateY(-3px);
+    }
+    30% {
+        transform: translateY(0);
+    }
+}
+
 .scroll-btn {
     position: relative;
     z-index: 1;
@@ -155,9 +174,14 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     transition: transform 0.2s, opacity 0.2s;
     text-decoration: none;
+    
+    /* Aplica el salto continuo cada 3 segundos */
+    animation: subtleBounce 3s ease infinite;
 }
 
 .scroll-btn:hover {
+    /* Cancela la animación al pasar el cursor para permitir el escalado limpio */
+    animation: none;
     transform: scale(1.1);
     opacity: 0.9;
 }
