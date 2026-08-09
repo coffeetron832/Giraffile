@@ -620,7 +620,8 @@ footer {
     justify-content: center;
     align-items: center;
     gap: 12px;
-    margin-bottom: 8px;
+    width: 100%;
+    margin-bottom: 12px;
 }
 
 .icon-tooltip {
