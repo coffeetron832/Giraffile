@@ -9,7 +9,6 @@
     --accent-color: #f0a500; 
     --banner-opacity: 0.90;
 
-    /* Variables Glassmorphism para modo claro */
     --glass-bg: rgba(255, 255, 255, 0.65);
     --glass-border: rgba(0, 0, 0, 0.12);
 }
@@ -137,7 +136,6 @@ body {
     }
 }
 
-/* Animación de salto sutil de 3 segundos */
 @keyframes subtleBounce {
     0%, 100% {
         transform: translateY(0);
@@ -175,12 +173,10 @@ body {
     transition: transform 0.2s, opacity 0.2s;
     text-decoration: none;
     
-    /* Aplica el salto continuo cada 3 segundos */
     animation: subtleBounce 3s ease infinite;
 }
 
 .scroll-btn:hover {
-    /* Cancela la animación al pasar el cursor para permitir el escalado limpio */
     animation: none;
     transform: scale(1.1);
     opacity: 0.9;
@@ -279,7 +275,6 @@ body {
     font-size: 0.85rem;
 }
 
-/* Zona de arrastre con Glassmorphism */
 .drop-zone { 
     border: 2px dashed var(--glass-border); 
     padding: 20px 15px; 
@@ -304,7 +299,6 @@ body {
     display: none; 
 }
 
-/* Selector de caducidad/tiempo con Glassmorphism */
 select#expiry {
     background-color: var(--glass-bg);
     color: var(--text-color);
@@ -376,7 +370,6 @@ progress::-webkit-progress-value {
     background-color: var(--accent-color); 
 }
 
-/* CONTROLES SUPERIORES Y BOTONES (GLASSMORPHISM) */
 .top-controls { 
     display: flex; 
     gap: 8px; 
@@ -443,7 +436,6 @@ progress::-webkit-progress-value {
     word-break: break-all; 
 }
 
-/* Eliminado el resalte amarillo según la instrucción anterior */
 .highlight-yellow {
     background-color: transparent; 
     padding: 0;
@@ -459,7 +451,6 @@ progress::-webkit-progress-value {
     color: inherit;
 }
 
-/* FOOTER TRASLÚCIDO (GLASSMORPHISM) */
 footer { 
     position: fixed;
     bottom: 0;
@@ -476,7 +467,6 @@ footer {
     z-index: 100;
 }
 
-/* MODAL DISCLAIMER CON GLASSMORPHISM */
 .modal-disclaimer {
     position: fixed;
     z-index: 10000;
@@ -531,7 +521,6 @@ footer {
 }
 
 
-/* Contenedor Grid para las 3 tarjetas */
 .cards-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -540,7 +529,6 @@ footer {
     text-align: left;
 }
 
-/* Estilo individual con efecto Glassmorphism */
 .card-item {
     background: var(--glass-bg);
     backdrop-filter: blur(12px);
@@ -561,7 +549,6 @@ footer {
     border-color: rgba(255, 255, 255, 0.25);
 }
 
-/* Íconos visuales SVG superiores */
 .card-icon {
     display: flex;
     align-items: center;
@@ -577,6 +564,54 @@ footer {
     display: block;
     color: var(--text-color);
     margin-bottom: 4px;
+}
+
+.credit-toggle {
+    position: relative;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--glass-border);
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    cursor: pointer;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: background-color 0.2s, transform 0.2s;
+    margin-right: 4px;
+}
+
+.credit-toggle:hover {
+    transform: translateY(-1px);
+}
+
+.credit-toggle::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: 125%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+    background-color: var(--glass-bg);
+    color: var(--text-color);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: normal;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 20;
+}
+
+.credit-toggle:hover::after,
+.credit-toggle:focus::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }
 
 /* ==========================================
