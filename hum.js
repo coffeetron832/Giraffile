@@ -8,8 +8,8 @@ const i18n = {
         themeLight: "Modo Claro",
         langBtn: "English",
         pageTitle: "Giraffile - La jirafa que protege tus archivos",
-        hook: "¿Te preocupa dejar tus archivos rondando por internet?",
-        desc2: "Esta herramienta te permite compartir cualquier tipo de archivo de manera privada mediante un enlace corto sin subirlos a internet. Todo el contenido se almacena de forma temporal en tu propio dispositivo de manera 100% segura.",
+        hook: "Esta herramienta te permite compartir cualquier tipo de archivo de manera privada mediante un enlace corto",
+        desc2: "¿Te preocupa dejar tus archivos rondando por internet? Todo el contenido se almacena de forma temporal en tu propio dispositivo de manera 100% segura.",
         useTitle: "¿Para qué puedes usar Giraffile?",
         use1: "<strong>Información sensible:</strong> Credenciales, datos financieros, contratos o documentos personales.",
         use2: "<strong>Cualquier Formato:</strong> Envía imágenes, PDFs, archivos comprimidos (ZIP/RAR), audios o videos.",
@@ -42,7 +42,7 @@ const i18n = {
         p2pCalculando: "calculando...",
         descifrando: "Preparando archivo ...",
         qrLabel: "Escanea para recibir el archivo",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.2.0 | © 2026 jahp. Todos los derechos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.3.0 | © 2026 jahp. Todos los derechos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
         disclaimerTitle: "Descargo de Responsabilidad (Disclaimer)",
         disclaimerBody: `
         <p><strong>Giraffile</strong> funciona como un canal de transporte privado P2P (Peer-to-Peer) directo entre dispositivos. Los archivos no se suben, analizan ni almacenan en ningún servidor externo.</p>
@@ -103,7 +103,7 @@ const i18n = {
         p2pCalculando: "calculating...",
         descifrando: "Preparing file...",
         qrLabel: "Scan to receive the file",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.2.0 | © 2026 jahp. All rights reserved. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Legal Disclaimer</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.3.0 | © 2026 jahp. All rights reserved. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Legal Disclaimer</a>',
         disclaimerTitle: "Legal Disclaimer",
         disclaimerBody: `
         <p><strong>Giraffile</strong> operates as a private, content-agnostic P2P (Peer-to-Peer) transport channel directly between devices. Files are never uploaded, scanned, or stored on external servers.</p>
