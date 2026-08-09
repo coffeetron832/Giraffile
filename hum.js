@@ -23,11 +23,11 @@ const i18n = {
         opt5: "5 Minutos",
         opt10: "10 Minutos",
         btnGenerate: "Generar enlace seguro",
-        btnCopy: "Copiar Enlace 📋",
-        btnCopied: "¡Enlace Copiado! ✓",
-        btnDownload: "Descargar Completo 📥",
-        textPreviewNotice: "📋 Mostrando una vista previa del archivo de texto. Para ver todo el contenido:",
-        noPreviewNotice: "📦 Este formato no admite vista previa en el navegador o supera el tamaño de renderizado directo. Usa el botón de abajo para descargarlo de manera segura:",
+        btnCopy: "Copiar Enlace",
+        btnCopied: "¡Enlace Copiado!",
+        btnDownload: "Descargar Completo",
+        textPreviewNotice: "Mostrando una vista previa del archivo de texto. Para ver todo el contenido:",
+        noPreviewNotice: "Este formato no admite vista previa en el navegador o supera el tamaño de renderizado directo. Usa el botón de abajo para descargarlo de manera segura:",
         errNoFile: "Por favor, selecciona o arrastra un archivo primero.",
         errNotAllowed: "El archivo excede el tamaño máximo permitido (Máx 1.5GB).",
         successLink: "¡Enlace creado con éxito!",
@@ -46,7 +46,7 @@ const i18n = {
         disclaimerTitle: "Descargo de Responsabilidad (Disclaimer)",
         disclaimerBody: `
         <p><strong>Giraffile</strong> funciona como un canal de transporte privado P2P (Peer-to-Peer) directo entre dispositivos. Los archivos no se suben, analizan ni almacenan en ningún servidor externo.</p>
-        <p>⚠️ <strong>Aviso sobre malware:</strong> Al ser una transferencia directa y cifrada, la plataforma no escanea ni verifica la seguridad del contenido. <strong>Giraffile no se hace responsable</strong> por software malicioso, virus o archivos infectados transmitidos a través de los enlaces. Es responsabilidad exclusiva del receptor verificar la procedencia del archivo y contar con un antivirus activo antes de realizar la descarga.</p>
+        <p><strong>Aviso sobre malware:</strong> Al ser una transferencia directa y cifrada, la plataforma no escanea ni verifica la seguridad del contenido. <strong>Giraffile no se hace responsable</strong> por software malicioso, virus o archivos infectados transmitidos a través de los enlaces. Es responsabilidad exclusiva del receptor verificar la procedencia del archivo y contar con un antivirus activo antes de realizar la descarga.</p>
         `,
         spaceLabel: "Espacio:",
         filesInQueue: "archivos en cola",
@@ -54,12 +54,12 @@ const i18n = {
         textTruncated: "[... Archivo truncado por rendimiento para evitar colgar el navegador ...]",
         defaultFileName: "archivo_descargado",
         chooseTitle: "¿Cómo quieres recibir este archivo?",
-        btnSaveToDisk: "Guardar en disco 💾",
-        btnViewInBrowser: "Ver en el navegador ⏳",
+        btnSaveToDisk: "Guardar en disco",
+        btnViewInBrowser: "Ver en el navegador",
         saveToDiskNotice: "Se escribe directamente en tu equipo mientras se recibe, sin llenar la memoria del navegador. <strong>No caduca:</strong> el archivo queda guardado y eres tú quien decide cuándo borrarlo.",
         viewInBrowserNotice: "Se carga en la memoria del navegador, con vista previa y temporizador. <strong>Se destruye al caducar.</strong> Recomendado para archivos pequeños.",
         savingToDisk: "Guardando en tu disco...",
-        savedToDiskTitle: "✅ Archivo guardado en tu equipo",
+        savedToDiskTitle: "Archivo guardado en tu equipo",
         savedToDiskNotice: "Este archivo ya no depende de Giraffile ni caduca: vive en tu equipo. Bórralo tú cuando no lo necesites.",
         errSaveCancelled: "Guardado cancelado. Elige cómo quieres recibir el archivo.",
         errSaveFailed: "No se pudo escribir el archivo en el disco. Vuelve a intentarlo o recíbelo en el navegador."
@@ -84,11 +84,11 @@ const i18n = {
         opt5: "5 Minutes",
         opt10: "10 Minutes",
         btnGenerate: "Generate secure link",
-        btnCopy: "Copy Link 📋",
-        btnCopied: "Link Copied! ✓",
-        btnDownload: "Download Full File 📥",
-        textPreviewNotice: "📋 Showing a preview of the text file. To see the full content:",
-        noPreviewNotice: "📦 Preview is not supported for this file type or size in the browser. Use the button below to download securely:",
+        btnCopy: "Copy Link",
+        btnCopied: "Link Copied!",
+        btnDownload: "Download Full File",
+        textPreviewNotice: "Showing a preview of the text file. To see the full content:",
+        noPreviewNotice: "Preview is not supported for this file type or size in the browser. Use the button below to download securely:",
         errNoFile: "Please select or drag a file first.",
         errNotAllowed: "The file exceeds the maximum size allowed (Max 1.5GB).",
         successLink: "Link created successfully!",
@@ -107,7 +107,7 @@ const i18n = {
         disclaimerTitle: "Legal Disclaimer",
         disclaimerBody: `
         <p><strong>Giraffile</strong> operates as a private, content-agnostic P2P (Peer-to-Peer) transport channel directly between devices. Files are never uploaded, scanned, or stored on external servers.</p>
-        <p>⚠️ <strong>Malware Notice:</strong> Since transfers are direct and encrypted, the platform does not scan or verify file security. <strong>Giraffile is not responsible</strong> for any malware, viruses, or infected files transmitted through shared links. It is the sole responsibility of the recipient to verify the sender's trustworthiness and run appropriate antivirus software before downloading.</p>
+        <p><strong>Malware Notice:</strong> Since transfers are direct and encrypted, the platform does not scan or verify file security. <strong>Giraffile is not responsible</strong> for any malware, viruses, or infected files transmitted through shared links. It is the sole responsibility of the recipient to verify the sender's trustworthiness and run appropriate antivirus software before downloading.</p>
         `,
         spaceLabel: "Space:",
         filesInQueue: "files in queue",
@@ -115,12 +115,12 @@ const i18n = {
         textTruncated: "[... File truncated for performance to prevent browser lag ...]",
         defaultFileName: "downloaded_file",
         chooseTitle: "How do you want to receive this file?",
-        btnSaveToDisk: "Save to disk 💾",
-        btnViewInBrowser: "View in browser ⏳",
+        btnSaveToDisk: "Save to disk",
+        btnViewInBrowser: "View in browser",
         saveToDiskNotice: "Written straight to your device as it arrives, without filling up browser memory. <strong>It does not expire:</strong> the file stays on your device and you decide when to delete it.",
         viewInBrowserNotice: "Loaded into browser memory, with preview and countdown. <strong>Destroyed when it expires.</strong> Recommended for small files.",
         savingToDisk: "Saving to your disk...",
-        savedToDiskTitle: "✅ File saved to your device",
+        savedToDiskTitle: "File saved to your device",
         savedToDiskNotice: "This file no longer depends on Giraffile and does not expire: it lives on your device. Delete it yourself when you no longer need it.",
         errSaveCancelled: "Save cancelled. Choose how you want to receive the file.",
         errSaveFailed: "The file could not be written to disk. Try again or receive it in the browser."
@@ -149,12 +149,27 @@ function aplicarTraduccion() {
             </div>
             <p class="highlight-yellow"><strong>${t.hook}</strong></p>
             <p>${t.desc2}</p>
-            <p><strong>${t.useTitle}</strong></p>
-            <ul style="padding-left: 20px;">
-                <li>${t.use1}</li>
-                <li>${t.use2}</li>
-                <li>${t.use3}</li>
-            </ul>
+            <p style="margin-top: 20px; margin-bottom: 12px; font-weight: bold;">${t.useTitle}</p>
+            <div class="cards-container">
+                <div class="card-item">
+                    <div class="card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                    <div>${t.use1}</div>
+                </div>
+                <div class="card-item">
+                    <div class="card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                    </div>
+                    <div>${t.use2}</div>
+                </div>
+                <div class="card-item">
+                    <div class="card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    </div>
+                    <div>${t.use3}</div>
+                </div>
+            </div>
         `;
     }
 
