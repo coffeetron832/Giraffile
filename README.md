@@ -43,7 +43,7 @@ By using your browser’s native storage capabilities (**IndexedDB**), files tra
 
 ---
 
-### 🦒 Try Giraffile v2.2.0
+### 🦒 Try Giraffile v2.3.0
 
 Need to share files privately and securely? Don't trust the cloud with your data.
 
