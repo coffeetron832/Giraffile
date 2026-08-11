@@ -541,11 +541,16 @@ footer {
     padding: 0 !important;
 }
 
+/* ==========================================
+   TARJETAS COMPACTAS (.cards-container)
+   ========================================== */
+
 .cards-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
+    /* Reducimos el minmax de 220px a 170px y el gap de 15px a 10px */
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
     text-align: left;
 }
 
@@ -555,35 +560,40 @@ footer {
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 10px; /* Bordes un poco más refinados */
+    padding: 10px 12px;  /* Reducido de 16px a 10px/12px */
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;            /* Espaciado interno más reducido */
+    font-size: 0.82rem;  /* Reducción ligera de la fuente para ajustar el contenido */
     transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
 .card-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
     border-color: rgba(255, 255, 255, 0.25);
 }
 
 .card-icon {
     display: flex;
     align-items: center;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
+/* Escalamos proporcionalmente el SVG si usas íconos nativos */
 .card-icon svg {
     stroke: var(--text-color, currentColor);
     display: block;
+    width: 20px;
+    height: 20px;
 }
 
 .card-item strong {
     display: block;
     color: var(--text-color);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
+    font-size: 0.88rem; /* Tamaño de título ajustado a la nueva proporción */
 }
 
 /* Bloque de texto principal centrado */
