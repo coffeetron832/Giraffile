@@ -1,5 +1,8 @@
 // Límite universal robusto (1.5 GB) soportado gracias al flujo por fragmentos (Chunks)
 const MAX_SIZE_BYTES = 1500 * 1024 * 1024; 
+// Límite máximo para renderizar la vista previa en el navegador (10 MB por defecto)
+const MAX_PREVIEW_SIZE_BYTES = 10 * 1024 * 1024; 
+
 let intervaloTemporizador = null;
 let archivoCargado = null;
 let peerInstance = null; 
@@ -836,16 +839,17 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
 
     if (!contentDiv) return;
 
-    const LIMITE_PREVIEW_VIVO = 40 * 1024 * 1024; 
+    // EVALUACIÓN DE VISTA PREVIA SEGÚN PESO MÁXIMO
+    const permiteVistaPrevia = data.size <= MAX_PREVIEW_SIZE_BYTES;
 
-    if (data.type.startsWith("image/") && data.size <= LIMITE_PREVIEW_VIVO) {
+    if (permiteVistaPrevia && data.type.startsWith("image/")) {
         contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px;">`;
-    } else if (data.type === "application/pdf" && data.size <= LIMITE_PREVIEW_VIVO) {
+    } else if (permiteVistaPrevia && data.type === "application/pdf") {
         contentDiv.innerHTML = `
             <embed src="${urlObjeto}" type="application/pdf" width="100%" height="450px" style="border-radius: 4px; margin-bottom:10px;">
             <a href="${urlObjeto}" download="${escaparHTML(data.name)}" class="btn btn-primary" style="text-decoration:none; text-align:center; display:block;">${escaparHTML(t.btnDownload)}</a>
         `;
-    } else if ((data.type.startsWith("text/") || data.name.endsWith(".json") || data.name.endsWith(".js") || data.name.endsWith(".css")) && data.size <= LIMITE_PREVIEW_VIVO) {
+    } else if (permiteVistaPrevia && (data.type.startsWith("text/") || data.name.endsWith(".json") || data.name.endsWith(".js") || data.name.endsWith(".css"))) {
         const bytesVistaPrevia = 50 * 1024;
         const fragmentoSeguro = data.blob.slice(0, bytesVistaPrevia);
         const lectorTexto = new FileReader();
@@ -855,8 +859,8 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
             let descargaAdicional = '';
             
             if (data.size > bytesVistaPrevia) {
-                textoFormateado += `\n\n${t.textTruncated}`;
-                descargaAdicional = `<p style="font-size:0.9em; margin: 15px 0 5px 0; color:var(--footer-color); text-align:center;">${escaparHTML(t.textPreviewNotice)}</p>`;
+                textoFormateado += `\n\n${t.textTruncated || ''}`;
+                descargaAdicional = `<p style="font-size:0.9em; margin: 15px 0 5px 0; color:var(--footer-color); text-align:center;">${escaparHTML(t.textPreviewNotice || '')}</p>`;
             }
             
             contentDiv.innerHTML = `
@@ -867,6 +871,7 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         };
         lectorTexto.readAsText(fragmentoSeguro);
     } else {
+        // Muestra sólo el aviso y el botón de descarga si excede el tamaño o no tiene vista previa soportada
         contentDiv.innerHTML = `
             <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
                 <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${escaparHTML(t.noPreviewNotice)}</p>
