@@ -1,11 +1,9 @@
-# Giraffile
-
 <p align="center">
   <picture>
     <!-- Si el usuario usa modo oscuro, muestra la del contorno blanco limpia -->
-    <source media="(prefers-color-scheme: dark)" srcset="giraffe02.png">
+    <source media="(prefers-color-scheme: dark)" srcset="giraffe01.svg">
     <!-- Si usa modo claro, puedes aplicarle un filtro de silueta negra/oscura con CSS -->
-    <img src="giraffe03.png" width="300" alt="Mascota Giraffile" style="filter: drop-shadow(0px 2px 5px rgba(0,0,0,0.3));">
+    <img src="giraffe.svg" width="590" alt="Mascota Giraffile" style="filter: drop-shadow(0px 2px 5px rgba(0,0,0,0.3));">
   </picture>
 </p>
 
@@ -23,7 +21,15 @@
 
 Giraffile is a **local privacy** tool designed to share files quickly and securely without relying on cloud servers. 
 
-### Why Giraffile?
+<h2>
+  <picture>
+    <!-- Si el usuario usa modo oscuro -->
+    <source media="(prefers-color-scheme: dark)" srcset="giraffe02.png">
+    <!-- Si usa modo claro -->
+    <img src="giraffe03.png" width="50" alt="Mascota Giraffile" align="middle" style="vertical-align: middle;">
+  </picture>
+  Why Giraffile?
+</h2>
 In today’s world, sharing a file often means handing it over to a large corporation, storing it on an external server, and losing control over who has access to it. Giraffile cuts out the middleman. 
 
 By using your browser’s native storage capabilities (**IndexedDB**), files travel directly from your device to the recipient’s. Once the timer expires, the file is permanently destroyed.
@@ -43,7 +49,15 @@ By using your browser’s native storage capabilities (**IndexedDB**), files tra
 
 ---
 
-### 🦒 Try Giraffile v2.3.0
+<h2>
+  <picture>
+    <!-- Si el usuario usa modo oscuro -->
+    <source media="(prefers-color-scheme: dark)" srcset="giraffe02.png">
+    <!-- Si usa modo claro -->
+    <img src="giraffe03.png" width="50" alt="Mascota Giraffile" align="middle" style="vertical-align: middle;">
+  </picture>
+  Try Giraffile v2.3.0
+</h2>
 
 Need to share files privately and securely? Don't trust the cloud with your data.
 
