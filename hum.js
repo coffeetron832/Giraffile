@@ -1,17 +1,19 @@
 // hum.js - Lógica de traducción e idioma de Giraffile
 
-let currentLang = 'en'; // Inglés por defecto
+let currentLang = localStorage.getItem('girafile-lang') || 'es';
+const supportedLangs = ['es', 'en', 'pt', 'fr'];
 
 const i18n = {
     es: {
         themeDark: "Modo Oscuro",
         themeLight: "Modo Claro",
-        langBtn: "English",
         pageTitle: "Giraffile - La jirafa que protege tus archivos",
-        hook: "Comparte cualquier tipo de archivo de manera privada mediante un enlace corto",
+        hook: "Comparte cualquier archivo de forma privada",
         desc2: "Confía en la jirafa, no en la nube",
+        btnBenefits: "Beneficios",
+        btnUpload: "Subir archivo",
         useTitle: "¿Por qué usar Giraffile?",
-        use1: "<strong>Ideal para información sensible:</strong> Protege tus credenciales, información financiera, contratos y documentos personales con transferencias privadas.",
+        use1: "<strong>De tu dispositivo al suyo al instante:</strong> Como la transferencia es 100% directa entre dispositivos, no hay servidores lentos ni intermediarios en el medio.",
         use2: "<strong>Cualquier Formato:</strong> Envía imágenes, PDFs, archivos comprimidos (ZIP/RAR), audios o videos.",
         use3: "<strong>Privacidad total:</strong> Envío seguro de archivos sin dejar rastro en servidores externos.",
         prepare: "Prepara tu archivo para enviar",
@@ -23,6 +25,7 @@ const i18n = {
         opt5: "5 Minutos",
         opt10: "10 Minutos",
         btnGenerate: "Generar enlace seguro",
+        btnSendAnother: "¿Quieres enviar otro archivo?",
         btnCopy: "Copiar Enlace",
         btnCopied: "¡Enlace Copiado!",
         btnDownload: "Descargar Completo",
@@ -67,12 +70,13 @@ const i18n = {
     en: {
         themeDark: "Dark Mode",
         themeLight: "Light Mode",
-        langBtn: "Español",
         pageTitle: "Giraffile - The giraffe that protects your files",
-        hook: "Share any type of file privately using a short link",
+        hook: "Share any file privately",
         desc2: "Trust the giraffe, not the cloud",
+        btnBenefits: "Benefits",
+        btnUpload: "Upload file",
         useTitle: "Why use Giraffile?",
-        use1: "<strong>Ideal for Sensitive Information:</strong> Protect your credentials, financial information, contracts, and personal documents with private transfers.",
+        use1: "<strong>From your device to theirs in an instant:</strong> Since the transfer is 100% direct between devices, there are no slow servers or intermediaries involved.",
         use2: "<strong>Any format welcome:</strong> Send images, PDFs, compressed archives (ZIP/RAR), audio, or videos.",
         use3: "<strong>Total Privacy:</strong> Send files without leaving a trace on external servers.",
         prepare: "Prepare your file to send",
@@ -84,6 +88,7 @@ const i18n = {
         opt5: "5 Minutes",
         opt10: "10 Minutes",
         btnGenerate: "Generate secure link",
+        btnSendAnother: "Do you want to send another file?",
         btnCopy: "Copy Link",
         btnCopied: "Link Copied!",
         btnDownload: "Download Full File",
@@ -124,39 +129,186 @@ const i18n = {
         savedToDiskNotice: "This file no longer depends on Giraffile and does not expire: it lives on your device. Delete it yourself when you no longer need it.",
         errSaveCancelled: "Save cancelled. Choose how you want to receive the file.",
         errSaveFailed: "The file could not be written to disk. Try again or receive it in the browser."
+    },
+    pt: {
+        themeDark: "Modo Escuro",
+        themeLight: "Modo Claro",
+        pageTitle: "Giraffile - A girafa que protege os seus arquivos",
+        hook: "Compartilhe qualquer arquivo de forma privada",
+        desc2: "Confie na girafa, não na nuvem",
+        btnBenefits: "Benefícios",
+        btnUpload: "Enviar arquivo",
+        useTitle: "Por que usar o Giraffile?",
+        use1: "<strong>Do seu dispositivo para o dele instantaneamente:</strong> Como a transferência é 100% direta entre dispositivos, não há servidores lentos nem intermediários.",
+        use2: "<strong>Qualquer formato:</strong> Envie imagens, PDFs, arquivos compactados (ZIP/RAR), áudios ou vídeos.",
+        use3: "<strong>Privacidade total:</strong> Envio seguro de arquivos sem deixar rastros em servidores externos.",
+        prepare: "Prepare seu arquivo para enviar",
+        dropLabel: "Arraste qualquer arquivo ou clique abaixo (Máx 1.5GB):",
+        dropPrompt: "Arraste um arquivo aqui ou clique para procurar",
+        dropSelected: "Arquivo selecionado:",
+        expiryLabel: "Tempo de Expiração:",
+        opt2: "2 Minutos (Para arquivos pequenos)",
+        opt5: "5 Minutos",
+        opt10: "10 Minutos",
+        btnGenerate: "Gerar link seguro",
+        btnSendAnother: "Deseja enviar outro arquivo?",
+        btnCopy: "Copiar Link",
+        btnCopied: "Link Copiado!",
+        btnDownload: "Baixar Completo",
+        textPreviewNotice: "Exibindo uma prévia do arquivo de texto. Para ver todo o conteúdo:",
+        noPreviewNotice: "Este formato não suporta pré-visualização no navegador ou excede o tamanho direto. Use o botão abaixo para baixar com segurança:",
+        errNoFile: "Por favor, selecione ou arraste um arquivo primeiro.",
+        errNotAllowed: "O arquivo excede o tamanho máximo permitido (Máx 1.5GB).",
+        successLink: "Link criado com sucesso!",
+        previewTitle: "Dê uma olhada no seu arquivo",
+        timeRemaining: "Tempo restante de visualização:",
+        fileLabel: "Arquivo:",
+        errNoExist: "O arquivo não existe ou já foi excluído por segurança.",
+        errExpired: "Este link expirou e o conteúdo foi destruído permanentemente!",
+        errTimeOut: "O tempo acabou! O arquivo foi completamente apagado da memória com segurança.",
+        p2pConnecting: "Carregando arquivo...",
+        p2pEstimado: "Tempo estimado restante:",
+        p2pCalculando: "calculando...",
+        descifrando: "Preparando arquivo...",
+        qrLabel: "Escaneie para receber o arquivo",
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.3.0 | © 2026 jahp. Todos os direitos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
+        disclaimerTitle: "Isenção de Responsabilidade",
+        disclaimerBody: `
+        <p>O <strong>Giraffile</strong> funciona como um canal de transporte privado P2P (Peer-to-Peer) direto entre dispositivos. Os arquivos nunca são enviados, analisados ou armazenados em servidores externos.</p>
+        <p><strong>Aviso sobre malware:</strong> Por ser uma transferência direta e criptografada, a plataforma não verifica a segurança do conteúdo. O <strong>Giraffile não se responsabiliza</strong> por software malicioso ou vírus transmitidos. É responsabilidade exclusiva do destinatário verificar a procedência do arquivo.</p>
+        `,
+        spaceLabel: "Espaço:",
+        filesInQueue: "arquivos na fila",
+        errLocalDB: "Erro local ao processar o armazenamento.",
+        textTruncated: "[... Arquivo truncado por desempenho para evitar travamento do navegador ...]",
+        defaultFileName: "arquivo_baixado",
+        chooseTitle: "Como você quer receber este arquivo?",
+        btnSaveToDisk: "Salvar no disco",
+        btnViewInBrowser: "Ver no navegador",
+        saveToDiskNotice: "Gravado diretamente no seu dispositivo enquanto é recebido. <strong>Não expira:</strong> o arquivo fica salvo e você decide quando deletar.",
+        viewInBrowserNotice: "Carregado na memória do navegador, com pré-visualização e temporizador. <strong>Destruído ao expirar.</strong>",
+        savingToDisk: "Salvando no seu disco...",
+        savedToDiskTitle: "Arquivo salvo no seu dispositivo",
+        savedToDiskNotice: "Este arquivo não depende mais do Giraffile e não expira. Exclua-o quando não precisar mais.",
+        errSaveCancelled: "Salvamento cancelado. Escolha como deseja receber o arquivo.",
+        errSaveFailed: "Não foi possível gravar o arquivo no disco. Tente novamente ou receba no navegador."
+    },
+    fr: {
+        themeDark: "Mode Sombre",
+        themeLight: "Mode Clair",
+        pageTitle: "Giraffile - La girafe qui protège vos fichiers",
+        hook: "Partagez n'importe quel fichier en toute confidentialité",
+        desc2: "Faites confiance à la girafe, pas au cloud",
+        btnBenefits: "Avantages",
+        btnUpload: "Téléverser un fichier",
+        useTitle: "Pourquoi utiliser Giraffile ?",
+        use1: "<strong>De votre appareil au sien en un instant :</strong> Le transfert étant 100% direct entre appareils, il n'y a ni serveurs lents ni intermédiaires.",
+        use2: "<strong>Tous formats acceptés :</strong> Envoyez des images, des PDF, des archives (ZIP/RAR), de l'audio ou des vidéos.",
+        use3: "<strong>Confidentialité totale :</strong> Envoi sécurisé sans laisser de trace sur des serveurs externes.",
+        prepare: "Préparez votre fichier à envoyer",
+        dropLabel: "Glissez un fichier ou cliquez ci-dessous (Max 1.5 Go) :",
+        dropPrompt: "Glissez un fichier ici ou cliquez pour parcourir",
+        dropSelected: "Fichier sélectionné :",
+        expiryLabel: "Délai d'expiration :",
+        opt2: "2 Minutes (Pour petits fichiers)",
+        opt5: "5 Minutes",
+        opt10: "10 Minutes",
+        btnGenerate: "Générer un lien sécurisé",
+        btnSendAnother: "Voulez-vous envoyer un autre fichier ?",
+        btnCopy: "Copier le lien",
+        btnCopied: "Lien copié !",
+        btnDownload: "Télécharger tout",
+        textPreviewNotice: "Aperçu du fichier texte. Pour voir tout le contenu :",
+        noPreviewNotice: "Ce format ne prend pas en charge l'aperçu direct dans le navigateur. Utilisez le bouton ci-dessous pour télécharger en toute sécurité :",
+        errNoFile: "Veuillez d'abord sélectionner ou glisser un fichier.",
+        errNotAllowed: "Le fichier dépasse la taille maximale autorisée (Max 1.5 Go).",
+        successLink: "Lien créé avec succès !",
+        previewTitle: "Jetez un œil à votre fichier",
+        timeRemaining: "Temps de lecture restant :",
+        fileLabel: "Fichier :",
+        errNoExist: "Le fichier n'existe pas ou a déjà été supprimé par sécurité.",
+        errExpired: "Ce lien a expiré et le contenu a été définitivement détruit !",
+        errTimeOut: "Temps écoulé ! Le fichier a été complètement effacé de la mémoire en toute sécurité.",
+        p2pConnecting: "Chargement du fichier...",
+        p2pEstimado: "Temps estimé restant :",
+        p2pCalculando: "calcul en cours...",
+        descifrando: "Préparation du fichier...",
+        qrLabel: "Scannez pour recevoir le fichier",
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.3.0 | © 2026 jahp. Tous droits réservés. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Avis Juridique</a>',
+        disclaimerTitle: "Clause de Non-Responsabilité",
+        disclaimerBody: `
+        <p><strong>Giraffile</strong> fonctionne comme un canal de transport privé P2P (Peer-to-Peer) direct entre appareils. Les fichiers ne sont jamais téléversés, analysés ou stockés sur des serveurs externes.</p>
+        <p><strong>Avis concernant les logiciels malveillants :</strong> S'agissant d'un transfert direct et chiffré, la plateforme ne vérifie pas la sécurité du contenu. <strong>Giraffile n'est pas responsable</strong> des virus ou fichiers infectés transmis.</p>
+        `,
+        spaceLabel: "Espace :",
+        filesInQueue: "fichiers en attente",
+        errLocalDB: "Erreur locale lors du traitement du stockage.",
+        textTruncated: "[... Fichier tronqué pour des raisons de performance ...]",
+        defaultFileName: "fichier_telecharge",
+        chooseTitle: "Comment souhaitez-vous recevoir ce fichier ?",
+        btnSaveToDisk: "Enregistrer sur le disque",
+        btnViewInBrowser: "Voir dans le navigateur",
+        saveToDiskNotice: "Écrit directement sur votre appareil. <strong>N'expire pas :</strong> le fichier reste enregistré sur votre équipement.",
+        viewInBrowserNotice: "Chargé dans la mémoire du navigateur, avec aperçu et minuteur. <strong>Détruit à l'expiration.</strong>",
+        savingToDisk: "Enregistrement sur votre disque...",
+        savedToDiskTitle: "Fichier enregistré sur votre appareil",
+        savedToDiskNotice: "Ce fichier ne dépend plus de Giraffile et n'expire pas : il est sur votre appareil.",
+        errSaveCancelled: "Enregistrement annulé. Choisissez comment recevoir le fichier.",
+        errSaveFailed: "Impossible d'écrire le fichier sur le disque. Réessayez ou recevez-le dans le navigateur."
     }
 };
 
-function toggleLanguage() {
-    currentLang = currentLang === 'es' ? 'en' : 'es';
-    localStorage.setItem('girafile-lang', currentLang);
-    document.documentElement.lang = currentLang;
-    aplicarTraduccion();
+function changeLanguage(lang) {
+    if (supportedLangs.includes(lang)) {
+        currentLang = lang;
+        localStorage.setItem('girafile-lang', currentLang);
+        document.documentElement.lang = currentLang;
+        aplicarTraduccion();
+    }
 }
 
 function aplicarTraduccion() {
-    const t = i18n[currentLang];
+    const t = i18n[currentLang] || i18n['es'];
     document.title = t.pageTitle; 
-    document.getElementById('langBtn').innerText = t.langBtn;
 
+    // Sincronizar el valor visible del selector <select id="langSelect">
+    const langSelect = document.getElementById('langSelect');
+    if (langSelect && langSelect.value !== currentLang) {
+        langSelect.value = currentLang;
+    }
+
+    // 1. Ubicar o crear #brandHeroContainer JUSTO DEBAJO de .top-controls
+    let brandHero = document.getElementById('brandHeroContainer');
+    if (!brandHero) {
+        brandHero = document.createElement('div');
+        brandHero.id = 'brandHeroContainer';
+        
+        const topControls = document.querySelector('.top-controls');
+        if (topControls) {
+            topControls.insertAdjacentElement('afterend', brandHero);
+        } else {
+            const mainContainer = document.querySelector('.container') || document.body;
+            mainContainer.insertBefore(brandHero, mainContainer.firstChild);
+        }
+    }
+
+    brandHero.innerHTML = `
+        <div class="hero-intro">
+            <h2 class="hero-hook">${t.hook}</h2>
+            <p class="hero-desc">${t.desc2}</p>
+        </div>
+    `;
+
+    // 2. Renderizado exclusivo de las tarjetas dentro de #infoBoxContainer
     const infoBox = document.getElementById('infoBoxContainer');
     if (infoBox) {
         infoBox.innerHTML = `
-            <div class="brand-container">
-                <img src="giraffe.svg" alt="Mascota" class="mascot-img">
-            </div>
-            
-            <div class="hero-intro">
-                <h2 class="hero-hook">${t.hook}</h2>
-                <p class="hero-desc">${t.desc2}</p>
-            </div>
-
-            <p style="margin-top: 25px; margin-bottom: 12px; font-weight: bold; text-align: center;">${t.useTitle}</p>
+            <p style="margin-top: 15px; margin-bottom: 12px; font-weight: bold; text-align: center; font-size: 1.75rem;">${t.useTitle}</p>
             
             <div class="cards-container">
                 <div class="card-item">
                     <div class="card-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                     </div>
                     <div>${t.use1}</div>
                 </div>
@@ -176,6 +328,9 @@ function aplicarTraduccion() {
         `;
     }
 
+    // 3. Traducción de elementos de navegación, formulario y pie de página
+    if (document.getElementById('btnBeneficios')) document.getElementById('btnBeneficios').innerText = t.btnBenefits;
+    if (document.getElementById('btnSubirArchivo')) document.getElementById('btnSubirArchivo').innerText = t.btnUpload;
     if (document.getElementById('lblPrepare')) document.getElementById('lblPrepare').innerText = t.prepare;
     if (document.getElementById('lblDropZone')) document.getElementById('lblDropZone').innerText = t.dropLabel;
     if (document.getElementById('lblExpiry')) document.getElementById('lblExpiry').innerText = t.expiryLabel;
@@ -183,6 +338,7 @@ function aplicarTraduccion() {
     if (document.getElementById('opt5m')) document.getElementById('opt5m').innerText = t.opt5;
     if (document.getElementById('opt10m')) document.getElementById('opt10m').innerText = t.opt10;
     if (document.getElementById('btnGenerar')) document.getElementById('btnGenerar').innerText = t.btnGenerate;
+    if (document.getElementById('btnSendAnother')) document.getElementById('btnSendAnother').innerText = t.btnSendAnother;
     if (document.getElementById('lblPreviewTitle')) document.getElementById('lblPreviewTitle').innerText = t.previewTitle;
     if (document.getElementById('lblTimeRemaining')) document.getElementById('lblTimeRemaining').innerText = t.timeRemaining;
     if (document.getElementById('footerText')) document.getElementById('footerText').innerHTML = t.footer;
@@ -202,3 +358,8 @@ function aplicarTraduccion() {
         }
     }
 }
+
+// Cargar la traducción al iniciar la página
+document.addEventListener('DOMContentLoaded', () => {
+    aplicarTraduccion();
+});
