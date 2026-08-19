@@ -831,12 +831,6 @@ footer {
     stroke: var(--accent-color) !important;
 }
 
-.hero-img {
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin: 12px auto 0;
-}
 
 /* ==========================================
    ANIMACIONES Y RESPONSIVE
