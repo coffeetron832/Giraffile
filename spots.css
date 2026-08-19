@@ -59,11 +59,11 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: linear-gradient(rgba(18, 18, 18, 0.25), rgba(18, 18, 18, 0.35)), url('owner.jpg');
+    background-image: linear-gradient(rgba(18, 18, 18, 0.35), rgba(18, 18, 18, 0.45)), url('owner.jpg');
     background-repeat: no-repeat;
     background-position: center;
     background-size: cover;
-    opacity: 1;
+    opacity: 0.85;
     pointer-events: none;
     z-index: 0;
 }
