@@ -695,6 +695,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             fallarEscrituraEnDisco();
             return;
         }
+        escritorDisco = null;
 
         recepcionCompletada = true;
         escritorDisco = null;
