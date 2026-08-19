@@ -558,8 +558,20 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
             <p style="font-size: 0.85em; color: var(--footer-color); text-align: left; margin: 0; line-height: 1.4;">${t.viewInBrowserNotice}</p>
         `;
 
-        document.getElementById('btnGuardarDisco').addEventListener('click', iniciarRecepcionEnDisco);
-        document.getElementById('btnVerNavegador').addEventListener('click', () => iniciarRecepcion('memoria'));
+        const btnGuardar = document.getElementById('btnGuardarDisco');
+        const btnVer = document.getElementById('btnVerNavegador');
+
+        btnGuardar.addEventListener('click', () => {
+            btnGuardar.disabled = true;
+            btnVer.disabled = true;
+            iniciarRecepcionEnDisco();
+        });
+
+        btnVer.addEventListener('click', () => {
+            btnGuardar.disabled = true;
+            btnVer.disabled = true;
+            iniciarRecepcion('memoria');
+        });
     }
 
     function iniciarRecepcion(modo) {
