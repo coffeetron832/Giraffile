@@ -294,9 +294,9 @@ function aplicarTraduccion() {
 
     brandHero.innerHTML = `
         <div class="hero-intro">
-            <h2 class="hero-hook">${t.hook}</h2>
-            <p class="hero-desc">${t.desc2}</p>
-        </div>
+    <h2 class="hero-hook">${t.hook}</h2>
+    <img class="hero-img" src="giraffesharing.svg" alt="Giraffile" />
+</div>
     `;
 
     // 2. Renderizado exclusivo de las tarjetas dentro de #infoBoxContainer
