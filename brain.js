@@ -68,7 +68,10 @@ function toggleTheme() {
     const targetTheme = currentTheme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', targetTheme);
     localStorage.setItem('girafile-theme', targetTheme);
-    document.getElementById('themeBtn').innerText = targetTheme === 'dark' ? i18n[currentLang].themeLight : i18n[currentLang].themeDark;
+    const themeBtn = document.getElementById('themeBtn');
+    if (themeBtn && typeof i18n !== 'undefined' && i18n[currentLang]) {
+        themeBtn.innerText = targetTheme === 'dark' ? i18n[currentLang].themeLight : i18n[currentLang].themeDark;
+    }
 }
 
 function abrirDB(callback) {
@@ -81,15 +84,42 @@ function abrirDB(callback) {
 }
 
 window.onload = function() {
-    currentLang = localStorage.getItem('girafile-lang') || 'en';
+    currentLang = localStorage.getItem('girafile-lang') || 'es';
     document.documentElement.lang = currentLang;
     const savedTheme = localStorage.getItem('girafile-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     
-    aplicarTraduccion();
+    if (typeof aplicarTraduccion === 'function') {
+        aplicarTraduccion();
+    }
     ejecutarLimpiezaGarbageCollector();
     verificarLinkCompartido();
 };
+
+// Muestra exclusivamente las 3 tarjetas de beneficios omitiendo logo y eslogan
+function renderizarSoloTarjetasBeneficios() {
+    const infoBoxContainer = document.getElementById('infoBoxContainer');
+    if (!infoBoxContainer || typeof i18n === 'undefined' || !i18n[currentLang]) return;
+
+    const t = i18n[currentLang];
+    
+    infoBoxContainer.innerHTML = `
+        <div class="features-grid" style="margin-top: 10px;">
+            <div class="feature-card">
+                <h3>${escaparHTML(t.useTitle || 'Sin registros')}</h3>
+                <p>${escaparHTML(t.use1 || '')}</p>
+            </div>
+            <div class="feature-card">
+                <h3>${escaparHTML(t.use2Title || 'Conexión P2P directa')}</h3>
+                <p>${escaparHTML(t.use2 || '')}</p>
+            </div>
+            <div class="feature-card">
+                <h3>${escaparHTML(t.use3Title || 'Enlaces temporales')}</h3>
+                <p>${escaparHTML(t.use3 || '')}</p>
+            </div>
+        </div>
+    `;
+}
 
 function manejarSeleccionArchivo(inputOrData) {
     const errorMsg = document.getElementById('errorMsg');
@@ -107,7 +137,7 @@ function manejarSeleccionArchivo(inputOrData) {
     if (coleccionArchivos.length === 0) {
         if (limiteContainer) limiteContainer.style.display = "none";
         archivoCargado = null;
-        aplicarTraduccion();
+        if (typeof aplicarTraduccion === 'function') aplicarTraduccion();
         return;
     }
 
@@ -118,7 +148,7 @@ function manejarSeleccionArchivo(inputOrData) {
 
     if (limiteContainer) limiteContainer.style.display = "block";
     if (barreLimite) barreLimite.value = Math.min(porcentajeUso, 100);
-    if (lblLimite) lblLimite.innerHTML = `${escaparHTML(t.spaceLabel)} <strong>${tamanoTotalMB} MB</strong> / ${maxMB} MB`;
+    if (lblLimite) lblLimite.innerHTML = `${escaparHTML(t.spaceLabel || 'Espacio usado:')} <strong>${tamanoTotalMB} MB</strong> / ${maxMB} MB`;
 
     if (listaArchivos) {
         listaArchivos.innerHTML = "";
@@ -146,7 +176,7 @@ function manejarSeleccionArchivo(inputOrData) {
             size: tamañoTotalBytes,
             type: coleccionArchivos.length === 1 ? coleccionArchivos[0].type : "application/zip"
         };
-        aplicarTraduccion();
+        if (typeof aplicarTraduccion === 'function') aplicarTraduccion();
     }
 }
 
@@ -855,7 +885,7 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         const lectorTexto = new FileReader();
         
         lectorTexto.onload = function(evt) {
-            let textoFormateado = escapingHTML ? escaparHTML(evt.target.result) : evt.target.result;
+            let textoFormateado = escaparHTML(evt.target.result);
             let descargaAdicional = '';
             
             if (data.size > bytesVistaPrevia) {
@@ -871,7 +901,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         };
         lectorTexto.readAsText(fragmentoSeguro);
     } else {
-        // Muestra sólo el aviso y el botón de descarga si excede el tamaño o no tiene vista previa soportada
         contentDiv.innerHTML = `
             <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
                 <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${escaparHTML(t.noPreviewNotice)}</p>
