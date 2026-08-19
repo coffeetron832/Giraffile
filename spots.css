@@ -520,45 +520,64 @@ progress::-webkit-progress-value {
     transform: translateX(-50%) translateY(0);
 }
 
+/* ==========================================
+   BOTONES CON GLASSMORPHISM
+   ========================================== */
+
 .btn { 
     font-family: var(--font-primary);
     padding: 8px 14px; 
-    border-radius: 4px; 
-    border: 1px solid var(--box-border); 
-    background-color: var(--box-bg); 
+    border-radius: 6px; 
+    
+    background-color: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    
     color: var(--text-color); 
     cursor: pointer; 
     font-weight: 600; 
     margin-top: 5px; 
-    transition: background 0.2s; 
     display: inline-block;
     font-size: 0.85rem;
+    
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .btn:hover { 
-    background: var(--timer-bg); 
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .btn-primary { 
-    background: var(--accent-color); 
+    background-color: var(--accent-color); 
     color: #121212; 
-    border: none; 
-    font-family: var(--font-primary); 
-    transition: background-color 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+    border: 1px solid transparent; 
+    backdrop-filter: none; /
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
 }
 
 .btn-primary:hover { 
-    /* Forzamos a conservar el color de acento para que no herede el gris de .btn:hover */
     background-color: var(--accent-color); 
-    /* Opción A: Le da un toque más brillante/claro en lugar de oscuro */
+    border-color: transparent;
     filter: brightness(1.08); 
-    /* Opción B: Elevación sutil al pasar el mouse */
     transform: translateY(-1px); 
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
 
 .btn-primary:active {
     filter: brightness(1);
     transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .file-meta { 
