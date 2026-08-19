@@ -22,26 +22,53 @@
 
     <header class="hero-banner" id="hero-header">
         <div class="top-controls">
-            <div>
-                <button class="lang-toggle" onclick="toggleLanguage()" id="langBtn">English</button>
-                <button class="credit-toggle" data-tooltip="Photo by Wolfgang Hasselmann (Unsplash)" onclick="window.open('https://unsplash.com/es/fotos/jirafa-bajo-el-cielo-azul-durante-el-dia-Fqik7i0LkcM', '_blank')">💛</button>
+            <!-- Logo e identidad en el extremo izquierdo -->
+            <a href="#" class="top-logo-link" onclick="volverInicio(); return false;">
+                <img src="giraffe.svg" alt="Giraffile Logo" class="top-logo-img">
+            </a>
+
+            <!-- Botón de regresar (Aparece solo al accionar una vista) -->
+            <div id="navBackContainer" style="display: none;">
+                <button class="back-btn" onclick="volverInicio()" aria-label="Volver al inicio" style="background: transparent; border: none; color: var(--text-color); cursor: pointer; display: flex; align-items: center; padding: 6px; border-radius: 50%;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                </button>
             </div>
+
+            <!-- Botones y controles en el extremo derecho -->
+            <div class="top-actions">
+    <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)" aria-label="Seleccionar idioma">
+        <option value="es">Español</option>
+        <option value="en">English</option>
+        <option value="pt">Português</option>
+        <option value="fr">Français</option>
+    </select>
+    <button class="credit-toggle" data-tooltip="Photo by Wolfgang Hasselmann (Unsplash)" onclick="window.open('https://unsplash.com/es/fotos/jirafa-bajo-el-cielo-azul-durante-el-dia-Fqik7i0LkcM', '_blank')">💛</button>
+</div>
         </div>
 
+        <!-- Contenedor Fijo: Eslogan (Se oculta al abrir una vista) -->
+        <div id="brandHeroContainer"></div>
+
         <div class="hero-content">
-            <!-- VISTA 1: Banner / Información de marca -->
-            <div id="viewBanner" class="view-section fade-in-down">
-                <div class="info-box" id="infoBoxContainer"></div>
-                <button onclick="mostrarCarga()" class="scroll-btn scroll-down-btn" aria-label="Ir al panel de carga">↓</button>
+            <!-- Botones de navegación principal -->
+            <div id="heroNavButtons" style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px;">
+                <button class="btn" id="btnBeneficios" onclick="mostrarBanner()">Beneficios</button>
+                <button class="btn btn-primary" id="btnSubirArchivo" onclick="mostrarCarga()">Subir archivo</button>
+            </div>
+
+            <!-- VISTA 1: Tarjetas de Beneficios (Inician ocultas) -->
+            <div id="viewBanner" class="view-section hidden-view fade-in-down">
+                <div class="info-box active" id="infoBoxContainer"></div>
             </div>
 
             <!-- VISTA 2: Panel de Carga y Configuración -->
             <div id="viewUpload" class="view-section hidden-view">
-                <div style="margin-bottom: 15px;">
-                    <button onclick="mostrarBanner()" class="scroll-btn" aria-label="Volver arriba">↑</button>
-                </div>
-
                 <div id="main-wrapper">
+                    
+                    <!-- Panel para Enviar / Subir Archivo -->
                     <div id="upload-section" class="upload-card">
                         <h3 id="lblPrepare" style="margin-top: 0;">Prepara tu archivo para enviar</h3>
                         
@@ -49,56 +76,56 @@
                             <label id="lblDropZone">Arrastra tus archivos o haz clic abajo (Máx 1.5GB):</label><br><br>
                             
                             <!-- Zona de arrastre P2P -->
-<div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
 
-    <!-- Iconos SVG en el borde superior -->
-    <div class="drop-zone-icons">
-        <!-- Documentos -->
-        <span class="icon-tooltip" data-tooltip="PDF, DOCX, TXT, PPTX">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
-            </svg>
-        </span>
+                                <!-- Iconos SVG en el borde superior -->
+                                <div class="drop-zone-icons">
+                                    <!-- Documentos -->
+                                    <span class="icon-tooltip" data-tooltip="PDF, DOCX, TXT, PPTX">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                                        </svg>
+                                    </span>
 
-        <!-- Imágenes -->
-        <span class="icon-tooltip" data-tooltip="PNG, JPG, WEBP, SVG, GIF">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-            </svg>
-        </span>
+                                    <!-- Imágenes -->
+                                    <span class="icon-tooltip" data-tooltip="PNG, JPG, WEBP, SVG, GIF">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                                        </svg>
+                                    </span>
 
-        <!-- Audio -->
-        <span class="icon-tooltip" data-tooltip="MP3, WAV, FLAC, OGG">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-            </svg>
-        </span>
+                                    <!-- Audio -->
+                                    <span class="icon-tooltip" data-tooltip="MP3, WAV, FLAC, OGG">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                                        </svg>
+                                    </span>
 
-        <!-- Video -->
-        <span class="icon-tooltip" data-tooltip="MP4, MKV, WEBM, MOV">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-            </svg>
-        </span>
+                                    <!-- Video -->
+                                    <span class="icon-tooltip" data-tooltip="MP4, MKV, WEBM, MOV">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                                        </svg>
+                                    </span>
 
-        <!-- Comprimidos -->
-        <span class="icon-tooltip" data-tooltip="ZIP, RAR, 7Z, TAR">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10h-2v-2h2v2zm0-4h-2v-2h2v2z"/>
-            </svg>
-        </span>
-    </div>
+                                    <!-- Comprimidos -->
+                                    <span class="icon-tooltip" data-tooltip="ZIP, RAR, 7Z, TAR">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10h-2v-2h2v2zm0-4h-2v-2h2v2z"/>
+                                        </svg>
+                                    </span>
+                                </div>
 
-    <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
-    
-    <input type="file" id="fileInput" style="display: none;" multiple onchange="manejarSeleccionArchivo(this)">
-    
-    <div id="limiteContainer" style="margin-top: 15px; display: none;" onclick="event.stopPropagation();">
-        <label id="lblLimite" style="font-size: 0.85em; font-weight: bold; display: block; margin-bottom: 5px; text-align: left; color: var(--text-color);"></label>
-        <progress id="barreLimite" value="0" max="100" style="width: 100%; height: 12px; transition: all 0.3s ease;"></progress>
-        <ul id="listaArchivos" style="text-align: left; max-height: 120px; overflow-y: auto; font-size: 0.85em; margin-top: 10px; padding-left: 20px; color: var(--text-color); list-style-type: square;"></ul>
-    </div>
-</div>
+                                <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
+                                
+                                <input type="file" id="fileInput" style="display: none;" multiple onchange="manejarSeleccionArchivo(this)">
+                                
+                                <div id="limiteContainer" style="margin-top: 15px; display: none;" onclick="event.stopPropagation();">
+                                    <label id="lblLimite" style="font-size: 0.85em; font-weight: bold; display: block; margin-bottom: 5px; text-align: left; color: var(--text-color);"></label>
+                                    <progress id="barreLimite" value="0" max="100" style="width: 100%; height: 12px; transition: all 0.3s ease;"></progress>
+                                    <ul id="listaArchivos" style="text-align: left; max-height: 120px; overflow-y: auto; font-size: 0.85em; margin-top: 10px; padding-left: 20px; color: var(--text-color); list-style-type: square;"></ul>
+                                </div>
+                            </div>
                             <p id="errorMsg" class="error" style="color: red; font-weight: bold; margin-top: 5px;"></p>
                         </div>
 
@@ -115,7 +142,7 @@
                         <div id="output"></div>
                     </div>
 
-                    <!-- Panel de Vista Previa para Receptor -->
+                    <!-- Panel de Vista Previa para Receptor / Archivo Recibido -->
                     <div id="preview">
                         <h4 id="lblPreviewTitle">Visualizador de Archivo Seguro</h4>
                         <div id="fileMeta" class="file-meta"></div>
@@ -130,6 +157,12 @@
 
                         <div id="fileContent" style="margin-top: 15px;"></div>
                     </div>
+
+                    <!-- Botón por fuera del contenedor #preview -->
+                    <div id="sendAnotherContainer" style="margin-top: 20px; text-align: center; display: none;">
+                        <button class="btn btn-primary" id="btnSendAnother" onclick="resetearParaNuevoEnvio()" style="width: 100%;">¿Quieres enviar un archivo?</button>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -147,9 +180,20 @@
         </div>
     </div>
     
-    <!-- Script de navegación de vistas -->
+    <!-- Lógica de navegación dinámica y control de elementos -->
     <script>
+        function ocultarHome() {
+            const brandHero = document.getElementById('brandHeroContainer');
+            const navBtns = document.getElementById('heroNavButtons');
+            const backContainer = document.getElementById('navBackContainer');
+
+            if (brandHero) brandHero.style.display = 'none';
+            if (navBtns) navBtns.style.display = 'none';
+            if (backContainer) backContainer.style.display = 'block';
+        }
+
         function mostrarCarga() {
+            ocultarHome();
             const vBanner = document.getElementById('viewBanner');
             const vUpload = document.getElementById('viewUpload');
             
@@ -159,13 +203,85 @@
         }
 
         function mostrarBanner() {
+            ocultarHome();
             const vBanner = document.getElementById('viewBanner');
             const vUpload = document.getElementById('viewUpload');
             
             vUpload.classList.add('hidden-view');
             vBanner.classList.remove('hidden-view', 'fade-in-up');
             vBanner.classList.add('fade-in-down');
+
+            const infoBox = document.getElementById('infoBoxContainer');
+            if (infoBox) {
+                infoBox.classList.add('active');
+            }
         }
+
+        function volverInicio() {
+            const brandHero = document.getElementById('brandHeroContainer');
+            const navBtns = document.getElementById('heroNavButtons');
+            const backContainer = document.getElementById('navBackContainer');
+            const vBanner = document.getElementById('viewBanner');
+            const vUpload = document.getElementById('viewUpload');
+
+            // Mostrar el eslogan y los botones de la portada
+            if (brandHero) brandHero.style.display = 'block';
+            if (navBtns) navBtns.style.display = 'flex';
+            if (backContainer) backContainer.style.display = 'none';
+
+            // Ocultar las vistas
+            if (vBanner) vBanner.classList.add('hidden-view');
+            if (vUpload) vUpload.classList.add('hidden-view');
+        }
+
+        // Función para restaurar la interfaz al presionar "¿Quieres enviar un archivo?"
+        function resetearParaNuevoEnvio() {
+            const uploadSection = document.getElementById('upload-section');
+            const previewSection = document.getElementById('preview');
+            const sendAnotherContainer = document.getElementById('sendAnotherContainer');
+            const fileInput = document.getElementById('fileInput');
+            const output = document.getElementById('output');
+            const fileContent = document.getElementById('fileContent');
+            const fileMeta = document.getElementById('fileMeta');
+
+            if (previewSection) previewSection.style.display = 'none';
+            if (sendAnotherContainer) sendAnotherContainer.style.display = 'none';
+            if (uploadSection) uploadSection.classList.remove('hidden-view');
+            
+            // Limpiar inputs y contenidos
+            if (fileInput) fileInput.value = '';
+            if (output) output.innerHTML = '';
+            if (fileContent) fileContent.innerHTML = '';
+            if (fileMeta) fileMeta.innerHTML = '';
+            
+            const limiteContainer = document.getElementById('limiteContainer');
+            if (limiteContainer) limiteContainer.style.display = 'none';
+            
+            mostrarCarga();
+        }
+
+        // MutationObserver para detectar cuando se muestra el preview (vía link P2P) y ocultar automáticamente la zona de carga
+        document.addEventListener('DOMContentLoaded', () => {
+            const previewSection = document.getElementById('preview');
+            const uploadSection = document.getElementById('upload-section');
+            const sendAnotherContainer = document.getElementById('sendAnotherContainer');
+
+            if (previewSection && uploadSection) {
+                const observer = new MutationObserver(() => {
+                    const isPreviewVisible = window.getComputedStyle(previewSection).display !== 'none';
+                    if (isPreviewVisible) {
+                        uploadSection.classList.add('hidden-view');
+                        if (sendAnotherContainer) sendAnotherContainer.style.display = 'block';
+                        ocultarHome();
+                        document.getElementById('viewUpload').classList.remove('hidden-view');
+                    } else {
+                        if (sendAnotherContainer) sendAnotherContainer.style.display = 'none';
+                    }
+                });
+
+                observer.observe(previewSection, { attributes: true, attributeFilter: ['style', 'class'] });
+            }
+        });
     </script>
 
     <script src="hum.js"></script>
