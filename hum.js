@@ -171,7 +171,7 @@ const i18n = {
         p2pCalculando: "calculando...",
         descifrando: "Preparando arquivo...",
         qrLabel: "Escaneie para receber o arquivo",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.3.0 | © 2026 jahp. Todos os direitos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.4.0 | © 2026 jahp. Todos os direitos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
         disclaimerTitle: "Isenção de Responsabilidade",
         disclaimerBody: `
         <p>O <strong>Giraffile</strong> funciona como um canal de transporte privado P2P (Peer-to-Peer) direto entre dispositivos. Os arquivos nunca são enviados, analisados ou armazenados em servidores externos.</p>
@@ -234,7 +234,7 @@ const i18n = {
         p2pCalculando: "calcul en cours...",
         descifrando: "Préparation du fichier...",
         qrLabel: "Scannez pour recevoir le fichier",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.3.0 | © 2026 jahp. Tous droits réservés. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Avis Juridique</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.4.0 | © 2026 jahp. Tous droits réservés. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Avis Juridique</a>',
         disclaimerTitle: "Clause de Non-Responsabilité",
         disclaimerBody: `
         <p><strong>Giraffile</strong> fonctionne comme un canal de transport privé P2P (Peer-to-Peer) direct entre appareils. Les fichiers ne sont jamais téléversés, analysés ou stockés sur des serveurs externes.</p>
