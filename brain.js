@@ -16,6 +16,7 @@ const DB_VERSION = 1;
 const STORE_NAME = "archivos";
 const CHUNK_SIZE = 256 * 1024;
 const ESPERA_METADATA_MS = 4000;
+const PEER_CONNECTION_TIMEOUT_MS = 30000;
 const PAUSAR_FLUJO_BYTES = 8 * 1024 * 1024;
 const REANUDAR_FLUJO_BYTES = 2 * 1024 * 1024;
 
@@ -526,8 +527,21 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     let temporizadorMeta = null;
     let eofRecibido = false;
     let recepcionCompletada = false;
+    let timeoutConexion = null;
 
     mostrarProgreso(t.p2pConnecting);
+
+    timeoutConexion = setTimeout(() => {
+        if (!conexion || conexion.open === false) {
+            if (contentDiv) {
+                contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
+            }
+            if (peerInstance) {
+                peerInstance.destroy();
+                peerInstance = null;
+            }
+        }
+    }, PEER_CONNECTION_TIMEOUT_MS);
 
     function mostrarProgreso(etiqueta) {
         if (!contentDiv) return;
@@ -755,6 +769,7 @@ function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
     }
 
     peerInstance.on('open', () => {
+        clearTimeout(timeoutConexion);
         conexion = peerInstance.connect(fileId, {
             reliable: true,
             ordered: true
