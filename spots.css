@@ -1,4 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 :root {
+    --font-primary: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     --bg-color: #121212;
     --text-color: #e0e0e0;
     --box-bg: #1e1e1e;
@@ -15,7 +18,7 @@
 }
 
 body { 
-    font-family: Arial, sans-serif; 
+    font-family: var(--font-primary); 
     margin: 0; 
     padding: 0; 
     padding-bottom: 50px;
@@ -31,21 +34,21 @@ body {
 }
 
 /* ==========================================
-   HERO BANNER & VISTAS
+   HERO BANNER & VISTAS (CENTRADO TOTAL)
    ========================================== */
 
 .hero-banner {
     position: relative;
     width: 100%;
     min-height: 100vh;
-    padding: 20px 20px 40px 20px;
+    padding: 20px;
     box-sizing: border-box;
     text-align: center;
     background-color: var(--bg-color);
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    align-items: center;
+    justify-content: center; /* Centrado vertical absoluto */
+    align-items: center;    /* Centrado horizontal absoluto */
     overflow: hidden;
 }
 
@@ -68,12 +71,13 @@ body {
 .hero-content {
     position: relative;
     z-index: 1;
-    max-width: 800px;
+    max-width: 850px;
     width: 100%;
-    margin: auto 0;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
 }
 
 .view-section {
@@ -81,6 +85,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     animation-duration: 0.4s;
     animation-fill-mode: forwards;
     animation-timing-function: ease-out;
@@ -88,6 +93,10 @@ body {
 
 .hidden-view {
     display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
 }
 
 .fade-in-up {
@@ -228,11 +237,16 @@ body {
 .brand-container { 
     text-align: center; 
     margin-bottom: 10px; 
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .brand-container h2 {
     font-size: 1.6rem;
     margin-bottom: 5px;
+    font-weight: 700;
 }
 
 .mascot-img { 
@@ -250,7 +264,7 @@ body {
 
 .error { 
     color: #ff4d4d; 
-    font-weight: bold; 
+    font-weight: 600; 
     word-break: break-word; 
     font-size: 0.85rem;
 }
@@ -280,6 +294,7 @@ body {
 }
 
 select#expiry {
+    font-family: var(--font-primary);
     background-color: var(--glass-bg);
     color: var(--text-color);
     border: 1px solid var(--glass-border);
@@ -308,7 +323,7 @@ textarea {
     padding: 6px; 
     border-radius: 4px; 
     box-sizing: border-box; 
-    font-family: Arial, monospace; 
+    font-family: var(--font-primary); 
     resize: none; 
     font-size: 0.85rem;
 }
@@ -350,34 +365,112 @@ progress::-webkit-progress-value {
     background-color: var(--accent-color); 
 }
 
+/* ==========================================
+   BARRA SUPERIOR (TOP CONTROLS, LOGO & FLECHA)
+   ========================================== */
+
 .top-controls { 
     display: flex; 
-    gap: 8px; 
-    justify-content: flex-end; 
-    width: 100%;
+    justify-content: space-between;
+    align-items: center; 
+    width: calc(100% - 40px);
     max-width: 900px;
-    position: relative;
+    position: absolute;
+    top: 20px;
     z-index: 10;
+    margin-bottom: 0;
 }
 
-.lang-toggle { 
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--glass-border); 
-    background-color: var(--glass-bg); 
+.top-logo-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    opacity: 0.85;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.top-logo-link:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+}
+
+.top-logo-img {
+    height: 30px;
+    width: auto;
+    object-fit: contain;
+    filter: invert(1) brightness(0.9);
+}
+
+/* Botón de regreso */
+.back-btn {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    color: var(--text-color); 
-    cursor: pointer; 
-    font-size: 0.8rem;
-    font-weight: bold; 
-    font-family: Arial, Helvetica, sans-serif;
+    color: var(--text-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease, transform 0.2s ease;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: background-color 0.2s, transform 0.2s;
 }
 
-.lang-toggle:hover {
+.back-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: translateX(-2px);
+}
+
+.top-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* ==========================================
+   SELECTOR DE IDIOMA (.lang-select)
+   ========================================== */
+
+.lang-select {
+    font-family: var(--font-primary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-color);
+    background-color: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: background-color 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    outline: none;
+    appearance: none; /* Elimina la flecha por defecto en navegadores que lo permitan */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%23e0e0e0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 26px; /* Espacio para el ícono de la flecha */
+}
+
+.lang-select:hover {
     transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.lang-select:focus {
+    border-color: var(--accent-color);
+}
+
+/* Opciones desplegables dentro del menú */
+.lang-select option {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-weight: normal;
 }
 
 .credit-toggle {
@@ -428,13 +521,14 @@ progress::-webkit-progress-value {
 }
 
 .btn { 
+    font-family: var(--font-primary);
     padding: 8px 14px; 
     border-radius: 4px; 
     border: 1px solid var(--box-border); 
     background-color: var(--box-bg); 
     color: var(--text-color); 
     cursor: pointer; 
-    font-weight: bold; 
+    font-weight: 600; 
     margin-top: 5px; 
     transition: background 0.2s; 
     display: inline-block;
@@ -449,11 +543,22 @@ progress::-webkit-progress-value {
     background: var(--accent-color); 
     color: #121212; 
     border: none; 
-    font-family: Arial, sans-serif; 
+    font-family: var(--font-primary); 
+    transition: background-color 0.2s ease, filter 0.2s ease, transform 0.2s ease;
 }
 
 .btn-primary:hover { 
-    opacity: 0.9; 
+    /* Forzamos a conservar el color de acento para que no herede el gris de .btn:hover */
+    background-color: var(--accent-color); 
+    /* Opción A: Le da un toque más brillante/claro en lugar de oscuro */
+    filter: brightness(1.08); 
+    /* Opción B: Elevación sutil al pasar el mouse */
+    transform: translateY(-1px); 
+}
+
+.btn-primary:active {
+    filter: brightness(1);
+    transform: translateY(0);
 }
 
 .file-meta { 
@@ -542,30 +647,55 @@ footer {
 }
 
 /* ==========================================
-   TARJETAS COMPACTAS (.cards-container)
+   ESTRUCTURA DE TARJETAS Y DESPLIEGUE CENTRADO
    ========================================== */
 
+#infoBoxContainer {
+    display: none;
+    margin: 0 auto; 
+    padding: 0;
+    width: 100%;
+    max-width: 850px;
+}
+
+#infoBoxContainer.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto; 
+    height: auto;
+    overflow: visible;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
 .cards-container {
-    display: grid;
-    /* Reducimos el minmax de 220px a 170px y el gap de 15px a 10px */
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 10px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 12px;
+    justify-content: center;
+    align-items: stretch;
+    width: 100%;
     margin-top: 12px;
     text-align: left;
 }
 
 .card-item {
+    flex: 1 1 0;
+    min-width: 0;
     background: var(--glass-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
-    border-radius: 10px; /* Bordes un poco más refinados */
-    padding: 10px 12px;  /* Reducido de 16px a 10px/12px */
+    border-radius: 10px;
+    padding: 12px 14px;
     display: flex;
     flex-direction: column;
-    gap: 4px;            /* Espaciado interno más reducido */
-    font-size: 0.82rem;  /* Reducción ligera de la fuente para ajustar el contenido */
+    gap: 6px;
+    font-size: 0.82rem;
+    box-sizing: border-box;
     transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
@@ -581,7 +711,6 @@ footer {
     margin-bottom: 2px;
 }
 
-/* Escalamos proporcionalmente el SVG si usas íconos nativos */
 .card-icon svg {
     stroke: var(--text-color, currentColor);
     display: block;
@@ -593,10 +722,10 @@ footer {
     display: block;
     color: var(--text-color);
     margin-bottom: 2px;
-    font-size: 0.88rem; /* Tamaño de título ajustado a la nueva proporción */
+    font-size: 0.88rem;
+    font-weight: 600;
 }
 
-/* Bloque de texto principal centrado */
 .hero-intro {
     text-align: center;
     max-width: 650px;
@@ -604,7 +733,7 @@ footer {
 }
 
 .hero-hook {
-    font-size: 1.35rem;
+    font-size: 2.35rem;
     font-weight: 700;
     color: var(--accent-color);
     margin-top: 10px;
@@ -619,7 +748,6 @@ footer {
     line-height: 1.6;
     margin: 0;
 }
-
 
 /* ==========================================
    TOOLTIPS EN DROP ZONE ICONS
@@ -660,7 +788,7 @@ footer {
     padding: 5px 9px;
     border-radius: 6px;
     font-size: 0.72rem;
-    font-weight: bold;
+    font-weight: 600;
     white-space: nowrap;
     box-shadow: var(--glass-shadow);
     opacity: 0;
@@ -699,9 +827,18 @@ footer {
     stroke: var(--accent-color);
 }
 
+.card-icon svg {
+    stroke: var(--accent-color) !important;
+}
+
 /* ==========================================
-   MEDIA QUERIES (RESPONSIVE)
+   ANIMACIONES Y RESPONSIVE
    ========================================== */
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
 @media (max-width: 768px) {
     #main-wrapper {
@@ -715,11 +852,22 @@ footer {
     .column-left, .column-right {
         flex: 1 1 100%;
     }
+
+    .cards-container {
+        flex-direction: column;
+        flex-wrap: wrap;
+    }
+
+    .card-item {
+        width: 100%;
+    }
 }
 
 @media (max-width: 640px) {
     .top-controls {
-        justify-content: center;
+        justify-content: space-between;
+        top: 15px;
+        width: calc(100% - 20px);
     }
 
     .btn, button.btn {
