@@ -56,7 +56,7 @@ By using your browser’s native storage capabilities (**IndexedDB**), files tra
     <!-- Si usa modo claro -->
     <img src="giraffe03.png" width="50" alt="Mascota Giraffile" align="middle" style="vertical-align: middle;">
   </picture>
-  Try Giraffile v2.3.0
+  Try Giraffile v2.4.0
 </h2>
 
 Need to share files privately and securely? Don't trust the cloud with your data.
@@ -69,7 +69,7 @@ Start sharing now: https://giraffile.pages.dev/
 
 This project would not have been possible without the ecosystem of open-source tools and the valuable contributions from the community.
 
-### 🛠️ Technologies That Made It Possible
+### Technologies That Made It Possible
 We are deeply grateful to the creators and maintainers of the key libraries that power the core of the application:
 *   **[PeerJS](https://peerjs.com/):** For brilliantly facilitating direct P2P (*Peer-to-Peer*) connection architecture between browsers without the need for intermediate storage servers.
 *   **[JSZip](https://stuk.github.io/jszip/):** For enabling efficient and transparent real-time multiple file compression directly on the user’s device.
