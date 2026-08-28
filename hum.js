@@ -1,7 +1,7 @@
 // hum.js - Lógica de traducción e idioma de Giraffile
 
 let currentLang = localStorage.getItem('girafile-lang') || 'es';
-const supportedLangs = ['es', 'en', 'pt', 'fr'];
+const supportedLangs = ['es', 'en', 'pt', 'fr', 'sw'];
 
 const i18n = {
     es: {
@@ -255,6 +255,69 @@ const i18n = {
         savedToDiskNotice: "Ce fichier ne dépend plus de Giraffile et n'expire pas : il est sur votre appareil.",
         errSaveCancelled: "Enregistrement annulé. Choisissez comment recevoir le fichier.",
         errSaveFailed: "Impossible d'écrire le fichier sur le disque. Réessayez ou recevez-le dans le navigateur."
+    },
+    sw: {
+        themeDark: "Giza",
+        themeLight: "Mwangaza",
+        pageTitle: "Giraffile - Twiga anayelinda faili zako",
+        hook: "Shiriki faili yoyote kwa siri",
+        desc2: "Mwamini twiga, si wingu",
+        btnBenefits: "Faida",
+        btnUpload: "Pakia faili",
+        useTitle: "Kwa nini utumie Giraffile?",
+        use1: "<strong>Kutoka kifaa chako hadi chao mara moja:</strong> Kwa kuwa uhamishaji ni 100% wa moja kwa moja kati ya vifaa, hakuna seva za polepole wala wasuluhishi.",
+        use2: "<strong>Aina yoyote ya faili:</strong> Tuma picha, PDF, faili zilizobanwa (ZIP/RAR), sauti au video.",
+        use3: "<strong>Faragha kamili:</strong> Utumaji salama wa faili bila kuacha athari kwenye seva za nje.",
+        prepare: "Andaa faili yako ya kutuma",
+        dropLabel: "Buruta faili yoyote au bofya hapa chini (Upeo 1.5GB):",
+        dropPrompt: "Buruta faili hapa au bofya ili kutafuta",
+        dropSelected: "Faili iliyochaguliwa:",
+        expiryLabel: "Muda wa kuisha:",
+        opt2: "Dakika 2 (Kwa faili ndogo)",
+        opt5: "Dakika 5",
+        opt10: "Dakika 10",
+        btnGenerate: "Tengeneza kiungo salama",
+        btnSendAnother: "Je, unataka kutuma faili nyingine?",
+        btnCopy: "Nakili Kiungo",
+        btnCopied: "Kiungo Kimenakiliwa!",
+        btnDownload: "Pakua Kamili",
+        textPreviewNotice: "Inaonyesha muhtasari wa faili ya maandishi. Kuona maudhui yote:",
+        noPreviewNotice: "Aina hii haihimili muhtasari katika kivinjari. Tumia kitufe kilicho hapa chini kupakua kwa usalama:",
+        errNoFile: "Tafadhali chagua au buruta faili kwanza.",
+        errNotAllowed: "Faili inazidi ukubwa wa juu unaoruhusiwa (Upeo 1.5GB).",
+        successLink: "Kiungo kimetengenezwa kwa mafanikio!",
+        previewTitle: "Tazama faili yako",
+        timeRemaining: "Muda wa kutazama uliobaki:",
+        fileLabel: "Faili:",
+        errNoExist: "Faili haipo au imeshafutwa kwa sababu za usalama.",
+        errExpired: "Kiungo hiki kimeisha muda wake na maudhui yameharibiwa kabisa!",
+        errTimeOut: "Muda umeisha! Faili imefutwa kabisa na kwa usalama kutoka kwenye kumbukumbu.",
+        p2pConnecting: "Inapakia faili...",
+        p2pEstimado: "Muda unaokadiriwa kubaki:",
+        p2pCalculando: "inakadiriwa...",
+        descifrando: "Inaandaa faili...",
+        qrLabel: "Piga picha ya QR ili kupokea faili",
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.4.0 | © 2026 jahp. Haki zote zimehifadhiwa. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Taarifa ya Kisheria</a>',
+        disclaimerTitle: "Taarifa ya Utekelezaji wa Sheria",
+        disclaimerBody: `
+        <p><strong>Giraffile</strong> inafanya kazi kama njia ya kibinafsi ya P2P (Peer-to-Peer) moja kwa moja kati ya vifaa. Faili hazipakiwi, hazichunguzwi wala hazihifadhiwi kwenye seva yoyote ya nje.</p>
+        <p><strong>Ilani kuhusu programu haramu (Malware):</strong> Kwa kuwa uhamishaji ni wa moja kwa moja na umesimbwa kwa njia fiche, mfumo hauchunguzi au kuhakiki usalama wa yaliyomo. <strong>Giraffile haitawajibika</strong> kwa programu dharau au virusi vinavyotumwa kupitia viungo. Ni wajibu wa mpokeaji kuhakiki chanzo cha faili na kuwa na kingavirusi kabla ya kupakua.</p>
+        `,
+        spaceLabel: "Nafasi:",
+        filesInQueue: "faili kwenye foleni",
+        errLocalDB: "Hitilafu ya ndani wakati wa kuchakata hifadhi.",
+        textTruncated: "[... Faili imefupishwa kwa utendaji bora ili kuzuia kivinjari kukwama ...]",
+        defaultFileName: "faili_iliyopakuliwa",
+        chooseTitle: "Ungependa kupokea vipi faili hii?",
+        btnSaveToDisk: "Hifadhi kwenye diski",
+        btnViewInBrowser: "Tazama kwenye kivinjari",
+        saveToDiskNotice: "Inaandikwa moja kwa moja kwenye kifaa chako inapowasili. <strong>Haishi muda:</strong> faili inakaa kwenye kifaa chako na wewe unaamua wakati wa kuifuta.",
+        viewInBrowserNotice: "Inapakia kwenye kumbukumbu ya kivinjari, na kihakiki na kipima muda. <strong>Inaharibiwa inapoisha muda.</strong> Inapendekezwa kwa faili ndogo.",
+        savingToDisk: "Inahifadhi kwenye diski yako...",
+        savedToDiskTitle: "Faili imehifadhiwa kwenye kifaa chako",
+        savedToDiskNotice: "Faili hii haitegemei tena Giraffile wala haiishi muda: ipo kwenye kifaa chako. Ifute mwenyewe pale utakapokuwa huihitaji tena.",
+        errSaveCancelled: "Uhifadhi umeghairiwa. Chagua jinsi unavyotaka kupokea faili.",
+        errSaveFailed: "Kushindwa kuandika faili kwenye diski. Jaribu tena au ipokee kwenye kivinjari."
     }
 };
 
