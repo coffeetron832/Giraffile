@@ -561,7 +561,7 @@ progress::-webkit-progress-value {
     background-color: var(--accent-color); 
     color: #121212; 
     border: 1px solid transparent; 
-    backdrop-filter: none; /
+    backdrop-filter: none;
     -webkit-backdrop-filter: none;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
 }

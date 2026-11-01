@@ -11,6 +11,9 @@ let objetoUrlActivo = null; // Control de RAM
 // Colección global para persistir la cola de múltiples archivos seleccionados
 let coleccionArchivos = [];
 
+// Control de pasos del formulario
+let pasoActual = 1;
+
 const DB_NAME = "GirafileDB"; 
 const DB_VERSION = 1;
 const STORE_NAME = "archivos";
@@ -97,6 +100,38 @@ window.onload = function() {
     verificarLinkCompartido();
 };
 
+// Función para controlar la navegación entre los 3 pasos
+function irAlPaso(paso) {
+    pasoActual = paso;
+    
+    const s1 = document.getElementById('step1');
+    const s2 = document.getElementById('step2');
+    const s3 = document.getElementById('step3');
+    
+    if (s1) s1.style.display = 'none';
+    if (s2) s2.style.display = 'none';
+    if (s3) s3.style.display = 'none';
+    
+    const pasoActivo = document.getElementById(`step${paso}`);
+    if (pasoActivo) pasoActivo.style.display = 'block';
+
+    for (let i = 1; i <= 3; i++) {
+        const ind = document.getElementById(`indicatorStep${i}`);
+        if (ind) {
+            if (i === paso) {
+                ind.style.opacity = '1';
+                ind.style.color = 'var(--accent-color, #28a745)';
+            } else if (i < paso) {
+                ind.style.opacity = '0.8';
+                ind.style.color = 'var(--text-color)';
+            } else {
+                ind.style.opacity = '0.4';
+                ind.style.color = 'var(--text-color)';
+            }
+        }
+    }
+}
+
 // Muestra exclusivamente las 3 tarjetas de beneficios omitiendo logo y eslogan
 function renderizarSoloTarjetasBeneficios() {
     const infoBoxContainer = document.getElementById('infoBoxContainer');
@@ -128,15 +163,23 @@ function manejarSeleccionArchivo(inputOrData) {
     const barreLimite = document.getElementById('barreLimite');
     const lblLimite = document.getElementById('lblLimite');
     const listaArchivos = document.getElementById('listaArchivos');
+    const btnNext = document.getElementById('btnNextToStep2');
     const t = i18n[currentLang];
     
-    const nuevosArchivos = Array.from(inputOrData.files || []);
+    let nuevosArchivos = [];
+    if (inputOrData.files) {
+        nuevosArchivos = Array.from(inputOrData.files);
+    } else if (inputOrData instanceof HTMLInputElement) {
+        nuevosArchivos = Array.from(inputOrData.files);
+    }
+
     if (nuevosArchivos.length > 0) {
         coleccionArchivos = coleccionArchivos.concat(nuevosArchivos);
     }
     
     if (coleccionArchivos.length === 0) {
         if (limiteContainer) limiteContainer.style.display = "none";
+        if (btnNext) btnNext.style.display = "none";
         archivoCargado = null;
         if (typeof aplicarTraduccion === 'function') aplicarTraduccion();
         return;
@@ -167,6 +210,7 @@ function manejarSeleccionArchivo(inputOrData) {
         archivoCargado = null;
         if (errorMsg) errorMsg.innerText = t.errNotAllowed;
         if (barreLimite) barreLimite.style.setProperty("accent-color", "red");
+        if (btnNext) btnNext.style.display = "none";
     } else {
         if (errorMsg) errorMsg.innerText = "";
         if (barreLimite) barreLimite.style.setProperty("accent-color", "var(--accent-color, #28a745)");
@@ -178,6 +222,10 @@ function manejarSeleccionArchivo(inputOrData) {
             type: coleccionArchivos.length === 1 ? coleccionArchivos[0].type : "application/zip"
         };
         if (typeof aplicarTraduccion === 'function') aplicarTraduccion();
+        
+        if (btnNext && coleccionArchivos.length > 0) {
+            btnNext.style.display = 'block';
+        }
     }
 }
 
@@ -880,6 +928,8 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
             if (timerGroup) timerGroup.style.display = "none";
             if (metaDiv) metaDiv.style.display = "none";
             if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errTimeOut)}</p>`;
+            const btnDescarga = document.getElementById('btnDescargaDirecta');
+            if (btnDescarga) btnDescarga.style.display = 'none';
             return;
         }
 
@@ -901,12 +951,9 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
     const permiteVistaPrevia = data.size <= MAX_PREVIEW_SIZE_BYTES;
 
     if (permiteVistaPrevia && data.type.startsWith("image/")) {
-        contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px;">`;
+        contentDiv.innerHTML = `<img src="${urlObjeto}" style="max-width:100%; height:auto; border-radius: 4px; display: block; margin-left: auto; margin-right: auto;">`;
     } else if (permiteVistaPrevia && data.type === "application/pdf") {
-        contentDiv.innerHTML = `
-            <embed src="${urlObjeto}" type="application/pdf" width="100%" height="450px" style="border-radius: 4px; margin-bottom:10px;">
-            <a href="${urlObjeto}" download="${escaparHTML(data.name)}" class="btn btn-primary" style="text-decoration:none; text-align:center; display:block;">${escaparHTML(t.btnDownload)}</a>
-        `;
+        contentDiv.innerHTML = `<embed src="${urlObjeto}" type="application/pdf" width="100%" height="450px" style="border-radius: 4px;">`;
     } else if (permiteVistaPrevia && (data.type.startsWith("text/") || data.name.endsWith(".json") || data.name.endsWith(".js") || data.name.endsWith(".css"))) {
         const bytesVistaPrevia = 50 * 1024;
         const fragmentoSeguro = data.blob.slice(0, bytesVistaPrevia);
@@ -914,28 +961,32 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         
         lectorTexto.onload = function(evt) {
             let textoFormateado = escaparHTML(evt.target.result);
-            let descargaAdicional = '';
             
             if (data.size > bytesVistaPrevia) {
                 textoFormateado += `\n\n${t.textTruncated || ''}`;
-                descargaAdicional = `<p style="font-size:0.9em; margin: 15px 0 5px 0; color:var(--footer-color); text-align:center;">${escaparHTML(t.textPreviewNotice || '')}</p>`;
             }
             
             contentDiv.innerHTML = `
                 <pre style="white-space: pre-wrap; background: var(--timer-bg); padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.9em; text-align:left;">${textoFormateado}</pre>
-                ${descargaAdicional}
-                <a href="${urlObjeto}" download="${escaparHTML(data.name)}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block; margin-top:5px;">${escaparHTML(t.btnDownload)}</a>
             `;
         };
         lectorTexto.readAsText(fragmentoSeguro);
     } else {
         contentDiv.innerHTML = `
-            <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center; margin-bottom: 10px;">
+            <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center;">
                 <p style="font-size: 0.95em; color: var(--text-color); margin-bottom: 15px;">${escaparHTML(t.noPreviewNotice)}</p>
                 <strong style="word-break: break-all; font-size: 1.1em; display: block; color: var(--text-color);">${escaparHTML(data.name)}</strong>
             </div>
-            <a href="${urlObjeto}" download="${escaparHTML(data.name)}" class="btn btn-primary" style="text-decoration: none; text-align:center; display:block;">${escaparHTML(t.btnDownload)}</a>
         `;
+    }
+
+    // CONTROLADOR ESTÁTICO DEL BOTÓN DE DESCARGA: Se muestra siempre de forma independiente
+    const btnDescarga = document.getElementById('btnDescargaDirecta');
+    if (btnDescarga) {
+        btnDescarga.href = urlObjeto;
+        btnDescarga.download = data.name;
+        btnDescarga.innerText = t.btnDownload;
+        btnDescarga.style.display = 'block';
     }
 }
 

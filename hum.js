@@ -11,7 +11,7 @@ const i18n = {
         hook: "Comparte cualquier archivo de forma privada",
         desc2: "Confía en la jirafa, no en la nube",
         btnBenefits: "Beneficios",
-        btnUpload: "Subir archivo",
+        btnUpload: "Empezar",
         useTitle: "¿Por qué usar Giraffile?",
         use1: "<strong>De tu dispositivo al suyo al instante:</strong> Como la transferencia es 100% directa entre dispositivos, no hay servidores lentos ni intermediarios en el medio.",
         use2: "<strong>Cualquier Formato:</strong> Envía imágenes, PDFs, archivos comprimidos (ZIP/RAR), audios o videos.",
@@ -45,7 +45,7 @@ const i18n = {
         p2pCalculando: "calculando...",
         descifrando: "Preparando archivo ...",
         qrLabel: "Escanea para recibir el archivo",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.4.0 | © 2026 jahp. Todos los derechos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.5.0 | © 2026 jahp. Todos los derechos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
         disclaimerTitle: "Descargo de Responsabilidad (Disclaimer)",
         disclaimerBody: `
         <p><strong>Giraffile</strong> funciona como un canal de transporte privado P2P (Peer-to-Peer) directo entre dispositivos. Los archivos no se suben, analizan ni almacenan en ningún servidor externo.</p>
@@ -65,7 +65,21 @@ const i18n = {
         savedToDiskTitle: "Archivo guardado en tu equipo",
         savedToDiskNotice: "Este archivo ya no depende de Giraffile ni caduca: vive en tu equipo. Bórralo tú cuando no lo necesites.",
         errSaveCancelled: "Guardado cancelado. Elige cómo quieres recibir el archivo.",
-        errSaveFailed: "No se pudo escribir el archivo en el disco. Vuelve a intentarlo o recíbelo en el navegador."
+        errSaveFailed: "No se pudo escribir el archivo en el disco. Vuelve a intentarlo o recíbelo en el navegador.",
+        
+        step1Title: "Paso 1: Selecciona tu archivo",
+        step1Desc: "Elige el archivo que deseas compartir de forma directa y segura.",
+        step2Title: "Paso 2: Tiempo de vida",
+        step2Desc: "Define cuánto tiempo estará disponible el enlace antes de destruirse por completo.",
+        step3Title: "Paso 3: Generar enlace",
+        step3Desc: "Crea tu enlace seguro P2P listo para compartir de inmediato.",
+        btnNextStep: "Siguiente paso",
+        btnBack: "‹ Atrás",
+        btnNext: "Siguiente ›",
+        btnConfigBack: "‹ Volver a configuración",
+        indStep1: "1. Archivo",
+        indStep2: "2. Tiempo",
+        indStep3: "3. Enlace"
     },
     en: {
         themeDark: "Dark Mode",
@@ -74,7 +88,7 @@ const i18n = {
         hook: "Share any file privately",
         desc2: "Trust the giraffe, not the cloud",
         btnBenefits: "Benefits",
-        btnUpload: "Upload file",
+        btnUpload: "Start",
         useTitle: "Why use Giraffile?",
         use1: "<strong>From your device to theirs in an instant:</strong> Since the transfer is 100% direct between devices, there are no slow servers or intermediaries involved.",
         use2: "<strong>Any format welcome:</strong> Send images, PDFs, compressed archives (ZIP/RAR), audio, or videos.",
@@ -108,7 +122,7 @@ const i18n = {
         p2pCalculando: "calculating...",
         descifrando: "Preparing file...",
         qrLabel: "Scan to receive the file",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.4.0 | © 2026 jahp. All rights reserved. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Legal Disclaimer</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.5.0 | © 2026 jahp. All rights reserved. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Legal Disclaimer</a>',
         disclaimerTitle: "Legal Disclaimer",
         disclaimerBody: `
         <p><strong>Giraffile</strong> operates as a private, content-agnostic P2P (Peer-to-Peer) transport channel directly between devices. Files are never uploaded, scanned, or stored on external servers.</p>
@@ -128,7 +142,21 @@ const i18n = {
         savedToDiskTitle: "File saved to your device",
         savedToDiskNotice: "This file no longer depends on Giraffile and does not expire: it lives on your device. Delete it yourself when you no longer need it.",
         errSaveCancelled: "Save cancelled. Choose how you want to receive the file.",
-        errSaveFailed: "The file could not be written to disk. Try again or receive it in the browser."
+        errSaveFailed: "The file could not be written to disk. Try again or receive it in the browser.",
+        
+        step1Title: "Step 1: Select your file",
+        step1Desc: "Choose the file you want to share directly and securely.",
+        step2Title: "Step 2: Lifetime",
+        step2Desc: "Define how long the link will be available before being permanently destroyed.",
+        step3Title: "Step 3: Generate link",
+        step3Desc: "Create your secure P2P link ready to share right away.",
+        btnNextStep: "Next step",
+        btnBack: "‹ Back",
+        btnNext: "Next ›",
+        btnConfigBack: "‹ Back to settings",
+        indStep1: "1. File",
+        indStep2: "2. Time",
+        indStep3: "3. Link"
     },
     pt: {
         themeDark: "Modo Escuro",
@@ -137,7 +165,7 @@ const i18n = {
         hook: "Compartilhe qualquer arquivo de forma privada",
         desc2: "Confie na girafa, não na nuvem",
         btnBenefits: "Benefícios",
-        btnUpload: "Enviar arquivo",
+        btnUpload: "Começar",
         useTitle: "Por que usar o Giraffile?",
         use1: "<strong>Do seu dispositivo para o dele instantaneamente:</strong> Como a transferência é 100% direta entre dispositivos, não há servidores lentos nem intermediários.",
         use2: "<strong>Qualquer formato:</strong> Envie imagens, PDFs, arquivos compactados (ZIP/RAR), áudios ou vídeos.",
@@ -171,7 +199,7 @@ const i18n = {
         p2pCalculando: "calculando...",
         descifrando: "Preparando arquivo...",
         qrLabel: "Escaneie para receber o arquivo",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.4.0 | © 2026 jahp. Todos os direitos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.5.0 | © 2026 jahp. Todos os direitos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
         disclaimerTitle: "Isenção de Responsabilidade",
         disclaimerBody: `
         <p>O <strong>Giraffile</strong> funciona como um canal de transporte privado P2P (Peer-to-Peer) direto entre dispositivos. Os arquivos nunca são enviados, analisados ou armazenados em servidores externos.</p>
@@ -191,7 +219,21 @@ const i18n = {
         savedToDiskTitle: "Arquivo salvo no seu dispositivo",
         savedToDiskNotice: "Este arquivo não depende mais do Giraffile e não expira. Exclua-o quando não precisar mais.",
         errSaveCancelled: "Salvamento cancelado. Escolha como deseja receber o arquivo.",
-        errSaveFailed: "Não foi possível gravar o arquivo no disco. Tente novamente ou receba no navegador."
+        errSaveFailed: "Não foi possível gravar o arquivo no disco. Tente novamente ou receba no navegador.",
+        
+        step1Title: "Passo 1: Selecione seu arquivo",
+        step1Desc: "Escolha o arquivo que deseja compartilhar direta e com segurança.",
+        step2Title: "Passo 2: Tempo de vida",
+        step2Desc: "Defina por quanto tempo o link estará disponível antes de ser destruído.",
+        step3Title: "Passo 3: Gerar link",
+        step3Desc: "Crie seu link P2P seguro pronto para compartilhar imediatamente.",
+        btnNextStep: "Próximo passo",
+        btnBack: "‹ Voltar",
+        btnNext: "Próximo ›",
+        btnConfigBack: "‹ Voltar para configurações",
+        indStep1: "1. Arquivo",
+        indStep2: "2. Tempo",
+        indStep3: "3. Link"
     },
     fr: {
         themeDark: "Mode Sombre",
@@ -200,7 +242,7 @@ const i18n = {
         hook: "Partagez n'importe quel fichier en toute confidentialité",
         desc2: "Faites confiance à la girafe, pas au cloud",
         btnBenefits: "Avantages",
-        btnUpload: "Téléverser un fichier",
+        btnUpload: "Commencer",
         useTitle: "Pourquoi utiliser Giraffile ?",
         use1: "<strong>De votre appareil au sien en un instant :</strong> Le transfert étant 100% direct entre appareils, il n'y a ni serveurs lents ni intermédiaires.",
         use2: "<strong>Tous formats acceptés :</strong> Envoyez des images, des PDF, des archives (ZIP/RAR), de l'audio ou des vidéos.",
@@ -234,7 +276,7 @@ const i18n = {
         p2pCalculando: "calcul en cours...",
         descifrando: "Préparation du fichier...",
         qrLabel: "Scannez pour recevoir le fichier",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.4.0 | © 2026 jahp. Tous droits réservés. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Avis Juridique</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.5.0 | © 2026 jahp. Tous droits réservés. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Avis Juridique</a>',
         disclaimerTitle: "Clause de Non-Responsabilité",
         disclaimerBody: `
         <p><strong>Giraffile</strong> fonctionne comme un canal de transport privé P2P (Peer-to-Peer) direct entre appareils. Les fichiers ne sont jamais téléversés, analysés ou stockés sur des serveurs externes.</p>
@@ -254,7 +296,21 @@ const i18n = {
         savedToDiskTitle: "Fichier enregistré sur votre appareil",
         savedToDiskNotice: "Ce fichier ne dépend plus de Giraffile et n'expire pas : il est sur votre appareil.",
         errSaveCancelled: "Enregistrement annulé. Choisissez comment recevoir le fichier.",
-        errSaveFailed: "Impossible d'écrire le fichier sur le disque. Réessayez ou recevez-le dans le navigateur."
+        errSaveFailed: "Impossible d'écrire le fichier sur le disque. Réessayez ou recevez-le dans le navigateur.",
+        
+        step1Title: "Étape 1 : Sélectionnez votre fichier",
+        step1Desc: "Choisissez le fichier que vous souhaitez partager directement et en toute sécurité.",
+        step2Title: "Étape 2 : Durée de vie",
+        step2Desc: "Définissez combien de temps le lien sera disponible avant d'être détruit.",
+        step3Title: "Étape 3 : Générer le lien",
+        step3Desc: "Créez votre lien P2P sécurisé prêt à être partagé immédiatement.",
+        btnNextStep: "Étape suivante",
+        btnBack: "‹ Retour",
+        btnNext: "Suivant ›",
+        btnConfigBack: "‹ Retour aux paramètres",
+        indStep1: "1. Fichier",
+        indStep2: "2. Temps",
+        indStep3: "3. Lien"
     },
     sw: {
         themeDark: "Giza",
@@ -263,7 +319,7 @@ const i18n = {
         hook: "Shiriki faili yoyote kwa siri",
         desc2: "Mwamini twiga, si wingu",
         btnBenefits: "Faida",
-        btnUpload: "Pakia faili",
+        btnUpload: "Anza",
         useTitle: "Kwa nini utumie Giraffile?",
         use1: "<strong>Kutoka kifaa chako hadi chao mara moja:</strong> Kwa kuwa uhamishaji ni 100% wa moja kwa moja kati ya vifaa, hakuna seva za polepole wala wasuluhishi.",
         use2: "<strong>Aina yoyote ya faili:</strong> Tuma picha, PDF, faili zilizobanwa (ZIP/RAR), sauti au video.",
@@ -297,7 +353,7 @@ const i18n = {
         p2pCalculando: "inakadiriwa...",
         descifrando: "Inaandaa faili...",
         qrLabel: "Piga picha ya QR ili kupokea faili",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.4.0 | © 2026 jahp. Haki zote zimehifadhiwa. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Taarifa ya Kisheria</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.5.0 | © 2026 jahp. Haki zote zimehifadhiwa. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Taarifa ya Kisheria</a>',
         disclaimerTitle: "Taarifa ya Utekelezaji wa Sheria",
         disclaimerBody: `
         <p><strong>Giraffile</strong> inafanya kazi kama njia ya kibinafsi ya P2P (Peer-to-Peer) moja kwa moja kati ya vifaa. Faili hazipakiwi, hazichunguzwi wala hazihifadhiwi kwenye seva yoyote ya nje.</p>
@@ -317,7 +373,21 @@ const i18n = {
         savedToDiskTitle: "Faili imehifadhiwa kwenye kifaa chako",
         savedToDiskNotice: "Faili hii haitegemei tena Giraffile wala haiishi muda: ipo kwenye kifaa chako. Ifute mwenyewe pale utakapokuwa huihitaji tena.",
         errSaveCancelled: "Uhifadhi umeghairiwa. Chagua jinsi unavyotaka kupokea faili.",
-        errSaveFailed: "Kushindwa kuandika faili kwenye diski. Jaribu tena au ipokee kwenye kivinjari."
+        errSaveFailed: "Kushindwa kuandika faili kwenye diski. Jaribu tena au ipokee kwenye kivinjari.",
+        
+        step1Title: "Hatua ya 1: Chagua faili yako",
+        step1Desc: "Chagua faili unayotaka kushiriki moja kwa moja na kwa usalama.",
+        step2Title: "Hatua ya 2: Muda wa kuishi",
+        step2Desc: "Amua muda ambao kiungo kitapatikana kabla ya kuharibiwa kabisa.",
+        step3Title: "Hatua ya 3: Tengeneza kiungo",
+        step3Desc: "Tengeneza kiungo chako salama cha P2P kilicho tayari kushirikiwa mara moja.",
+        btnNextStep: "Hatua inayofuata",
+        btnBack: "‹ Nyuma",
+        btnNext: "Mbele ›",
+        btnConfigBack: "‹ Rudi kwenye mipangilio",
+        indStep1: "1. Faili",
+        indStep2: "2. Muda",
+        indStep3: "3. Kiungo"
     }
 };
 
@@ -391,17 +461,39 @@ function aplicarTraduccion() {
         `;
     }
 
-    // 3. Traducción de elementos de navegación, formulario y pie de página
+    // 3. Traducción de elementos de navegación, formulario, pasos y pie de página
     if (document.getElementById('btnBeneficios')) document.getElementById('btnBeneficios').innerText = t.btnBenefits;
     if (document.getElementById('btnSubirArchivo')) document.getElementById('btnSubirArchivo').innerText = t.btnUpload;
-    if (document.getElementById('lblPrepare')) document.getElementById('lblPrepare').innerText = t.prepare;
+    
+    // Traducciones de textos de los pasos
+    if (document.getElementById('lblStep1Title')) document.getElementById('lblStep1Title').innerText = t.step1Title;
+    if (document.getElementById('lblStep1Desc')) document.getElementById('lblStep1Desc').innerText = t.step1Desc;
+    if (document.getElementById('lblStep2Title')) document.getElementById('lblStep2Title').innerText = t.step2Title;
+    if (document.getElementById('lblStep2Desc')) document.getElementById('lblStep2Desc').innerText = t.step2Desc;
+    if (document.getElementById('lblStep3Title')) document.getElementById('lblStep3Title').innerText = t.step3Title;
+    if (document.getElementById('lblStep3Desc')) document.getElementById('lblStep3Desc').innerText = t.step3Desc;
+
+    // Botones de pasos e indicadores
+    if (document.getElementById('btnNextToStep2')) document.getElementById('btnNextToStep2').innerText = t.btnNextStep;
+    if (document.getElementById('btnStep2Back')) document.getElementById('btnStep2Back').innerText = t.btnBack;
+    if (document.getElementById('btnStep2Next')) document.getElementById('btnStep2Next').innerText = t.btnNext;
+    if (document.getElementById('btnStep3Back')) document.getElementById('btnStep3Back').innerText = t.btnConfigBack;
+
+    if (document.getElementById('indicatorStep1')) document.getElementById('indicatorStep1').innerText = t.indStep1;
+    if (document.getElementById('indicatorStep2')) document.getElementById('indicatorStep2').innerText = t.indStep2;
+    if (document.getElementById('indicatorStep3')) document.getElementById('indicatorStep3').innerText = t.indStep3;
+
     if (document.getElementById('lblDropZone')) document.getElementById('lblDropZone').innerText = t.dropLabel;
     if (document.getElementById('lblExpiry')) document.getElementById('lblExpiry').innerText = t.expiryLabel;
     if (document.getElementById('opt2m')) document.getElementById('opt2m').innerText = t.opt2;
     if (document.getElementById('opt5m')) document.getElementById('opt5m').innerText = t.opt5;
     if (document.getElementById('opt10m')) document.getElementById('opt10m').innerText = t.opt10;
     if (document.getElementById('btnGenerar')) document.getElementById('btnGenerar').innerText = t.btnGenerate;
+    
+    // Traducción de los botones inferiores (Descarga directa y Enviar otro)
+    if (document.getElementById('btnDescargaDirecta')) document.getElementById('btnDescargaDirecta').innerText = t.btnDownload;
     if (document.getElementById('btnSendAnother')) document.getElementById('btnSendAnother').innerText = t.btnSendAnother;
+
     if (document.getElementById('lblPreviewTitle')) document.getElementById('lblPreviewTitle').innerText = t.previewTitle;
     if (document.getElementById('lblTimeRemaining')) document.getElementById('lblTimeRemaining').innerText = t.timeRemaining;
     if (document.getElementById('footerText')) document.getElementById('footerText').innerHTML = t.footer;

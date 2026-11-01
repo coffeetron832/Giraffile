@@ -21,176 +21,204 @@
 <body>
 
     <header class="hero-banner" id="hero-header">
-        <div class="top-controls">
+        <div class="top-controls" style="margin-bottom: 25px;">
             <!-- Logo e identidad en el extremo izquierdo -->
             <a href="#" class="top-logo-link" onclick="volverInicio(); return false;">
                 <img src="giraffe.svg" alt="Giraffile Logo" class="top-logo-img">
             </a>
 
-            <!-- Botón de regresar (Aparece solo al accionar una vista) -->
-            <div id="navBackContainer" style="display: none;">
-                <button class="back-btn" onclick="volverInicio()" aria-label="Volver al inicio" style="background: transparent; border: none; color: var(--text-color); cursor: pointer; display: flex; align-items: center; padding: 6px; border-radius: 50%;">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="19" y1="12" x2="5" y2="12"></line>
-                        <polyline points="12 19 5 12 12 5"></polyline>
-                    </svg>
-                </button>
-            </div>
-
             <!-- Botones y controles en el extremo derecho -->
             <div class="top-actions">
-    <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)" aria-label="Seleccionar idioma">
-        <option value="es">Español</option>
-        <option value="en">English</option>
-        <option value="sw">SW - Kiswahili</option>
-        <option value="pt">Português</option>
-        <option value="fr">Français</option>
-    </select>
-    <button class="credit-toggle" data-tooltip="Photo by Wolfgang Hasselmann (Unsplash)" onclick="window.open('https://unsplash.com/es/fotos/jirafa-bajo-el-cielo-azul-durante-el-dia-Fqik7i0LkcM', '_blank')">💛</button>
-</div>
+                <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)" aria-label="Seleccionar idioma">
+                    <option value="es">Español</option>
+                    <option value="en">English</option>
+                    <option value="sw">SW - Kiswahili</option>
+                    <option value="pt">Português</option>
+                    <option value="fr">Français</option>
+                </select>
+                <button class="credit-toggle" data-tooltip="Photo by Wolfgang Hasselmann (Unsplash)" onclick="window.open('https://unsplash.com/es/fotos/jirafa-bajo-el-cielo-azul-durante-el-dia-Fqik7i0LkcM', '_blank')">💛</button>
+            </div>
         </div>
 
-        <!-- Contenedor Fijo: Eslogan (Se oculta al abrir una vista) -->
+        <!-- Contenedor Fijo: Eslogan -->
         <div id="brandHeroContainer"></div>
 
         <div class="hero-content">
-            <!-- Botones de navegación principal -->
-            <div id="heroNavButtons" style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px;">
+            <!-- Botones de navegación principal con mayor espacio -->
+            <div id="heroNavButtons" style="display: flex; justify-content: center; gap: 15px; margin-bottom: 30px;">
                 <button class="btn" id="btnBeneficios" onclick="mostrarBanner()">Beneficios</button>
-                <button class="btn btn-primary" id="btnSubirArchivo" onclick="mostrarCarga()">Subir archivo</button>
+                <button class="btn btn-primary" id="btnSubirArchivo" onclick="mostrarCarga()">Empezar</button>
             </div>
+        </div>
 
-            <!-- VISTA 1: Tarjetas de Beneficios (Inician ocultas) -->
-            <div id="viewBanner" class="view-section hidden-view fade-in-down">
-                <div class="info-box active" id="infoBoxContainer"></div>
-            </div>
+        <!-- VISTA 1: Tarjetas de Beneficios -->
+        <div id="viewBanner" class="view-section hidden-view fade-in-down">
+            <div class="info-box active" id="infoBoxContainer"></div>
+        </div>
 
-            <!-- VISTA 2: Panel de Carga y Configuración -->
-            <div id="viewUpload" class="view-section hidden-view">
-                <div id="main-wrapper">
+        <!-- VISTA 2: Panel de Carga y Configuración (Estructurado en 3 pasos) -->
+        <div id="viewUpload" class="view-section hidden-view">
+            <div id="main-wrapper" style="display: flex; flex-direction: column; gap: 20px;">
+                
+                <!-- Panel Principal de Pasos -->
+                <div id="upload-section" class="upload-card" style="padding: 25px;">
                     
-                    <!-- Panel para Enviar / Subir Archivo -->
-                    <div id="upload-section" class="upload-card">
-                        <h3 id="lblPrepare" style="margin-top: 0;">Prepara tu archivo para enviar</h3>
+                    <!-- Indicador Visual de Pasos Centrado -->
+                    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
+                        <div class="steps-indicator" style="display: flex; align-items: center; gap: 12px; font-size: 0.9em; font-weight: bold;">
+                            <span id="indicatorStep1" class="step-dot" style="opacity: 1; color: var(--accent-color, #28a745);">1. Archivo</span>
+                            <span style="opacity: 0.3;">›</span>
+                            <span id="indicatorStep2" class="step-dot" style="opacity: 0.5;">2. Tiempo</span>
+                            <span style="opacity: 0.3;">›</span>
+                            <span id="indicatorStep3" class="step-dot" style="opacity: 0.5;">3. Enlace</span>
+                        </div>
+                    </div>
+
+                    <!-- PASO 1: Selección de Archivo -->
+                    <div id="step1" class="wizard-step">
+                        <div style="margin-bottom: 20px;">
+                            <h3 id="lblStep1Title" style="margin: 0 0 8px 0; font-size: 1.3rem; color: var(--text-color);">Paso 1: Selecciona tu archivo</h3>
+                            <p id="lblStep1Desc" style="margin: 0; font-size: 0.95em; color: #f0f0f0; line-height: 1.4;">Elige el archivo que deseas compartir de forma directa y segura.</p>
+                        </div>
                         
-                        <div class="control-group">
-                            <label id="lblDropZone">Arrastra tus archivos o haz clic abajo (Máx 1.5GB):</label><br><br>
+                        <div class="control-group" style="margin-bottom: 20px;">
+                            <label id="lblDropZone" style="font-weight: 500; color: var(--text-color); display: block; margin-bottom: 12px;">Arrastra tus archivos o haz clic abajo (Máx 1.5GB):</label>
                             
-                            <!-- Zona de arrastre P2P -->
-                            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                            <!-- Zona de arrastre P2P con espacio interno holgado -->
+                            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" style="padding: 30px 20px;">
 
                                 <!-- Iconos SVG en el borde superior -->
-                                <div class="drop-zone-icons">
-                                    <!-- Documentos -->
+                                <div class="drop-zone-icons" style="margin-bottom: 15px; display: flex; gap: 12px; justify-content: center;">
                                     <span class="icon-tooltip" data-tooltip="PDF, DOCX, TXT, PPTX">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
-                                        </svg>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
                                     </span>
-
-                                    <!-- Imágenes -->
                                     <span class="icon-tooltip" data-tooltip="PNG, JPG, WEBP, SVG, GIF">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-                                        </svg>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
                                     </span>
-
-                                    <!-- Audio -->
                                     <span class="icon-tooltip" data-tooltip="MP3, WAV, FLAC, OGG">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                                        </svg>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
                                     </span>
-
-                                    <!-- Video -->
                                     <span class="icon-tooltip" data-tooltip="MP4, MKV, WEBM, MOV">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-                                        </svg>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
                                     </span>
-
-                                    <!-- Comprimidos -->
                                     <span class="icon-tooltip" data-tooltip="ZIP, RAR, 7Z, TAR">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10h-2v-2h2v2zm0-4h-2v-2h2v2z"/>
-                                        </svg>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>
                                     </span>
                                 </div>
 
-                                <span id="dropZonePrompt">Arrastra un archivo aquí o haz clic para buscar</span>
-                                
+                                <span id="dropZonePrompt" style="display: block; margin-bottom: 10px; color: var(--text-color);">Arrastra un archivo aquí o haz clic para buscar</span>
                                 <input type="file" id="fileInput" style="display: none;" multiple onchange="manejarSeleccionArchivo(this)">
                                 
-                                <div id="limiteContainer" style="margin-top: 15px; display: none;" onclick="event.stopPropagation();">
-                                    <label id="lblLimite" style="font-size: 0.85em; font-weight: bold; display: block; margin-bottom: 5px; text-align: left; color: var(--text-color);"></label>
-                                    <progress id="barreLimite" value="0" max="100" style="width: 100%; height: 12px; transition: all 0.3s ease;"></progress>
-                                    <ul id="listaArchivos" style="text-align: left; max-height: 120px; overflow-y: auto; font-size: 0.85em; margin-top: 10px; padding-left: 20px; color: var(--text-color); list-style-type: square;"></ul>
+                                <div id="limiteContainer" style="margin-top: 20px; display: none;" onclick="event.stopPropagation();">
+                                    <label id="lblLimite" style="font-size: 0.9em; font-weight: bold; display: block; margin-bottom: 8px; text-align: left; color: var(--text-color);"></label>
+                                    <progress id="barreLimite" value="0" max="100" style="width: 100%; height: 14px; transition: all 0.3s ease;"></progress>
+                                    <ul id="listaArchivos" style="text-align: left; max-height: 140px; overflow-y: auto; font-size: 0.9em; margin-top: 12px; padding-left: 20px; color: var(--text-color); list-style-type: square;"></ul>
                                 </div>
                             </div>
-                            <p id="errorMsg" class="error" style="color: red; font-weight: bold; margin-top: 5px;"></p>
+                            <p id="errorMsg" class="error" style="color: #ff6b6b; font-weight: bold; margin-top: 10px;"></p>
                         </div>
 
-                        <div class="control-group">
-                            <label id="lblExpiry">Tiempo de Caducidad:</label><br>
-                            <select id="expiry" style="background: var(--box-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 6px; border-radius: 4px; margin-top: 5px; width: 100%;">
+                        <!-- Botón para avanzar al paso 2 -->
+                        <button class="btn btn-primary" id="btnNextToStep2" onclick="irAlPaso(2)" style="width: 100%; margin-top: 20px; padding: 14px; display: none; font-weight: bold;">Siguiente paso</button>
+                    </div>
+
+                    <!-- PASO 2: Configuración de Caducidad -->
+                    <div id="step2" class="wizard-step" style="display: none;">
+                        <div style="margin-bottom: 20px;">
+                            <h3 id="lblStep2Title" style="margin: 0 0 8px 0; font-size: 1.3rem; color: var(--text-color);">Paso 2: Tiempo de vida</h3>
+                            <p id="lblStep2Desc" style="margin: 0; font-size: 0.95em; color: #f0f0f0; line-height: 1.4;">Define cuánto tiempo estará disponible el enlace antes de destruirse por completo.</p>
+                        </div>
+
+                        <div class="control-group" style="margin-top: 20px; margin-bottom: 25px;">
+                            <label id="lblExpiry" for="expiry" style="font-weight: 500; color: var(--text-color); display: block; margin-bottom: 10px;">Tiempo de Caducidad:</label>
+                            <select id="expiry" style="background: var(--box-bg); color: var(--text-color); border: 1px solid var(--box-border); padding: 14px; border-radius: 6px; width: 100%; font-size: 1rem;">
                                 <option value="120" id="opt2m">2 Minutos</option>
                                 <option value="300" id="opt5m">5 Minutos</option>
                                 <option value="600" id="opt10m">10 Minutos</option> 
                             </select>
                         </div>
                         
-                        <button class="btn btn-primary" id="btnGenerar" onclick="generarLink()" style="width: 100%;">Generar enlace seguro</button>
-                        <div id="output"></div>
+                        <!-- Botones de navegación internos -->
+                        <div style="display: flex; gap: 15px; margin-top: 30px;">
+                            <button class="btn" id="btnStep2Back" onclick="irAlPaso(1)" style="width: 50%; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                ‹ Atrás
+                            </button>
+                            <button class="btn btn-primary" id="btnStep2Next" onclick="irAlPaso(3)" style="width: 50%; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: bold;">
+                                Siguiente ›
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Panel de Vista Previa para Receptor / Archivo Recibido -->
-                    <div id="preview">
-                        <h4 id="lblPreviewTitle">Visualizador de Archivo Seguro</h4>
-                        <div id="fileMeta" class="file-meta"></div>
-                        
-                        <div id="timerGroup" class="timer-container" style="display: none;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <span id="lblTimeRemaining">Tiempo restante de visualización:</span>
-                                <strong id="timeString">--:--</strong>
-                            </div>
-                            <progress id="lifeBar" value="100" max="100" style="width: 100%;"></progress>
+                    <!-- PASO 3: Generar Enlace y Resultado -->
+                    <div id="step3" class="wizard-step" style="display: none;">
+                        <div style="margin-bottom: 20px;">
+                            <h3 id="lblStep3Title" style="margin: 0 0 8px 0; font-size: 1.3rem; color: var(--text-color);">Paso 3: Generar enlace</h3>
+                            <p id="lblStep3Desc" style="margin: 0; font-size: 0.95em; color: #f0f0f0; line-height: 1.4;">Crea tu enlace seguro P2P listo para compartir de inmediato.</p>
                         </div>
 
-                        <div id="fileContent" style="margin-top: 15px;"></div>
-                    </div>
+                        <div style="margin-top: 20px;">
+                            <button class="btn btn-primary" id="btnGenerar" onclick="generarLink()" style="width: 100%; padding: 14px; font-weight: bold; font-size: 1rem;">Generar enlace seguro</button>
+                            <div id="output" style="margin-top: 15px;"></div>
+                        </div>
 
-                    <!-- Botón por fuera del contenedor #preview -->
-                    <div id="sendAnotherContainer" style="margin-top: 20px; text-align: center; display: none;">
-                        <button class="btn btn-primary" id="btnSendAnother" onclick="resetearParaNuevoEnvio()" style="width: 100%;">¿Quieres enviar un archivo?</button>
+                        <!-- Botón de retroceso interno -->
+                        <div style="margin-top: 25px;">
+                            <button class="btn" id="btnStep3Back" onclick="irAlPaso(2)" style="width: 100%; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                ‹ Volver a configuración
+                            </button>
+                        </div>
                     </div>
 
                 </div>
+
+                <!-- Panel de Vista Previa -->
+                <div id="preview" style="padding: 20px;">
+                    <h4 id="lblPreviewTitle" style="color: var(--text-color); margin-bottom: 12px;">Visualizador de Archivo Seguro</h4>
+                    <div id="fileMeta" class="file-meta" style="margin-bottom: 15px; color: var(--text-color);"></div>
+                    
+                    <div id="timerGroup" class="timer-container" style="display: none; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span id="lblTimeRemaining" style="color: var(--text-color);">Tiempo restante de visualización:</span>
+                            <strong id="timeString" style="color: var(--text-color);">--:--</strong>
+                        </div>
+                        <progress id="lifeBar" value="100" max="100" style="width: 100%; height: 12px;"></progress>
+                    </div>
+
+                    <div id="fileContent" style="margin-top: 15px;"></div>
+                </div>
+
+                <!-- Botones inferiores lado a lado (Descarga directa con estilo primario y Enviar otro con secundario) -->
+                <div id="sendAnotherContainer" style="margin-top: 20px; display: none;">
+                    <div style="display: flex; gap: 12px;">
+                        <a id="btnDescargaDirecta" href="#" class="btn btn-primary" style="display: none; text-decoration: none; text-align: center; padding: 14px; flex: 1; box-sizing: border-box; font-weight: bold;" download="">Descargar Completo</a>
+                        <button class="btn" id="btnSendAnother" onclick="resetearParaNuevoEnvio()" style="padding: 14px; flex: 1;">¿Quieres enviar un archivo?</button>
+                    </div>
+                </div>
+
             </div>
         </div>
     </header>
 
-    <footer id="footerText">
+    <footer id="footerText" style="margin-top: 40px; padding: 20px 0; color: #f0f0f0;">
         Giraffile v2.3.0 | © 2026 jahp. Todos los derechos reservados.
     </footer>
 
     <!-- Ventana Modal de Aviso Legal -->
     <div id="modalDisclaimer" class="modal-disclaimer" style="display: none;">
-        <div class="modal-content">
+        <div class="modal-content" style="padding: 30px;">
             <span class="close-disclaimer" onclick="cerrarDisclaimer()">&times;</span>
             <div id="disclaimerContenido"></div>
         </div>
     </div>
     
-    <!-- Lógica de navegación dinámica y control de elementos -->
+    <!-- Lógica de interfaz y control de vistas secundarias -->
     <script>
         function ocultarHome() {
             const brandHero = document.getElementById('brandHeroContainer');
             const navBtns = document.getElementById('heroNavButtons');
-            const backContainer = document.getElementById('navBackContainer');
 
             if (brandHero) brandHero.style.display = 'none';
             if (navBtns) navBtns.style.display = 'none';
-            if (backContainer) backContainer.style.display = 'block';
         }
 
         function mostrarCarga() {
@@ -201,6 +229,8 @@
             vBanner.classList.add('hidden-view');
             vUpload.classList.remove('hidden-view', 'fade-in-down');
             vUpload.classList.add('fade-in-up');
+            
+            if (typeof irAlPaso === 'function') irAlPaso(1);
         }
 
         function mostrarBanner() {
@@ -221,21 +251,16 @@
         function volverInicio() {
             const brandHero = document.getElementById('brandHeroContainer');
             const navBtns = document.getElementById('heroNavButtons');
-            const backContainer = document.getElementById('navBackContainer');
             const vBanner = document.getElementById('viewBanner');
             const vUpload = document.getElementById('viewUpload');
 
-            // Mostrar el eslogan y los botones de la portada
             if (brandHero) brandHero.style.display = 'block';
             if (navBtns) navBtns.style.display = 'flex';
-            if (backContainer) backContainer.style.display = 'none';
 
-            // Ocultar las vistas
             if (vBanner) vBanner.classList.add('hidden-view');
             if (vUpload) vUpload.classList.add('hidden-view');
         }
 
-        // Función para restaurar la interfaz al presionar "¿Quieres enviar un archivo?"
         function resetearParaNuevoEnvio() {
             const uploadSection = document.getElementById('upload-section');
             const previewSection = document.getElementById('preview');
@@ -244,12 +269,13 @@
             const output = document.getElementById('output');
             const fileContent = document.getElementById('fileContent');
             const fileMeta = document.getElementById('fileMeta');
+            const btnDescarga = document.getElementById('btnDescargaDirecta');
 
             if (previewSection) previewSection.style.display = 'none';
             if (sendAnotherContainer) sendAnotherContainer.style.display = 'none';
+            if (btnDescarga) btnDescarga.style.display = 'none';
             if (uploadSection) uploadSection.classList.remove('hidden-view');
             
-            // Limpiar inputs y contenidos
             if (fileInput) fileInput.value = '';
             if (output) output.innerHTML = '';
             if (fileContent) fileContent.innerHTML = '';
@@ -261,8 +287,18 @@
             mostrarCarga();
         }
 
-        // MutationObserver para detectar cuando se muestra el preview (vía link P2P) y ocultar automáticamente la zona de carga
         document.addEventListener('DOMContentLoaded', () => {
+            const limiteContainer = document.getElementById('limiteContainer');
+            const btnNext = document.getElementById('btnNextToStep2');
+
+            if (limiteContainer && btnNext) {
+                const observer = new MutationObserver(() => {
+                    const isVisible = window.getComputedStyle(limiteContainer).display !== 'none';
+                    btnNext.style.display = isVisible ? 'block' : 'none';
+                });
+                observer.observe(limiteContainer, { attributes: true, attributeFilter: ['style'] });
+            }
+
             const previewSection = document.getElementById('preview');
             const uploadSection = document.getElementById('upload-section');
             const sendAnotherContainer = document.getElementById('sendAnotherContainer');
