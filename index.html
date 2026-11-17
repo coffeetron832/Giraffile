@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giraffile - La jirafa que cuida tu privacidad</title>
+    <title>Giraffile - Comparte archivos de forma fácil, rápida y segura</title>
     <meta name="description" content="Giraffile permite compartir archivos de forma privada, segura y sin servidores intermedios. Envío P2P directo desde tu navegador.">
     <link rel="canonical" href="https://giraffile.pages.dev/">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -42,6 +42,30 @@
 
         <!-- Contenedor Fijo: Eslogan -->
         <div id="brandHeroContainer"></div>
+
+        <!-- Iconos SVG de formatos soportados con texto debajo -->
+        <div id="heroFormatIcons" style="margin-bottom: 28px; display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; position: relative; z-index: 2;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: var(--accent-color);"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                <span style="font-size: 0.72rem; font-weight: 500; color: var(--text-color); opacity: 0.9;">PDF, DOCX, TXT, PPTX</span>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: var(--accent-color);"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                <span style="font-size: 0.72rem; font-weight: 500; color: var(--text-color); opacity: 0.9;">PNG, JPG, WEBP, SVG, GIF</span>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: var(--accent-color);"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                <span style="font-size: 0.72rem; font-weight: 500; color: var(--text-color); opacity: 0.9;">MP3, WAV, FLAC, OGG</span>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: var(--accent-color);"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+                <span style="font-size: 0.72rem; font-weight: 500; color: var(--text-color); opacity: 0.9;">MP4, MKV, WEBM, MOV</span>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: var(--accent-color);"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>
+                <span style="font-size: 0.72rem; font-weight: 500; color: var(--text-color); opacity: 0.9;">ZIP, RAR, 7Z, TAR</span>
+            </div>
+        </div>
 
         <div class="hero-content">
             <!-- Botones de navegación principal con mayor espacio -->
@@ -84,28 +108,8 @@
                         <div class="control-group" style="margin-bottom: 20px;">
                             <label id="lblDropZone" style="font-weight: 500; color: var(--text-color); display: block; margin-bottom: 12px;">Arrastra tus archivos o haz clic abajo (Máx 1.5GB):</label>
                             
-                            <!-- Zona de arrastre P2P con espacio interno holgado -->
+                            <!-- Zona de arrastre P2P limpia -->
                             <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" style="padding: 30px 20px;">
-
-                                <!-- Iconos SVG en el borde superior -->
-                                <div class="drop-zone-icons" style="margin-bottom: 15px; display: flex; gap: 12px; justify-content: center;">
-                                    <span class="icon-tooltip" data-tooltip="PDF, DOCX, TXT, PPTX">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-                                    </span>
-                                    <span class="icon-tooltip" data-tooltip="PNG, JPG, WEBP, SVG, GIF">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-                                    </span>
-                                    <span class="icon-tooltip" data-tooltip="MP3, WAV, FLAC, OGG">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-                                    </span>
-                                    <span class="icon-tooltip" data-tooltip="MP4, MKV, WEBM, MOV">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
-                                    </span>
-                                    <span class="icon-tooltip" data-tooltip="ZIP, RAR, 7Z, TAR">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>
-                                    </span>
-                                </div>
-
                                 <span id="dropZonePrompt" style="display: block; margin-bottom: 10px; color: var(--text-color);">Arrastra un archivo aquí o haz clic para buscar</span>
                                 <input type="file" id="fileInput" style="display: none;" multiple onchange="manejarSeleccionArchivo(this)">
                                 
@@ -200,7 +204,7 @@
     </header>
 
     <footer id="footerText" style="margin-top: 40px; padding: 20px 0; color: #f0f0f0;">
-        Giraffile v2.3.0 | © 2026 jahp. Todos los derechos reservados.
+        Giraffile v2.6.0 | © 2026 jahp. Todos los derechos reservados.
     </footer>
 
     <!-- Ventana Modal de Aviso Legal -->
@@ -216,9 +220,11 @@
         function ocultarHome() {
             const brandHero = document.getElementById('brandHeroContainer');
             const navBtns = document.getElementById('heroNavButtons');
+            const formatIcons = document.getElementById('heroFormatIcons');
 
             if (brandHero) brandHero.style.display = 'none';
             if (navBtns) navBtns.style.display = 'none';
+            if (formatIcons) formatIcons.style.display = 'none';
         }
 
         function mostrarCarga() {
@@ -251,10 +257,12 @@
         function volverInicio() {
             const brandHero = document.getElementById('brandHeroContainer');
             const navBtns = document.getElementById('heroNavButtons');
+            const formatIcons = document.getElementById('heroFormatIcons');
             const vBanner = document.getElementById('viewBanner');
             const vUpload = document.getElementById('viewUpload');
 
             if (brandHero) brandHero.style.display = 'block';
+            if (formatIcons) formatIcons.style.display = 'flex';
             if (navBtns) navBtns.style.display = 'flex';
 
             if (vBanner) vBanner.classList.add('hidden-view');
@@ -322,6 +330,8 @@
     </script>
 
     <script src="hum.js"></script>
-    <script src="brain.js"></script>
+    <script src="core.js"></script>
+    <script src="p2p.js"></script>
+    <script src="ui.js"></script>
 </body>
 </html>

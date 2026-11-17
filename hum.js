@@ -7,9 +7,8 @@ const i18n = {
     es: {
         themeDark: "Modo Oscuro",
         themeLight: "Modo Claro",
-        pageTitle: "Giraffile - La jirafa que protege tus archivos",
+        pageTitle: "Giraffile - Comparte archivos de forma fácil, rápida y segura",
         hook: "Comparte cualquier archivo de forma privada",
-        desc2: "Confía en la jirafa, no en la nube",
         btnBenefits: "Beneficios",
         btnUpload: "Empezar",
         useTitle: "¿Por qué usar Giraffile?",
@@ -45,7 +44,7 @@ const i18n = {
         p2pCalculando: "calculando...",
         descifrando: "Preparando archivo ...",
         qrLabel: "Escanea para recibir el archivo",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.5.0 | © 2026 jahp. Todos los derechos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.6.0 | © 2026 jahp. Todos los derechos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
         disclaimerTitle: "Descargo de Responsabilidad (Disclaimer)",
         disclaimerBody: `
         <p><strong>Giraffile</strong> funciona como un canal de transporte privado P2P (Peer-to-Peer) directo entre dispositivos. Los archivos no se suben, analizan ni almacenan en ningún servidor externo.</p>
@@ -84,9 +83,8 @@ const i18n = {
     en: {
         themeDark: "Dark Mode",
         themeLight: "Light Mode",
-        pageTitle: "Giraffile - The giraffe that protects your files",
+        pageTitle: "Giraffile - Share files easily, quickly and securely",
         hook: "Share any file privately",
-        desc2: "Trust the giraffe, not the cloud",
         btnBenefits: "Benefits",
         btnUpload: "Start",
         useTitle: "Why use Giraffile?",
@@ -122,7 +120,7 @@ const i18n = {
         p2pCalculando: "calculating...",
         descifrando: "Preparing file...",
         qrLabel: "Scan to receive the file",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.5.0 | © 2026 jahp. All rights reserved. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Legal Disclaimer</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.6.0 | © 2026 jahp. All rights reserved. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Legal Disclaimer</a>',
         disclaimerTitle: "Legal Disclaimer",
         disclaimerBody: `
         <p><strong>Giraffile</strong> operates as a private, content-agnostic P2P (Peer-to-Peer) transport channel directly between devices. Files are never uploaded, scanned, or stored on external servers.</p>
@@ -161,9 +159,8 @@ const i18n = {
     pt: {
         themeDark: "Modo Escuro",
         themeLight: "Modo Claro",
-        pageTitle: "Giraffile - A girafa que protege os seus arquivos",
+        pageTitle: "Giraffile - Compartilhe arquivos de forma fácil, rápida e segura",
         hook: "Compartilhe qualquer arquivo de forma privada",
-        desc2: "Confie na girafa, não na nuvem",
         btnBenefits: "Benefícios",
         btnUpload: "Começar",
         useTitle: "Por que usar o Giraffile?",
@@ -199,7 +196,7 @@ const i18n = {
         p2pCalculando: "calculando...",
         descifrando: "Preparando arquivo...",
         qrLabel: "Escaneie para receber o arquivo",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.5.0 | © 2026 jahp. Todos os direitos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.6.0 | © 2026 jahp. Todos os direitos reservados. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Aviso Legal</a>',
         disclaimerTitle: "Isenção de Responsabilidade",
         disclaimerBody: `
         <p>O <strong>Giraffile</strong> funciona como um canal de transporte privado P2P (Peer-to-Peer) direto entre dispositivos. Os arquivos nunca são enviados, analisados ou armazenados em servidores externos.</p>
@@ -238,9 +235,8 @@ const i18n = {
     fr: {
         themeDark: "Mode Sombre",
         themeLight: "Mode Clair",
-        pageTitle: "Giraffile - La girafe qui protège vos fichiers",
+        pageTitle: "Giraffile - Partagez des fichiers facilement, rapidement et en toute sécurité",
         hook: "Partagez n'importe quel fichier en toute confidentialité",
-        desc2: "Faites confiance à la girafe, pas au cloud",
         btnBenefits: "Avantages",
         btnUpload: "Commencer",
         useTitle: "Pourquoi utiliser Giraffile ?",
@@ -276,7 +272,7 @@ const i18n = {
         p2pCalculando: "calcul en cours...",
         descifrando: "Préparation du fichier...",
         qrLabel: "Scannez pour recevoir le fichier",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.5.0 | © 2026 jahp. Tous droits réservés. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Avis Juridique</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.6.0 | © 2026 jahp. Tous droits réservés. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Avis Juridique</a>',
         disclaimerTitle: "Clause de Non-Responsabilité",
         disclaimerBody: `
         <p><strong>Giraffile</strong> fonctionne comme un canal de transport privé P2P (Peer-to-Peer) direct entre appareils. Les fichiers ne sont jamais téléversés, analysés ou stockés sur des serveurs externes.</p>
@@ -315,9 +311,8 @@ const i18n = {
     sw: {
         themeDark: "Giza",
         themeLight: "Mwangaza",
-        pageTitle: "Giraffile - Twiga anayelinda faili zako",
+        pageTitle: "Giraffile - Shiriki faili kwa urahisi, haraka na kwa usalama",
         hook: "Shiriki faili yoyote kwa siri",
-        desc2: "Mwamini twiga, si wingu",
         btnBenefits: "Faida",
         btnUpload: "Anza",
         useTitle: "Kwa nini utumie Giraffile?",
@@ -353,7 +348,7 @@ const i18n = {
         p2pCalculando: "inakadiriwa...",
         descifrando: "Inaandaa faili...",
         qrLabel: "Piga picha ya QR ili kupokea faili",
-        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.5.0 | © 2026 jahp. Haki zote zimehifadhiwa. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Taarifa ya Kisheria</a>',
+        footer: '<a href="https://github.com/coffeetron832/Giraffile" target="_blank" style="color: var(--text-color); text-decoration: underline; font-weight: bold;">Giraffile</a> v2.6.0 | © 2026 jahp. Haki zote zimehifadhiwa. | <a href="#" onclick="abrirDisclaimer(event)" style="color: var(--text-color); text-decoration: underline; margin-left: 5px;">Taarifa ya Kisheria</a>',
         disclaimerTitle: "Taarifa ya Utekelezaji wa Sheria",
         disclaimerBody: `
         <p><strong>Giraffile</strong> inafanya kazi kama njia ya kibinafsi ya P2P (Peer-to-Peer) moja kwa moja kati ya vifaa. Faili hazipakiwi, hazichunguzwi wala hazihifadhiwi kwenye seva yoyote ya nje.</p>
@@ -428,7 +423,6 @@ function aplicarTraduccion() {
     brandHero.innerHTML = `
         <div class="hero-intro">
             <h2 class="hero-hook">${t.hook}</h2>
-            <p class="hero-desc">${t.desc2}</p>
         </div>
     `;
 

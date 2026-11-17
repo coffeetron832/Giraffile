@@ -1,56 +1,4 @@
-// Límite universal robusto (1.5 GB) soportado gracias al flujo por fragmentos (Chunks)
-const MAX_SIZE_BYTES = 1500 * 1024 * 1024; 
-// Límite máximo para renderizar la vista previa en el navegador (10 MB por defecto)
-const MAX_PREVIEW_SIZE_BYTES = 10 * 1024 * 1024; 
-
-let intervaloTemporizador = null;
-let archivoCargado = null;
-let peerInstance = null; 
-let objetoUrlActivo = null; // Control de RAM
-
-// Colección global para persistir la cola de múltiples archivos seleccionados
-let coleccionArchivos = [];
-
-// Control de pasos del formulario
-let pasoActual = 1;
-
-const DB_NAME = "GirafileDB"; 
-const DB_VERSION = 1;
-const STORE_NAME = "archivos";
-const CHUNK_SIZE = 256 * 1024;
-const ESPERA_METADATA_MS = 4000;
-const PEER_CONNECTION_TIMEOUT_MS = 30000;
-const PAUSAR_FLUJO_BYTES = 8 * 1024 * 1024;
-const REANUDAR_FLUJO_BYTES = 2 * 1024 * 1024;
-
-function escaparHTML(cadena) {
-    if (!cadena) return '';
-    return cadena.toString()
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-function ejecutarLimpiezaGarbageCollector() {
-    abrirDB(function(db) {
-        const ahora = Math.floor(Date.now() / 1000);
-        const transaction = db.transaction([STORE_NAME], "readwrite");
-        const store = transaction.objectStore(STORE_NAME);
-        
-        store.openCursor().onsuccess = function(event) {
-            const cursor = event.target.result;
-            if (cursor) {
-                const registro = cursor.value;
-                if (ahora > (registro.t + registro.d)) {
-                    cursor.delete();
-                }
-                cursor.continue();
-            }
-        };
-    });
-}
+// ui.js - Manejo de interfaz, pasos del asistente, compresión ZIP y vista previa
 
 document.addEventListener("DOMContentLoaded", () => {
     const dropZone = document.getElementById('dropZone');
@@ -67,26 +15,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const targetTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', targetTheme);
-    localStorage.setItem('girafile-theme', targetTheme);
-    const themeBtn = document.getElementById('themeBtn');
-    if (themeBtn && typeof i18n !== 'undefined' && i18n[currentLang]) {
-        themeBtn.innerText = targetTheme === 'dark' ? i18n[currentLang].themeLight : i18n[currentLang].themeDark;
-    }
-}
-
-function abrirDB(callback) {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = function(e) {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: "id" });
-    };
-    request.onsuccess = function(e) { callback(e.target.result); };
-}
-
 window.onload = function() {
     currentLang = localStorage.getItem('girafile-lang') || 'es';
     document.documentElement.lang = currentLang;
@@ -100,7 +28,17 @@ window.onload = function() {
     verificarLinkCompartido();
 };
 
-// Función para controlar la navegación entre los 3 pasos
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const targetTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', targetTheme);
+    localStorage.setItem('girafile-theme', targetTheme);
+    const themeBtn = document.getElementById('themeBtn');
+    if (themeBtn && typeof i18n !== 'undefined' && i18n[currentLang]) {
+        themeBtn.innerText = targetTheme === 'dark' ? i18n[currentLang].themeLight : i18n[currentLang].themeDark;
+    }
+}
+
 function irAlPaso(paso) {
     pasoActual = paso;
     
@@ -132,7 +70,6 @@ function irAlPaso(paso) {
     }
 }
 
-// Muestra exclusivamente las 3 tarjetas de beneficios omitiendo logo y eslogan
 function renderizarSoloTarjetasBeneficios() {
     const infoBoxContainer = document.getElementById('infoBoxContainer');
     if (!infoBoxContainer || typeof i18n === 'undefined' || !i18n[currentLang]) return;
@@ -463,441 +400,6 @@ function verificarLinkCompartido() {
     });
 }
 
-// MOTOR P2P
-function inicializarTransmisionP2P(fileId, payload) {
-    if (peerInstance) peerInstance.destroy();
-    
-    peerInstance = new Peer(fileId);
-
-    peerInstance.on('connection', (conn) => {
-        let flujoPausado = false;
-
-        conn.on('data', async (data) => {
-            if (data.request === 'FLOW_PAUSE') { flujoPausado = true; return; }
-            if (data.request === 'FLOW_RESUME') { flujoPausado = false; return; }
-
-            if (data.request === 'REQUEST_METADATA') {
-                const ahora = Math.floor(Date.now() / 1000);
-                if (ahora > (payload.t + payload.d + 900)) return;
-
-                conn.send({
-                    meta: true,
-                    id: payload.id,
-                    t: payload.t,
-                    d: payload.d,
-                    name: payload.name,
-                    type: payload.type,
-                    size: payload.size
-                });
-                return;
-            }
-
-            if (data.request === 'DOWNLOAD_FILE_STREAM') {
-                const ahora = Math.floor(Date.now() / 1000);
-
-                if (ahora > (payload.t + payload.d + 900)) {
-                    eliminarArchivoDB(payload.id);
-                    if (peerInstance) { peerInstance.destroy(); peerInstance = null; }
-                    return;
-                }
-
-                let offset = 0;
-                const totalSize = payload.blob.size;
-
-                async function enviarSiguienteFlujo() {
-                    if (!conn || conn.open === false) return;
-
-                    if (flujoPausado || conn.bufferSize > 512 * 1024) {
-                        setTimeout(enviarSiguienteFlujo, 10);
-                        return;
-                    }
-
-                    while (offset < totalSize && !flujoPausado && conn.bufferSize <= 512 * 1024) {
-                        const fragmentoBlob = payload.blob.slice(offset, offset + CHUNK_SIZE);
-                        offset += CHUNK_SIZE;
-                        const progresoReal = Math.min((offset / totalSize) * 100, 100);
-
-                        const bufferCargado = await fragmentoBlob.arrayBuffer();
-
-                        conn.send({
-                            id: payload.id,
-                            t: payload.t,
-                            d: payload.d,
-                            name: payload.name,
-                            type: payload.type,
-                            size: payload.size,
-                            chunk: bufferCargado, 
-                            progress: progresoReal
-                        });
-                    }
-
-                    if (offset >= totalSize) {
-                        conn.send({ 
-                            eof: true,
-                            t: payload.t,
-                            d: payload.d,
-                            name: payload.name,
-                            type: payload.type,
-                            size: payload.size
-                        });
-                    } else {
-                        setTimeout(enviarSiguienteFlujo, 0);
-                    }
-                }
-
-                await enviarSiguienteFlujo();
-            }
-        });
-    });
-}
-
-function soportaGuardadoEnDisco() {
-    return typeof window.showSaveFilePicker === 'function' && window.isSecureContext;
-}
-
-function conectarYDescargarP2P(fileId, contentDiv, metaDiv, previewDiv) {
-    const t = i18n[currentLang];
-
-    if (peerInstance) peerInstance.destroy();
-    peerInstance = new Peer();
-
-    let conexion = null;
-    let arraysDeFragmentos = [];
-    let metaDataBackup = null;
-    let tiempoInicio = Date.now();
-    let bytesRecibidos = 0;
-    let modoRecepcion = null;
-    let escritorDisco = null;
-    let colaEscritura = Promise.resolve();
-    let bytesEnCola = 0;
-    let flujoPausado = false;
-    let eligiendoDestino = false;
-    let temporizadorMeta = null;
-    let eofRecibido = false;
-    let recepcionCompletada = false;
-    let timeoutConexion = null;
-
-    mostrarProgreso(t.p2pConnecting);
-
-    timeoutConexion = setTimeout(() => {
-        if (!conexion || conexion.open === false) {
-            if (contentDiv) {
-                contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
-            }
-            if (peerInstance) {
-                peerInstance.destroy();
-                peerInstance = null;
-            }
-        }
-    }, PEER_CONNECTION_TIMEOUT_MS);
-
-    function mostrarProgreso(etiqueta) {
-        if (!contentDiv) return;
-        contentDiv.innerHTML = `
-            <p id="p2pLoader" style="color: var(--text-color); font-weight: bold; margin-bottom: 5px;">${escaparHTML(etiqueta)} (0%)</p>
-            <p id="p2pEstimadoCont" style="font-size: 0.85em; color: var(--footer-color); margin-top: 0;">${escaparHTML(t.p2pEstimado)} <span id="p2pTimeRemaining">${escaparHTML(t.p2pCalculando)}</span></p>
-        `;
-    }
-
-    function mostrarEleccion(mensajeError) {
-        if (!contentDiv || modoRecepcion) return;
-
-        const tamanoMB = (metaDataBackup.size / (1024 * 1024)).toFixed(2);
-        const aviso = mensajeError
-            ? `<p class='error' style="margin-bottom: 15px;">${escaparHTML(mensajeError)}</p>`
-            : '';
-
-        contentDiv.innerHTML = `
-            ${aviso}
-            <div style="background: var(--timer-bg); padding: 20px; border-radius: 4px; text-align: center; margin-bottom: 15px;">
-                <p style="font-size: 0.95em; color: var(--text-color); margin: 0 0 10px 0;">${escaparHTML(t.chooseTitle)}</p>
-                <strong style="word-break: break-all; font-size: 1.1em; display: block; color: var(--text-color);">${escaparHTML(metaDataBackup.name)}</strong>
-                <span style="font-size: 0.9em; color: var(--footer-color);">${tamanoMB} MB</span>
-            </div>
-            <button id="btnGuardarDisco" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">${escaparHTML(t.btnSaveToDisk)}</button>
-            <p style="font-size: 0.85em; color: var(--footer-color); text-align: left; margin: 0 0 20px 0; line-height: 1.4;">${t.saveToDiskNotice}</p>
-            <button id="btnVerNavegador" class="btn" style="width: 100%; margin-bottom: 8px;">${escaparHTML(t.btnViewInBrowser)}</button>
-            <p style="font-size: 0.85em; color: var(--footer-color); text-align: left; margin: 0; line-height: 1.4;">${t.viewInBrowserNotice}</p>
-        `;
-
-        const btnGuardar = document.getElementById('btnGuardarDisco');
-        const btnVer = document.getElementById('btnVerNavegador');
-
-        btnGuardar.addEventListener('click', () => {
-            btnGuardar.disabled = true;
-            btnVer.disabled = true;
-            iniciarRecepcionEnDisco();
-        });
-
-        btnVer.addEventListener('click', () => {
-            btnGuardar.disabled = true;
-            btnVer.disabled = true;
-            iniciarRecepcion('memoria');
-        });
-    }
-
-    function iniciarRecepcion(modo) {
-        if (modoRecepcion) return;
-
-        if (!conexion || conexion.open === false) {
-            if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
-            return;
-        }
-
-        modoRecepcion = modo;
-        if (temporizadorMeta) {
-            clearTimeout(temporizadorMeta);
-            temporizadorMeta = null;
-        }
-        mostrarProgreso(modo === 'disco' ? t.savingToDisk : t.p2pConnecting);
-        tiempoInicio = Date.now();
-        conexion.send({ request: 'DOWNLOAD_FILE_STREAM' });
-    }
-
-    async function iniciarRecepcionEnDisco() {
-        if (eligiendoDestino || modoRecepcion) return;
-        eligiendoDestino = true;
-
-        let manejadorArchivo;
-        try {
-            manejadorArchivo = await window.showSaveFilePicker({
-                suggestedName: metaDataBackup.name
-            });
-        } catch (error) {
-            eligiendoDestino = false;
-            mostrarEleccion(t.errSaveCancelled);
-            return;
-        }
-
-        try {
-            const flujoEscritura = await manejadorArchivo.createWritable();
-            escritorDisco = flujoEscritura.getWriter();
-        } catch (error) {
-            eligiendoDestino = false;
-            mostrarEleccion(t.errSaveFailed);
-            return;
-        }
-
-        iniciarRecepcion('disco');
-    }
-
-    function fallarEscrituraEnDisco() {
-        if (recepcionCompletada) return;
-        recepcionCompletada = true;
-        if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errSaveFailed)}</p>`;
-        if (escritorDisco) {
-            escritorDisco.abort().catch(() => {});
-            escritorDisco = null;
-        }
-        if (peerInstance) {
-            peerInstance.destroy();
-            peerInstance = null;
-        }
-    }
-
-    function actualizarProgreso(porcentaje) {
-        const loader = document.getElementById("p2pLoader");
-        const tiempoEstimadoSpan = document.getElementById("p2pTimeRemaining");
-        const etiqueta = modoRecepcion === 'disco' ? t.savingToDisk : t.p2pConnecting;
-
-        if (loader) loader.innerText = `${etiqueta} (${Math.floor(porcentaje)}%)`;
-        if (!tiempoEstimadoSpan || !metaDataBackup) return;
-
-        const tiempoTranscurridoMs = Date.now() - tiempoInicio;
-        const bytesRestantes = metaDataBackup.size - bytesRecibidos;
-
-        if (bytesRestantes <= 0) {
-            tiempoEstimadoSpan.innerText = "00:00";
-            return;
-        }
-
-        if (bytesRecibidos <= 0 || tiempoTranscurridoMs <= 200) return;
-
-        const velocidadBytesPorMs = bytesRecibidos / tiempoTranscurridoMs;
-        if (velocidadBytesPorMs <= 0) return;
-
-        const tiempoRestanteSegundos = Math.ceil(bytesRestantes / (velocidadBytesPorMs * 1000));
-        const minRestantes = Math.floor(tiempoRestanteSegundos / 60);
-        const segRestantes = tiempoRestanteSegundos % 60;
-        tiempoEstimadoSpan.innerText = `${minRestantes.toString().padStart(2, '0')}:${segRestantes.toString().padStart(2, '0')}`;
-    }
-
-    function procesarFragmento(data) {
-        if (!metaDataBackup && data.size) {
-            metaDataBackup = {
-                t: data.t,
-                d: data.d,
-                name: data.name,
-                type: data.type,
-                size: data.size
-            };
-        }
-
-        const fragmento = data.chunk instanceof ArrayBuffer ? new Uint8Array(data.chunk) : data.chunk;
-        bytesRecibidos += fragmento.byteLength;
-
-        if (modoRecepcion === 'disco') {
-            bytesEnCola += fragmento.byteLength;
-            colaEscritura = colaEscritura
-                .then(() => escritorDisco.write(fragmento))
-                .then(() => {
-                    bytesEnCola -= fragmento.byteLength;
-                    if (flujoPausado && bytesEnCola <= REANUDAR_FLUJO_BYTES) {
-                        flujoPausado = false;
-                        if (conexion && conexion.open) conexion.send({ request: 'FLOW_RESUME' });
-                    }
-                })
-                .catch(fallarEscrituraEnDisco);
-
-            if (!flujoPausado && bytesEnCola >= PAUSAR_FLUJO_BYTES) {
-                flujoPausado = true;
-                if (conexion && conexion.open) conexion.send({ request: 'FLOW_PAUSE' });
-            }
-        } else {
-            arraysDeFragmentos.push(data.chunk);
-        }
-
-        actualizarProgreso(data.progress);
-    }
-
-    async function finalizarEnDisco(data) {
-        actualizarProgreso(100);
-        try {
-            await colaEscritura;
-            await escritorDisco.close();
-        } catch (error) {
-            fallarEscrituraEnDisco();
-            return;
-        }
-        escritorDisco = null;
-
-        recepcionCompletada = true;
-        escritorDisco = null;
-
-        const nombre = data.name || (metaDataBackup ? metaDataBackup.name : t.defaultFileName);
-        const tamano = metaDataBackup ? metaDataBackup.size : bytesRecibidos;
-
-        if (metaDiv) metaDiv.innerHTML = `<strong>${escaparHTML(t.fileLabel)}</strong> ${escaparHTML(nombre)} (${(tamano / (1024 * 1024)).toFixed(2)} MB)`;
-        if (contentDiv) {
-            contentDiv.innerHTML = `
-                <div style="background: var(--timer-bg); padding: 25px; border-radius: 4px; text-align: center;">
-                    <p style="font-size: 1.05em; color: var(--text-color); margin: 0 0 10px 0;"><strong>${escaparHTML(t.savedToDiskTitle)}</strong></p>
-                    <strong style="word-break: break-all; display: block; color: var(--text-color); margin-bottom: 15px;">${escaparHTML(nombre)}</strong>
-                    <p style="font-size: 0.9em; color: var(--footer-color); margin: 0; line-height: 1.4;">${escaparHTML(t.savedToDiskNotice)}</p>
-                </div>
-            `;
-        }
-
-        if (peerInstance) {
-            peerInstance.destroy();
-            peerInstance = null;
-        }
-    }
-
-    function finalizarEnMemoria(data) {
-        actualizarProgreso(100);
-
-        const tipoMime = data.type || (metaDataBackup ? metaDataBackup.type : "application/octet-stream");
-        const blobReconstruido = new Blob(arraysDeFragmentos, { type: tipoMime });
-        arraysDeFragmentos = [];
-        recepcionCompletada = true;
-
-        const tiempoActualReceptor = Math.floor(Date.now() / 1000);
-        const duracionOriginal = data.d || (metaDataBackup ? metaDataBackup.d : 60);
-        const tamanoReal = blobReconstruido.size > 0 ? blobReconstruido.size : (metaDataBackup ? metaDataBackup.size : 0);
-
-        const objetoPayload = {
-            id: fileId,
-            t: tiempoActualReceptor,
-            d: duracionOriginal,
-            name: data.name || (metaDataBackup ? metaDataBackup.name : t.defaultFileName),
-            type: tipoMime,
-            size: tamanoReal,
-            blob: blobReconstruido
-        };
-
-        abrirDB(function(db) {
-            const tx = db.transaction([STORE_NAME], "readwrite");
-            tx.objectStore(STORE_NAME).put(objetoPayload);
-            tx.oncomplete = function() {
-                renderizarVistaArchivo(objetoPayload, contentDiv, metaDiv, previewDiv);
-                if (peerInstance) {
-                    peerInstance.destroy();
-                    peerInstance = null;
-                }
-            };
-        });
-    }
-
-    peerInstance.on('open', () => {
-        clearTimeout(timeoutConexion);
-        conexion = peerInstance.connect(fileId, {
-            reliable: true,
-            ordered: true
-        });
-
-        conexion.on('open', () => {
-            tiempoInicio = Date.now();
-            conexion.send({ request: 'REQUEST_METADATA' });
-
-            temporizadorMeta = setTimeout(() => {
-                if (!modoRecepcion) iniciarRecepcion('memoria');
-            }, ESPERA_METADATA_MS);
-        });
-
-        conexion.on('data', (data) => {
-            if (data.meta) {
-                if (modoRecepcion) return;
-                if (temporizadorMeta) {
-                    clearTimeout(temporizadorMeta);
-                    temporizadorMeta = null;
-                }
-                metaDataBackup = {
-                    t: data.t,
-                    d: data.d,
-                    name: data.name,
-                    type: data.type,
-                    size: data.size
-                };
-                if (soportaGuardadoEnDisco()) mostrarEleccion();
-                else iniciarRecepcion('memoria');
-                return;
-            }
-
-            if (data.chunk) procesarFragmento(data);
-
-            if (data.eof) {
-                eofRecibido = true;
-                if (modoRecepcion === 'disco') finalizarEnDisco(data);
-                else finalizarEnMemoria(data);
-            }
-        });
-
-        conexion.on('close', () => {
-            if (recepcionCompletada || eofRecibido) return;
-
-            if (modoRecepcion === 'disco' && escritorDisco) {
-                fallarEscrituraEnDisco();
-                return;
-            }
-
-            if (!modoRecepcion) {
-                if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
-                return;
-            }
-
-            if (arraysDeFragmentos.length > 0 && !metaDataBackup) {
-                if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
-            }
-        });
-    });
-
-    peerInstance.on('error', () => {
-        if (recepcionCompletada || eofRecibido) return;
-        if (contentDiv) contentDiv.innerHTML = `<p class='error'>${escaparHTML(t.errNoExist)}</p>`;
-    });
-}
-
 function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
     const t = i18n[currentLang];
 
@@ -947,7 +449,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
 
     if (!contentDiv) return;
 
-    // EVALUACIÓN DE VISTA PREVIA SEGÚN PESO MÁXIMO
     const permiteVistaPrevia = data.size <= MAX_PREVIEW_SIZE_BYTES;
 
     if (permiteVistaPrevia && data.type.startsWith("image/")) {
@@ -980,7 +481,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         `;
     }
 
-    // CONTROLADOR ESTÁTICO DEL BOTÓN DE DESCARGA: Se muestra siempre de forma independiente
     const btnDescarga = document.getElementById('btnDescargaDirecta');
     if (btnDescarga) {
         btnDescarga.href = urlObjeto;
@@ -988,12 +488,6 @@ function renderizarVistaArchivo(data, contentDiv, metaDiv, previewDiv) {
         btnDescarga.innerText = t.btnDownload;
         btnDescarga.style.display = 'block';
     }
-}
-
-function eliminarArchivoDB(id) {
-    abrirDB(function(db) {
-        db.transaction([STORE_NAME], "readwrite").objectStore(STORE_NAME).delete(id);
-    });
 }
 
 function abrirDisclaimer(event) {
