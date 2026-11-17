@@ -484,7 +484,6 @@ function aplicarTraduccion() {
     if (document.getElementById('opt10m')) document.getElementById('opt10m').innerText = t.opt10;
     if (document.getElementById('btnGenerar')) document.getElementById('btnGenerar').innerText = t.btnGenerate;
     
-    // Traducción de los botones inferiores (Descarga directa y Enviar otro)
     if (document.getElementById('btnDescargaDirecta')) document.getElementById('btnDescargaDirecta').innerText = t.btnDownload;
     if (document.getElementById('btnSendAnother')) document.getElementById('btnSendAnother').innerText = t.btnSendAnother;
 

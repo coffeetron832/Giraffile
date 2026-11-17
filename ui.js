@@ -1,4 +1,4 @@
-// ui.js - Manejo de interfaz, pasos del asistente, compresión ZIP y vista previa
+// ui.js - Manejo de la interfaz, pasos del asistente, compresión ZIP y vista previa
 
 document.addEventListener("DOMContentLoaded", () => {
     const dropZone = document.getElementById('dropZone');

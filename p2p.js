@@ -1,4 +1,4 @@
-// p2p.js - Motor de transmisión P2P (PeerJS), flujo por chunks y guardado en disco
+// p2p.js - Motor de transmisión P2P, flujo por chunks y guardado en disco
 
 function soportaGuardadoEnDisco() {
     return typeof window.showSaveFilePicker === 'function' && window.isSecureContext;

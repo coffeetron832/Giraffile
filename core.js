@@ -1,4 +1,4 @@
-// core.js - Constantes, estado global, utilidades e IndexedDB
+// core.js - Constantes, utilidades e IndexedDB
 
 const MAX_SIZE_BYTES = 1500 * 1024 * 1024; // 1.5 GB
 const MAX_PREVIEW_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
